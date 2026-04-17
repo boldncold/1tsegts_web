@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          exists(/databases/$(database)/documents/admin_emails/$(request.auth.token.email)) ||
+          (request.auth.token.email == "boldsaihanlolor@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidMenuItem(data) {
+      return data.keys().hasAll(['name', 'price', 'category', 'available', 'description']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.price is number && data.price >= 0 &&
+             data.category in ['European', 'Asian', 'Drinks', 'Mongolian', 'Draft'] &&
+             data.available is bool &&
+             data.description is string &&
+             (!('sideImages' in data) || data.sideImages is list) &&
+             (!('portions' in data) || data.portions is list) &&
+             (!('packagingPrice' in data) || (data.packagingPrice is number && data.packagingPrice >= 0));
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['items', 'total', 'orderType', 'status', 'timestamp']) &&
+             data.items is list && data.items.size() > 0 &&
+             data.total is number && data.total >= 0 &&
+             (!('customerName' in data) || (data.customerName is string && data.customerName.size() < 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 20)) &&
+             data.orderType in ['pickup', 'kiosk'] &&
+             (!('kioskNumber' in data) || (data.kioskNumber is string && data.kioskNumber.size() < 50)) &&
+             (!('orderNumber' in data) || (data.orderNumber is string && data.orderNumber.size() >= 3)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 500)) &&
+             data.status in ['pending', 'preparing', 'ready', 'completed', 'cancelled'] &&
+             data.timestamp is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Admin Emails
+    match /admin_emails/{email} {
+      allow read, write: if isAdmin();
+    }
+
+    // Menu Items
+    match /menu/{itemId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAdmin() && isValidMenuItem(request.resource.data);
+      allow delete: if isAdmin();
+      allow update: if (isAdmin() && isValidMenuItem(request.resource.data)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderCount']) &&
+         request.resource.data.orderCount > resource.data.orderCount);
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow create: if isValidOrder(request.resource.data);
+      allow read: if true; // Allow customers to track their order
+      allow update: if isAdmin() || 
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+         request.resource.data.status == 'cancelled' &&
+         resource.data.status == 'pending');
+      allow delete: if isAdmin() || resource.data.status == 'pending';
+    }
+
+    // Stats (for order numbers)
+    match /stats/{statId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Users (for role management)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}

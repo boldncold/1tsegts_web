@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A dish or drink available for order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "sideImages": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string", "enum": ["European", "Asian", "Drinks", "Mongolian", "Draft"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "available": { "type": "boolean" }
+      },
+      "required": ["name", "price", "category", "available"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "items": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            }
+          }
+        },
+        "total": { "type": "number" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "orderType": { "type": "string", "enum": ["pickup", "kiosk"] },
+        "kioskNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "ready", "completed", "cancelled"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["items", "total", "customerName", "phone", "orderType", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/menu": {
+      "schema": "MenuItem",
+      "description": "Collection of available menu items."
+    },
+    "/orders": {
+      "schema": "Order",
+      "description": "Collection of customer orders."
+    }
+  }
+}

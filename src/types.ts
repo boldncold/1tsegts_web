@@ -1,0 +1,61 @@
+export type Category = 'European' | 'Asian' | 'Drinks' | 'Mongolian' | 'Draft';
+export type ItemStatus = 'available' | 'sold_out_today' | 'hidden' | 'daily_special';
+
+export interface Portion {
+  name: string;
+  price: number;
+  available?: boolean;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  sideImages?: string[];
+  category: Category;
+  tags: string[];
+  available: boolean; // Legacy, kept for backward compatibility
+  status?: ItemStatus;
+  statusUntil?: number;
+  featured?: boolean;
+  orderCount?: number;
+  packagingPrice?: number;
+  portions?: Portion[];
+}
+
+export interface CartItem extends MenuItem {
+  cartItemId: string;
+  quantity: number;
+  packaging?: boolean;
+  selectedPortion?: Portion;
+}
+
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+export type OrderType = 'pickup' | 'kiosk';
+
+export interface Order {
+  id: string;
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }[];
+  total: number;
+  customerName?: string;
+  phone?: string;
+  orderType: OrderType;
+  kioskNumber?: string;
+  orderNumber?: string;
+  notes?: string;
+  status: OrderStatus;
+  timestamp: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  role: 'admin' | 'user';
+}
