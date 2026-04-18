@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { cn, isStoreOpen, getDynamicStatus } from '../lib/utils';
 import TraditionalMenuSection from './TraditionalMenuSection';
+import { toast } from 'sonner';
 
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -47,22 +48,32 @@ export default function MenuSection() {
   }, [location.search]);
 
   useEffect(() => {
+    setLoading(true);
+    console.log("Fetching menu items from collection: menu");
     const q = query(collection(db, 'menu'), orderBy('name'));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log(`Received snapshot with ${snapshot.size} items`);
       const menuItems = snapshot.docs.map(doc => {
-        const data = doc.data();
-        // Handle legacy 'Specials' category
-        if (data.category === 'Specials') {
-          data.category = 'Mongolian';
+        try {
+          const data = doc.data();
+          // Handle legacy 'Specials' category
+          if (data.category === 'Specials') {
+            data.category = 'Mongolian';
+          }
+          // Ensure doc.id is used and not overwritten by any 'id' field in data
+          const { id, ...rest } = data;
+          return {
+            id: doc.id,
+            ...rest,
+            portions: data.portions ? data.portions.filter((p: any) => p.available !== false) : []
+          } as MenuItem;
+        } catch (err) {
+          console.error(`Error parsing item ${doc.id}:`, err);
+          return null;
         }
-        // Ensure doc.id is used and not overwritten by any 'id' field in data
-        const { id, ...rest } = data;
-        return {
-          id: doc.id,
-          ...rest,
-          portions: data.portions ? data.portions.filter((p: any) => p.available !== false) : []
-        } as MenuItem;
-      });
+      }).filter(Boolean) as MenuItem[];
+
       setItems(menuItems);
       
       // Initialize selected portions for items that have them
@@ -73,8 +84,11 @@ export default function MenuSection() {
         }
       });
       setSelectedPortions(initialPortions);
-      
       setLoading(false);
+    }, (error) => {
+      console.error("Firestore error in MenuSection:", error);
+      setLoading(false);
+      toast.error("Failed to load menu items. Please check your connection.");
     });
 
     return () => unsubscribe();

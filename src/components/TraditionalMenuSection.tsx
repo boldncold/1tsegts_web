@@ -16,12 +16,26 @@ document.head.appendChild(fontLink);
 export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
   const { t, language } = useLanguage();
   const { addToCart, cart, itemCount: cartItemCount, total: cartSubtotal } = useCart();
-  const [activeTab, setActiveTab] = useState<Category>('European');
+  const categories = ['Draft', 'European', 'Asian', 'Mongolian', 'Drinks'] as Category[];
+  const firstValidCategory = categories.find(cat => items.some(item => item.category === cat)) || 'European';
+  const [activeTab, setActiveTab] = useState<Category>(firstValidCategory);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Update activeTab to first valid category when items load for the first time
+  useEffect(() => {
+    if (!hasInitialized && items.length > 0) {
+      const first = categories.find(cat => items.some(item => item.category === cat));
+      if (first) {
+        setActiveTab(first);
+        setHasInitialized(true);
+      }
+    }
+  }, [items, hasInitialized]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -48,8 +62,6 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
   // const cartItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   // const cartSubtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const categories = ['Draft', 'European', 'Asian', 'Mongolian', 'Drinks'] as Category[];
-  
   const filteredItems = items.filter(item => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();

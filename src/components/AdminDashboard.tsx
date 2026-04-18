@@ -308,16 +308,25 @@ export default function AdminDashboard() {
     if (!isAdmin) return;
 
     const menuUnsubscribe = onSnapshot(query(collection(db, 'menu'), orderBy('name')), (snapshot) => {
+      console.log(`AdminDashboard: Received ${snapshot.size} menu items`);
       setMenuItems(snapshot.docs.map(doc => {
-        const data = doc.data();
-        // Handle legacy 'Specials' category
-        if (data.category === 'Specials') {
-          data.category = 'Mongolian';
+        try {
+          const data = doc.data();
+          // Handle legacy 'Specials' category
+          if (data.category === 'Specials') {
+            data.category = 'Mongolian';
+          }
+          // Ensure doc.id is used and not overwritten by any 'id' field in data
+          const { id, ...rest } = data;
+          return { id: doc.id, ...rest } as MenuItem;
+        } catch (err) {
+          console.error(`AdminDashboard: Error parsing item ${doc.id}:`, err);
+          return null;
         }
-        // Ensure doc.id is used and not overwritten by any 'id' field in data
-        const { id, ...rest } = data;
-        return { id: doc.id, ...rest } as MenuItem;
-      }));
+      }).filter(Boolean) as MenuItem[]);
+    }, (error) => {
+      console.error("AdminDashboard: Menu snapshot error:", error);
+      toast.error("Failed to load menu items in admin dashboard.");
     });
 
     const ordersUnsubscribe = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (snapshot) => {
