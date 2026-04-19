@@ -107,9 +107,6 @@ export default function Footer() {
             {t('footer.rights')}
           </p>
           <div className="print-hidden flex space-x-6 text-stone-400 text-xs">
-            <Link to="/admin" className="hover:text-stone-600 transition-colors">{t('footer.admin')}</Link>
-            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.privacy')}</a>
-            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.terms')}</a>
           </div>
         </div>
       </div>

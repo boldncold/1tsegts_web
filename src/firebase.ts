@@ -20,7 +20,9 @@ export { signInWithPopup, signOut, onAuthStateChanged, collection, addDoc, updat
 async function testConnection() {
   console.log("Testing Firebase connection...");
   try {
-    const testDoc = await getDocFromServer(doc(db, 'test', 'connection'));
+    // Try to fetch one item from the menu collection which is publicly readable
+    const q = query(collection(db, 'menu'), limit(1));
+    await getDocs(q);
     console.log("Firebase connection test successful. Database ID:", databaseId || '(default)');
   } catch (error) {
     console.error("Firebase connection test failed:", error);

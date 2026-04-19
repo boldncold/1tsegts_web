@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, Star, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db, collection, onSnapshot, query, where, orderBy, limit } from '../firebase';
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
 import { cn } from '../lib/utils';
 
 export default function FeaturedDishes() {
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { addToCart } = useCart();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
-    // First try to get explicitly featured items
     const featuredQuery = query(
       collection(db, 'menu'),
       where('available', '==', true),
@@ -29,7 +30,6 @@ export default function FeaturedDishes() {
         })) as MenuItem[];
         setFeaturedItems(items);
       } else {
-        // Fallback to most ordered items
         const mostOrderedQuery = query(
           collection(db, 'menu'),
           where('available', '==', true),
@@ -45,7 +45,6 @@ export default function FeaturedDishes() {
             })) as MenuItem[];
             setFeaturedItems(items);
           } else {
-            // Final fallback to any items
             const fallbackQuery = query(collection(db, 'menu'), limit(5));
             onSnapshot(fallbackQuery, (fallbackSnapshot) => {
               const items = fallbackSnapshot.docs.map(doc => ({
@@ -66,7 +65,7 @@ export default function FeaturedDishes() {
     if (featuredItems.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % featuredItems.length);
-    }, 6000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [featuredItems.length]);
 
@@ -78,132 +77,117 @@ export default function FeaturedDishes() {
   const currentItem = featuredItems[currentIndex];
 
   return (
-    <section className="relative h-screen min-h-[700px] w-full overflow-hidden bg-white">
+    <section className="relative h-[100svh] w-full overflow-hidden bg-stone-950">
+      {/* Hero — Full-bleed food photo */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentItem.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
           className="absolute inset-0"
         >
-          {/* Background Image with Parallax-like feel */}
-          <div className="absolute inset-0">
-            <img
-              src={currentItem.image || `https://picsum.photos/seed/${currentItem.name}/1920/1080`}
-              alt={currentItem.name}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-transparent w-full md:w-3/4"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/20 to-transparent"></div>
-          </div>
-
-          {/* Content */}
-          <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center pt-20">
-            <div className="max-w-2xl space-y-8">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex items-center space-x-3"
-              >
-                <span className="px-3 py-1 bg-[#8B0000] text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full">
-                  Top Pick
-                </span>
-                <div className="flex items-center space-x-1 text-[#D4AF37]">
-                  <Star size={14} fill="currentColor" />
-                  <span className="text-xs font-bold tracking-widest uppercase">Highly Rated</span>
-                </div>
-              </motion.div>
-
-              <div className="space-y-4">
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-5xl md:text-8xl font-medium text-stone-900 leading-tight"
-                >
-                  {currentItem.name}
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="text-lg md:text-xl text-stone-600 font-light max-w-lg leading-relaxed"
-                >
-                  {currentItem.description}
-                </motion.p>
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="flex flex-wrap items-center gap-6"
-              >
-                <div className="text-3xl font-semibold tabular-nums text-[#8B0000]">
-                  ₮{Math.round(currentItem.price).toLocaleString()}
-                </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => addToCart(currentItem)}
-                    className="px-8 py-4 bg-[#8B0000] text-white font-bold uppercase tracking-widest rounded-full hover:bg-[#6b0000] transition-all active:scale-95 flex items-center space-x-2 shadow-xl shadow-red-900/20"
-                  >
-                    <Plus size={20} />
-                    <span>Add to Cart</span>
-                  </button>
-                  <Link
-                    to="/menu"
-                    className="px-8 py-4 border border-gray-300 text-stone-700 font-bold uppercase tracking-widest rounded-full hover:bg-gray-50 hover:border-[#D4AF37] transition-all active:scale-95"
-                  >
-                    View Menu
-                  </Link>
-                </div>
-              </motion.div>
-            </div>
-          </div>
+          <img
+            src={currentItem.image || `https://picsum.photos/seed/${currentItem.name}/1920/1080`}
+            alt={currentItem.name}
+            className="h-full w-full object-cover object-center"
+            referrerPolicy="no-referrer"
+          />
+          {/* Subtle gradient overlay — bottom weighted to protect the food view */}
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/30 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation Controls */}
-      <div className="absolute bottom-12 right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
-        <div className="flex items-center space-x-2 mr-8">
+      {/* Content Overlay */}
+      <div className="relative h-full flex flex-col justify-end px-6 sm:px-12 pb-24 sm:pb-32">
+        <div className="max-w-3xl space-y-8">
+          <motion.div
+            key={currentItem.id + '-text'}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="space-y-4"
+          >
+            {/* Serif Tagline */}
+            <div className="space-y-2">
+              <p className="text-[#D4AF37] text-xs uppercase tracking-[0.4em] font-black">
+                {currentItem.category}
+              </p>
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-serif text-white leading-tight tracking-tight">
+                {currentItem.name}
+              </h1>
+            </div>
+
+            {currentItem.description && (
+              <p className="text-lg sm:text-xl text-stone-200/80 font-light leading-relaxed max-w-xl line-clamp-3">
+                {currentItem.description}
+              </p>
+            )}
+          </motion.div>
+
+          {/* CTAs */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="flex flex-col sm:flex-row items-center gap-4"
+          >
+            <Link
+              to="/menu"
+              className="w-full sm:w-auto px-10 py-5 bg-[#D4AF37] text-stone-950 font-black uppercase tracking-[0.2em] rounded-full hover:bg-[#C5A028] transition-all active:scale-95 text-center text-sm shadow-2xl shadow-[#D4AF37]/20"
+            >
+              {language === 'en' ? 'Browse the Menu' : 'Цэс үзэх'}
+            </Link>
+            <button
+              onClick={() => addToCart(currentItem)}
+              className="w-full sm:w-auto px-10 py-5 border-2 border-[#8B0000] text-white font-black uppercase tracking-[0.2em] rounded-full hover:bg-[#8B0000] transition-all active:scale-95 text-center text-sm"
+            >
+              {language === 'en' ? 'Add to Cart' : 'Сагсанд нэмэх'}
+            </button>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Navigation & Indicators */}
+      <div className="absolute bottom-10 left-6 sm:left-12 right-6 sm:right-12 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           {featuredItems.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               className={cn(
-                "h-1 transition-all duration-500 rounded-full",
-                currentIndex === idx ? "w-8 bg-[#D4AF37]" : "w-4 bg-gray-300 hover:bg-gray-400"
+                "h-1 rounded-full transition-all duration-500",
+                currentIndex === idx ? "w-12 bg-[#D4AF37]" : "w-4 bg-white/30 hover:bg-white/50"
               )}
             />
           ))}
         </div>
-        <button
-          onClick={prev}
-          className="p-3 rounded-full border border-gray-200 text-stone-400 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all active:scale-90 bg-white/50 backdrop-blur-sm"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <button
-          onClick={next}
-          className="p-3 rounded-full border border-gray-200 text-stone-400 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all active:scale-90 bg-white/50 backdrop-blur-sm"
-        >
-          <ChevronRight size={24} />
-        </button>
+
+        <div className="flex gap-2">
+          <button onClick={prev} className="p-3 rounded-full border border-white/20 text-white/60 hover:border-white hover:text-white transition-all bg-stone-900/20 backdrop-blur-md">
+            <ChevronLeft size={20} />
+          </button>
+          <button onClick={next} className="p-3 rounded-full border border-white/20 text-white/60 hover:border-white hover:text-white transition-all bg-stone-900/20 backdrop-blur-md">
+            <ChevronRight size={20} />
+          </button>
+        </div>
       </div>
 
-      {/* Scroll Indicator */}
+      {/* Scroll Cue */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 1 }}
-        className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center space-y-2"
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
-        <span className="text-[10px] uppercase tracking-[0.3em] text-stone-400 font-bold">Discover More</span>
-        <div className="w-px h-12 bg-gradient-to-b from-[#8B0000] to-transparent"></div>
+        <span className="text-[9px] uppercase tracking-[0.4em] text-white/40 font-bold">Scroll</span>
+        <motion.div
+          animate={{ y: [0, 5, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <ChevronDown size={14} className="text-[#D4AF37]" />
+        </motion.div>
       </motion.div>
     </section>
   );
