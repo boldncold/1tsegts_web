@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { db, collection, addDoc, updateDoc, doc, increment, onSnapshot } from '../firebase';
+import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc } from '../firebase';
 import { cn, isStoreOpen } from '../lib/utils';
 import { toast } from 'sonner';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
@@ -137,12 +138,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     return () => clearInterval(interval);
   }, [language]);
 
-  return (
-    <>
-      <AnimatePresence>
+  const drawerContent = (
+    <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Static backdrop for performance - avoiding heavy blur animations */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -156,7 +156,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-gray-100"
           >
             {/* Header */}
@@ -390,11 +390,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <div className="space-y-6">
                   {cart.map((item) => (
                     <div key={item.cartItemId} className="flex space-x-4 group">
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-100">
+                      <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm">
                         <img
                           src={item.image || `https://picsum.photos/seed/${item.name}/200/200`}
                           alt={item.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
                           referrerPolicy="no-referrer"
                         />
                       </div>
@@ -408,7 +408,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           </div>
                           <button
                             onClick={() => removeFromCart(item.cartItemId)}
-                            className="text-stone-400 hover:text-red-500 transition-colors"
+                            className="p-1.5 text-stone-400 hover:text-red-500 transition-colors bg-gray-50 rounded-full"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -419,7 +419,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <button
                             onClick={() => updatePackaging(item.cartItemId, !item.packaging)}
                             className={cn(
-                              "flex items-center justify-between w-full px-3 py-2 rounded-lg border transition-all active:scale-[0.98]",
+                              "flex items-center justify-between w-full px-3 py-2 rounded-xl border transition-all active:scale-[0.98]",
                               item.packaging 
                                 ? "bg-[#D4AF37]/10 border-[#D4AF37]/50" 
                                 : "bg-gray-50 border-gray-200 hover:border-gray-300"
@@ -447,20 +447,20 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           </button>
                         </div>
 
-                        <div className="flex justify-between items-center pt-1">
+                        <div className="flex justify-between items-center pt-2">
                           <div className="flex items-center space-x-3 bg-gray-50 rounded-full px-2 py-1 border border-gray-200">
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
                             >
-                              <Minus size={12} />
+                              <Minus size={14} />
                             </button>
-                            <span className="text-xs font-semibold text-stone-700 min-w-[16px] text-center tabular-nums">{item.quantity}</span>
+                            <span className="text-sm font-semibold text-stone-700 min-w-[20px] text-center tabular-nums">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
                             >
-                              <Plus size={12} />
+                              <Plus size={14} />
                             </button>
                           </div>
                           <span className="text-sm font-semibold tabular-nums text-[#8B0000]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
@@ -531,13 +531,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         </>
       )}
     </AnimatePresence>
+  );
+
+  return (
+    <>
+      {createPortal(drawerContent, document.body)}
 
       <ConfirmModal
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={async () => {
           if (pendingOrderId) {
-            const { db, doc, deleteDoc } = await import('../firebase');
             try {
               const strikes = parseInt(localStorage.getItem('grand_strikes') || '0') + 1;
               localStorage.setItem('grand_strikes', strikes.toString());
