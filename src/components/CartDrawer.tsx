@@ -17,6 +17,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [completedOrderType, setCompletedOrderType] = useState<'pickup' | 'kiosk'>('pickup');
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -104,6 +105,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       }
 
       setOrderNumber(generatedOrderNumber);
+      setCompletedOrderType(formData.orderType);
       setOrderComplete(true);
       clearCart();
       toast.success(t('cart.success'));
@@ -251,10 +253,48 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     </div>
                   )}
 
-                  <p className="text-stone-500 font-light">
-                    {t('cart.order_thanks')} <br />
-                    {t('cart.order_preparing')} <br />
-                    <span className="text-[#D4AF37] font-semibold">{t('cart.est_time')}</span>
+                  {completedOrderType === 'pickup' ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 w-full space-y-4 text-center">
+                      <h4 className="text-lg font-semibold text-amber-900">{language === 'en' ? 'Please Verify Your Order' : 'Таны захиалгыг баталгаажуулаарай'}</h4>
+                      <p className="text-sm text-amber-800 leading-relaxed">
+                        {language === 'en' 
+                          ? 'Please go to the cashier to verify your order, or call' 
+                          : 'Та цалгийн газарт очиж захиалгыг баталгаажуулаарай, эсвэл дараах дугаарт залгаарай'}
+                      </p>
+                      <a href="tel:99138866" className="inline-block text-xl font-bold text-[#8B0000] hover:underline">
+                        99138866
+                      </a>
+                      <p className="text-xs text-amber-600 italic">
+                        {language === 'en'
+                          ? 'until the admin confirms your order.'
+                          : 'админ баталгаажуулахыг хүлээнэ үү.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 w-full space-y-4 text-center">
+                      <h4 className="text-lg font-semibold text-blue-900">{language === 'en' ? 'Payment Required' : 'Төлөлт шаардлагатай'}</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-medium text-blue-800 mb-2">{language === 'en' ? 'Option 1: Pay via Mobile App (QR Code)' : 'Хувилбар 1: Мобайл апп-аараа төлөх (QR код)'}</p>
+                          <p className="text-xs text-blue-700">{language === 'en' ? 'Scan the QR code below to complete payment' : 'Төлөлтийг дуусгахын тулд QR код сканнех'}</p>
+                        </div>
+                        <div className="border-t border-blue-200 pt-3">
+                          <p className="text-sm font-medium text-blue-800 mb-2">{language === 'en' ? 'Option 2: Call to Confirm' : 'Хувилбар 2: Дуудлагаар баталгаажуулах'}</p>
+                          <a href="tel:99138866" className="inline-block text-xl font-bold text-[#8B0000] hover:underline mb-2">
+                            99138866
+                          </a>
+                          <p className="text-xs text-blue-600">
+                            {language === 'en'
+                              ? 'Call until admin confirms your order and processes payment.'
+                              : 'админ таны захиалга болон төлөлтийг баталгаажуулахыг хүлээнэ үү.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-stone-500 font-light text-sm">
+                    <span className="text-[#D4AF37] font-semibold">{language === 'en' ? 'Estimated time: 15-20 mins' : 'Хүлээлтийн хугацаа: 15-20 минут'}</span>
                   </p>
                   
                   <div className="flex flex-col w-full gap-3">
@@ -325,28 +365,40 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
 
                     {formData.orderType === 'kiosk' && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.kiosk_number')}</label>
-                        <input
-                          required
-                          type="text"
-                          value={formData.kioskNumber}
-                          onChange={(e) => setFormData({ ...formData, kioskNumber: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
-                          placeholder="e.g., Kiosk #12"
-                        />
-                      </div>
-                    )}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.phone')}</label>
+                          <input
+                            required
+                            type="text"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            placeholder="+976 ..."
+                          />
+                        </div>
 
-                    {formData.orderType === 'kiosk' && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
-                        <textarea
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
-                          placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
-                        />
+                        <div className="space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.kiosk_number')}</label>
+                          <input
+                            required
+                            type="text"
+                            value={formData.kioskNumber}
+                            onChange={(e) => setFormData({ ...formData, kioskNumber: e.target.value })}
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            placeholder="e.g., Kiosk #12"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
+                            placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
+                          />
+                        </div>
                       </div>
                     )}
                     <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl">
@@ -474,10 +526,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isCheckingOut ? (
                   <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && !formData.kioskNumber)}
+                    disabled={isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95",
-                      (isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && !formData.kioskNumber)) && "opacity-50 cursor-not-allowed"
+                      (isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {isSubmitting ? (

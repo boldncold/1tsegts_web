@@ -84,6 +84,8 @@ const translations: Record<Language, Record<string, string>> = {
     'cart.error': 'Алдаа гарлаа.',
     'cart.closed': 'Одоогоор захиалга авах боломжгүй байна.',
     'cart.packaging': 'Сав баглаа',
+    'cart.order.pickup.title': 'Таны захиалга хүлээнэ!',
+    'cart.order.kiosk.title': 'Таны захиалга баталгаажлаа!',
 
     // About
     'about.title': 'About Us',
@@ -257,6 +259,8 @@ const translations: Record<Language, Record<string, string>> = {
     'cart.error': 'Failed to place order. Please try again.',
     'cart.closed': 'Web ordering is currently closed.',
     'cart.packaging': 'Packaging',
+    'cart.order.pickup.title': 'Verify Your Order!',
+    'cart.order.kiosk.title': 'Payment Required!',
 
     // About
     'about.title': 'Our Story',
