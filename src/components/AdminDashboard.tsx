@@ -124,7 +124,7 @@ function MenuItemCard({
       </div>
 
       {/* Bottom Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 flex items-center justify-between gap-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-10">
+      <div className="absolute bottom-0 left-0 right-0 p-3 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 flex items-center justify-between gap-2 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 z-10">
         <select
           value={item.category}
           onChange={(e) => onChangeCategory(item, e.target.value as Category)}
@@ -773,12 +773,12 @@ export default function AdminDashboard() {
                 className="space-y-8"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-3xl font-bold">{t('admin.menu.title')}</h2>
                     <p className="text-stone-500 text-sm">{t('admin.menu.subtitle')}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-                    <div className="flex bg-stone-900 border border-stone-800 rounded-full p-1 overflow-x-auto custom-scrollbar max-w-full">
+                  <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    <div className="flex bg-stone-900 border border-stone-800 rounded-full p-1 overflow-x-auto custom-scrollbar min-w-0 max-w-full">
                       {['All', 'Draft', 'European', 'Asian', 'Mongolian', 'Drinks'].map((cat) => (
                         <button
                           key={cat}
@@ -794,7 +794,7 @@ export default function AdminDashboard() {
                         </button>
                       ))}
                     </div>
-                    <div className="relative flex-1 md:w-64">
+                    <div className="relative w-full sm:w-auto flex-1 min-w-0">
                       <input
                         type="text"
                         placeholder="Search menu..."
@@ -804,36 +804,38 @@ export default function AdminDashboard() {
                       />
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
                     </div>
-                    <button
-                      onClick={async () => {
-                        const initialItems = [
-                          { name: 'Truffle Carbonara', description: 'Creamy pasta with black truffle oil, pancetta, and parmesan.', price: 18.99, category: 'European', available: true, image: 'https://picsum.photos/seed/pasta/800/600' },
-                          { name: 'Sushi Platter', description: 'Assorted fresh nigiri and maki rolls with wasabi and ginger.', price: 24.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/sushi/800/600' },
-                          { name: 'Beef Bourguignon', description: 'Slow-cooked beef in red wine sauce with carrots and onions.', price: 22.50, category: 'European', available: true, image: 'https://picsum.photos/seed/beef/800/600' },
-                          { name: 'Pad Thai', description: 'Classic Thai rice noodles with shrimp, tofu, and peanuts.', price: 16.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/padthai/800/600' },
-                          { name: 'Matcha Latte', description: 'Premium Japanese matcha with steamed milk.', price: 5.50, category: 'Drinks', available: true, image: 'https://picsum.photos/seed/matcha/800/600' },
-                          { name: 'Buuz', description: 'Traditional Mongolian steamed dumplings.', price: 15.00, category: 'Mongolian', available: true, image: 'https://picsum.photos/seed/buuz/800/600' }
-                        ];
-                        for (const item of initialItems) {
-                          await addDoc(collection(db, 'menu'), item);
-                        }
-                        toast.success('Seed data added!');
-                      }}
-                      className="text-xs text-stone-600 hover:text-amber-500 transition-colors"
-                    >
-                      Seed Data
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsAdding(true);
-                        setIsEditing(null);
-                        setEditForm({ category: 'Draft', available: false, status: 'hidden' });
-                      }}
-                      className="flex items-center space-x-2 px-6 py-3 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95"
-                    >
-                      <Plus size={18} />
-                      <span>{t('admin.menu.add')}</span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch w-full sm:w-auto">
+                      <button
+                        onClick={async () => {
+                          const initialItems = [
+                            { name: 'Truffle Carbonara', description: 'Creamy pasta with black truffle oil, pancetta, and parmesan.', price: 18.99, category: 'European', available: true, image: 'https://picsum.photos/seed/pasta/800/600' },
+                            { name: 'Sushi Platter', description: 'Assorted fresh nigiri and maki rolls with wasabi and ginger.', price: 24.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/sushi/800/600' },
+                            { name: 'Beef Bourguignon', description: 'Slow-cooked beef in red wine sauce with carrots and onions.', price: 22.50, category: 'European', available: true, image: 'https://picsum.photos/seed/beef/800/600' },
+                            { name: 'Pad Thai', description: 'Classic Thai rice noodles with shrimp, tofu, and peanuts.', price: 16.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/padthai/800/600' },
+                            { name: 'Matcha Latte', description: 'Premium Japanese matcha with steamed milk.', price: 5.50, category: 'Drinks', available: true, image: 'https://picsum.photos/seed/matcha/800/600' },
+                            { name: 'Buuz', description: 'Traditional Mongolian steamed dumplings.', price: 15.00, category: 'Mongolian', available: true, image: 'https://picsum.photos/seed/buuz/800/600' }
+                          ];
+                          for (const item of initialItems) {
+                            await addDoc(collection(db, 'menu'), item);
+                          }
+                          toast.success('Seed data added!');
+                        }}
+                        className="w-full sm:w-auto text-xs text-stone-600 hover:text-amber-500 transition-colors"
+                      >
+                        Seed Data
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAdding(true);
+                          setIsEditing(null);
+                          setEditForm({ category: 'Draft', available: false, status: 'hidden' });
+                        }}
+                        className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95"
+                      >
+                        <Plus size={18} />
+                        <span>{t('admin.menu.add')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
