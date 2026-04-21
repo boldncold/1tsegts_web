@@ -322,32 +322,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </div>
                     </div>
 
-                    {/* Common Fields: Name and Phone */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.customer_name')}</label>
-                        <input
-                          required
-                          type="text"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
-                          placeholder={language === 'en' ? "Your Name" : "Таны нэр"}
-                        />
-                      </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.phone')}</label>
-                        <input
-                          required
-                          type="text"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
-                          placeholder="+976 ..."
-                        />
-                      </div>
-                    </div>
 
                     {formData.orderType === 'kiosk' && (
                       <div className="space-y-2">
@@ -363,15 +338,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
-                      <textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
-                        placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
-                      />
-                    </div>
+                    {formData.orderType === 'kiosk' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
+                        <textarea
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
+                          placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
+                        />
+                      </div>
+                    )}
                     <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl">
                       <p className="text-xs text-[#D4AF37] leading-relaxed">
                         {t('cart.cash_only')}
@@ -497,10 +474,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isCheckingOut ? (
                   <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || !formData.name || !formData.phone || (formData.orderType === 'kiosk' && !formData.kioskNumber)}
+                    disabled={isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && !formData.kioskNumber)}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95",
-                      (isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || !formData.name || !formData.phone || (formData.orderType === 'kiosk' && !formData.kioskNumber)) && "opacity-50 cursor-not-allowed"
+                      (isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && !formData.kioskNumber)) && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {isSubmitting ? (
