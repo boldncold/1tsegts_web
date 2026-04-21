@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { db, collection, addDoc, updateDoc, doc, increment, onSnapshot, deleteDoc } from '../firebase';
+import { db, collection, addDoc, updateDoc, doc, increment, onSnapshot } from '../firebase';
 import { cn, isStoreOpen } from '../lib/utils';
 import { toast } from 'sonner';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
@@ -27,16 +26,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     orderType: 'pickup' as 'pickup' | 'kiosk',
     kioskNumber: ''
   });
-
-  // Lock body scroll when cart is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,8 +137,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     return () => clearInterval(interval);
   }, [language]);
 
-  const drawerContent = (
-    <AnimatePresence>
+  return (
+    <>
+      <AnimatePresence>
       {isOpen && (
         <>
           {/* Backdrop */}
@@ -157,10 +147,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50"
-            style={{ zIndex: 9998 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
           />
 
           {/* Drawer */}
@@ -168,9 +156,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'tween', duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.12)] flex flex-col border-l border-gray-100"
-            style={{ zIndex: 9999 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-gray-100"
           >
             {/* Header */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
@@ -338,19 +325,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {/* Common Fields: Name and Phone */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.customer_name')}</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.customer_name')}</label>
                         <input
                           required
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all text-sm md:text-base"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
                           placeholder={language === 'en' ? "Your Name" : "Таны нэр"}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.phone')}</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.phone')}</label>
                         <input
                           required
                           type="text"
@@ -377,11 +364,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
                       <textarea
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none text-sm md:text-base"
+                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
                         placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
                       />
                     </div>
@@ -421,9 +408,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           </div>
                           <button
                             onClick={() => removeFromCart(item.cartItemId)}
-                            className="p-2 text-stone-400 hover:text-red-500 transition-colors bg-gray-50 rounded-full"
+                            className="text-stone-400 hover:text-red-500 transition-colors"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                         <p className="text-xs text-stone-500 font-light line-clamp-1">{item.category}</p>
@@ -432,27 +419,27 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <button
                             onClick={() => updatePackaging(item.cartItemId, !item.packaging)}
                             className={cn(
-                              "flex items-center justify-between w-full px-4 py-3 md:px-3 md:py-2 rounded-xl border transition-all active:scale-[0.98]",
+                              "flex items-center justify-between w-full px-3 py-2 rounded-lg border transition-all active:scale-[0.98]",
                               item.packaging 
                                 ? "bg-[#D4AF37]/10 border-[#D4AF37]/50" 
                                 : "bg-gray-50 border-gray-200 hover:border-gray-300"
                             )}
                           >
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2">
                               {item.packaging ? (
-                                <CheckCircle size={18} className="text-[#D4AF37]" />
+                                <CheckCircle size={16} className="text-[#D4AF37]" />
                               ) : (
-                                <div className="w-4.5 h-4.5 rounded-full border border-gray-300" />
+                                <div className="w-4 h-4 rounded-full border border-gray-300" />
                               )}
                               <span className={cn(
-                                "text-sm md:text-xs font-medium",
+                                "text-xs font-medium",
                                 item.packaging ? "text-[#D4AF37]" : "text-stone-500"
                               )}>
                                 {t('cart.packaging')}
                               </span>
                             </div>
                             <span className={cn(
-                              "text-sm md:text-xs font-semibold tabular-nums",
+                              "text-xs font-semibold tabular-nums",
                               item.packaging ? "text-[#D4AF37]" : "text-stone-400"
                             )}>
                               +₮{(item.packagingPrice !== undefined ? item.packagingPrice : 0).toLocaleString()}
@@ -460,23 +447,23 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           </button>
                         </div>
 
-                        <div className="flex justify-between items-center pt-2">
-                          <div className="flex items-center space-x-4 md:space-x-3 bg-gray-50 rounded-full px-3 py-1.5 md:px-2 md:py-1 border border-gray-200">
+                        <div className="flex justify-between items-center pt-1">
+                          <div className="flex items-center space-x-3 bg-gray-50 rounded-full px-2 py-1 border border-gray-200">
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="p-1.5 md:p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
                             >
-                              <Minus size={16} md:size={12} />
+                              <Minus size={12} />
                             </button>
-                            <span className="text-sm md:text-xs font-semibold text-stone-700 min-w-[20px] md:min-w-[16px] text-center tabular-nums">{item.quantity}</span>
+                            <span className="text-xs font-semibold text-stone-700 min-w-[16px] text-center tabular-nums">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="p-1.5 md:p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
                             >
-                              <Plus size={16} md:size={12} />
+                              <Plus size={12} />
                             </button>
                           </div>
-                          <span className="text-base md:text-sm font-semibold tabular-nums text-[#8B0000]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
+                          <span className="text-sm font-semibold tabular-nums text-[#8B0000]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -544,17 +531,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         </>
       )}
     </AnimatePresence>
-  );
-
-  return (
-    <>
-      {createPortal(drawerContent, document.body)}
 
       <ConfirmModal
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={async () => {
           if (pendingOrderId) {
+            const { db, doc, deleteDoc } = await import('../firebase');
             try {
               const strikes = parseInt(localStorage.getItem('grand_strikes') || '0') + 1;
               localStorage.setItem('grand_strikes', strikes.toString());

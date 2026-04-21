@@ -31,7 +31,7 @@ export default function Footer() {
             <p className="text-stone-500 font-light leading-relaxed">
               {t('footer.description')}
             </p>
-            <div className="print-hidden flex space-x-4">
+            <div className="flex space-x-4">
               <a href="#" className="p-2 bg-white rounded-full text-stone-400 hover:text-[#D4AF37] hover:shadow-md transition-all border border-gray-100">
                 <Instagram size={18} />
               </a>
@@ -45,7 +45,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div className="print-hidden space-y-6">
+          <div className="space-y-6">
             <h4 className="text-xs uppercase tracking-[0.3em] text-stone-900 font-bold">{t('footer.quick_links')}</h4>
             <ul className="space-y-4">
               {[
@@ -106,7 +106,10 @@ export default function Footer() {
           <p className="text-stone-400 text-xs">
             {t('footer.rights')}
           </p>
-          <div className="print-hidden flex space-x-6 text-stone-400 text-xs">
+          <div className="flex space-x-6 text-stone-400 text-xs">
+            <Link to="/admin" className="hover:text-stone-600 transition-colors">{t('footer.admin')}</Link>
+            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.privacy')}</a>
+            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.terms')}</a>
           </div>
         </div>
       </div>

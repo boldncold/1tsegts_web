@@ -57,7 +57,11 @@ function AppContent() {
       {!isAdminRoute && <Navbar onCartOpen={() => setIsCartOpen(true)} />}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<MenuSection />} />
+        <Route path="/menu" element={
+          <div className="pt-20">
+            <MenuSection />
+          </div>
+        } />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/admin" element={<AdminDashboard />} />
