@@ -7,7 +7,7 @@ export default function Hero() {
   const { t } = useLanguage();
 
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
+    <section className="relative min-h-[100dvh] pb-10 flex items-center justify-center overflow-hidden bg-black pt-28">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -107,7 +107,7 @@ export default function Hero() {
       <motion.div
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-gray-400"
+        className="hidden sm:block absolute bottom-10 left-1/2 -translate-x-1/2 text-gray-400"
       >
         <div className="w-px h-12 bg-gradient-to-b from-[#8B0000] via-[#D4AF37] to-transparent"></div>
       </motion.div>

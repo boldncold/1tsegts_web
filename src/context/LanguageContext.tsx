@@ -31,6 +31,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.hours_detail': '11:00 - 19:00 (Даваа гарагт амарна)',
     'hero.location_detail': 'Дүнжингарав food court',
     'hero.quality_detail': 'Tasty and fresh',
+    'hero.next': 'Дараах',
     'featured.title': 'Featured',
     'featured.subtitle': 'Манай хамгийн их захиалагддаг хоолнууд',
 
@@ -206,6 +207,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hero.hours_detail': '11:00 AM - 07:00 PM (Mon Closed)',
     'hero.location_detail': 'Dunjingarav Food Court',
     'hero.quality_detail': 'Tasty and Fresh',
+    'hero.next': 'Next',
     'featured.title': 'Featured Dishes',
     'featured.subtitle': 'Our Most Popular Selections',
 

@@ -20,7 +20,16 @@ export default function About() {
           transition={{ delay: 0.1 }}
           className="text-stone-600 text-lg leading-relaxed font-light"
         >
-          {t('about.description')}
+          {t('about.description').split(/(1ЦЭГЦ)/g).map((part, i) => 
+            part === '1ЦЭГЦ' ? (
+              <strong key={i} className="font-serif font-bold tracking-tighter whitespace-nowrap inline-flex items-baseline mx-4">
+                <span className="text-[200px] md:text-[300px] text-[#D4AF37] leading-none mr-2 drop-shadow-lg transform translate-y-8 md:translate-y-12">1</span>
+                <span className="text-3xl md:text-4xl text-stone-900 leading-none">ЦЭГЦ</span>
+              </strong>
+            ) : (
+              part
+            )
+          )}
         </motion.p>
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}

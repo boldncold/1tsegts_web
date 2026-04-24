@@ -696,37 +696,47 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100">
-      {/* Sidebar / Topbar */}
-      <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
-        <aside className="w-full lg:w-64 bg-stone-900 border-r border-stone-800 flex flex-col">
-          <div className="p-6 border-b border-stone-800 flex items-center space-x-3">
-            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold">EA</div>
-            <span className="font-bold text-lg">{t('admin.title')}</span>
+    <div className="min-h-[100dvh] bg-stone-950 text-stone-100">
+      {/* Container */}
+      <div className="flex flex-col lg:flex-row h-[100dvh] overflow-hidden">
+        <aside className="w-full lg:w-64 bg-stone-900 border-b lg:border-r lg:border-b-0 border-stone-800 flex flex-col shrink-0 z-20">
+          <div className="p-4 lg:p-6 border-b border-stone-800 flex items-center justify-between lg:justify-start">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold shrink-0">EA</div>
+              <span className="font-bold text-base lg:text-lg">{t('admin.title')}</span>
+            </div>
+            
+            {/* Mobile user profile & logout */}
+            <div className="flex lg:hidden items-center space-x-3">
+              <img src={user?.photoURL} alt={user?.displayName || 'User'} className="w-7 h-7 rounded-full border border-stone-700" />
+              <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible flex-1 p-2 lg:p-4 gap-2 lg:space-y-2 no-scrollbar">
             <button
               onClick={() => setActiveTab('menu')}
               className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
+                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
                 activeTab === 'menu' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <List size={20} />
-              <span>{t('admin.nav.menu')}</span>
+              <List size={18} className="lg:w-5 lg:h-5" />
+              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.menu')}</span>
             </button>
             <button
               onClick={() => setActiveTab('orders')}
               className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
+                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
                 activeTab === 'orders' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <ShoppingBag size={20} />
-              <span>{t('admin.nav.orders')}</span>
+              <ShoppingBag size={18} className="lg:w-5 lg:h-5" />
+              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.orders')}</span>
               {orders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                <span className="ml-1 lg:ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
                   {orders.filter(o => o.status === 'pending').length}
                 </span>
               )}
@@ -734,21 +744,21 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('staff')}
               className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
+                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
                 activeTab === 'staff' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <Users size={20} />
-              <span>{t('admin.nav.staff')}</span>
+              <Users size={18} className="lg:w-5 lg:h-5" />
+              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.staff')}</span>
             </button>
           </nav>
 
-          <div className="p-4 border-t border-stone-800">
+          <div className="hidden lg:block p-4 border-t border-stone-800">
             <div className="flex items-center space-x-3 mb-4 px-2">
-              <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full border border-stone-700" />
+              <img src={user?.photoURL} alt={user?.displayName} className="w-8 h-8 rounded-full border border-stone-700" />
               <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-bold truncate">{user.displayName}</p>
-                <p className="text-[10px] text-stone-500 truncate">{user.email}</p>
+                <p className="text-xs font-bold truncate">{user?.displayName}</p>
+                <p className="text-[10px] text-stone-500 truncate">{user?.email}</p>
               </div>
             </div>
             <button
@@ -762,7 +772,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-10 pb-20 lg:pb-10 bg-stone-950">
           <AnimatePresence mode="wait">
             {activeTab === 'menu' ? (
               <motion.div
@@ -935,7 +945,7 @@ export default function AdminDashboard() {
                       <p className="text-stone-500 italic">{t('admin.orders.empty')}</p>
                     </div>
                   ) : (
-                    <>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                       {['pickup', 'kiosk'].map((type) => {
                         const typeOrders = orders.filter(o => {
                           const matchesDate = getUBDateString(new Date(o.timestamp)) === selectedDate;
@@ -1077,7 +1087,7 @@ export default function AdminDashboard() {
                           </div>
                         );
                       })}
-                    </>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -1163,14 +1173,15 @@ export default function AdminDashboard() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="fixed inset-0 z-[110] flex items-center justify-center p-4 pointer-events-none"
             >
-              <div className="w-full max-w-2xl bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl pointer-events-auto overflow-hidden">
-                <div className="p-6 border-b border-stone-800 flex justify-between items-center">
+              <div className="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl pointer-events-auto overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-stone-800 flex justify-between items-center shrink-0">
                   <h3 className="text-xl font-bold">{isEditing ? t('admin.modal.edit.title') : t('admin.modal.add.title')}</h3>
                   <button onClick={() => { setIsEditing(null); setIsAdding(false); }} className="p-2 text-stone-500 hover:text-amber-500 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
-                <form onSubmit={handleSaveItem} className="p-6 space-y-6">
+                <div className="overflow-y-auto flex-1 custom-scrollbar">
+                  <form onSubmit={handleSaveItem} className="p-4 sm:p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{t('admin.modal.form.name')}</label>
@@ -1449,6 +1460,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </form>
+                </div>
               </div>
             </motion.div>
           </>
