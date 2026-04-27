@@ -629,6 +629,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      try {
+        await deleteDoc(doc(db, 'orders', orderId));
+        toast.success('Order deleted');
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        toast.error('Failed to delete order');
+      }
+    }
+  };
+
   // Staff Actions
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1041,11 +1053,11 @@ export default function AdminDashboard() {
                                       </div>
                                     </div>
                                     <div className="mt-6 pt-6 border-t border-stone-800 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                      <div className="text-xl font-medium tabular-nums">
+                                      <div className="text-xl font-medium tabular-nums shrink-0">
                                         <span className="text-stone-500 text-xs font-sans font-semibold uppercase tracking-[0.2em] mr-2">{t('admin.orders.total')}</span>
                                         ₮{Math.round(order.total).toLocaleString()}
                                       </div>
-                                      <div className="flex space-x-2">
+                                      <div className="flex flex-wrap items-center justify-end gap-2">
                                         {order.status === 'pending' && (
                                           <button
                                             onClick={() => updateOrderStatus(order.id, 'preparing')}
@@ -1073,11 +1085,19 @@ export default function AdminDashboard() {
                                         {order.status !== 'completed' && order.status !== 'cancelled' && (
                                           <button
                                             onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                                            className="p-2 text-stone-500 hover:text-red-500 transition-colors"
+                                            className="p-2 text-stone-500 hover:text-amber-500 transition-colors"
+                                            title="Cancel Order"
                                           >
                                             <XCircle size={20} />
                                           </button>
                                         )}
+                                        <button
+                                          onClick={() => handleDeleteOrder(order.id)}
+                                          className="p-2 text-stone-500 hover:text-red-500 transition-colors"
+                                          title="Delete Order"
+                                        >
+                                          <Trash2 size={20} />
+                                        </button>
                                       </div>
                                     </div>
                                   </div>
@@ -1482,21 +1502,21 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-7xl bg-stone-900 border border-stone-800 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[90vh]"
+              className="relative w-full max-w-7xl bg-stone-900 border border-stone-800 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[95vh] md:h-[90vh]"
             >
-              <div className="p-8 border-b border-stone-800 flex justify-between items-center bg-stone-900/50">
+              <div className="p-6 md:p-8 border-b border-stone-800 flex justify-between items-center bg-stone-900/50 z-10 shrink-0">
                 <div className="space-y-1">
-                  <h3 className="text-2xl font-bold">Create New Order</h3>
-                  <p className="text-sm text-stone-500">Add customer details and select items from the menu.</p>
+                  <h3 className="text-xl md:text-2xl font-bold">Create New Order</h3>
+                  <p className="text-xs md:text-sm text-stone-500">Add customer details and select items from the menu.</p>
                 </div>
-                <button onClick={() => setIsAddingOrder(false)} className="p-3 hover:bg-stone-800 rounded-full transition-colors">
-                  <X size={28} />
+                <button onClick={() => setIsAddingOrder(false)} className="p-2 md:p-3 hover:bg-stone-800 rounded-full transition-colors shrink-0">
+                  <X size={24} className="md:w-7 md:h-7" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+              <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row pb-24 lg:pb-0 relative">
                 {/* Left Column: Customer Form (1/4) */}
-                <div className="w-full lg:w-1/4 border-r border-stone-800 p-8 overflow-y-auto custom-scrollbar bg-stone-950/30">
+                <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-stone-800 p-6 md:p-8 lg:overflow-y-auto custom-scrollbar bg-stone-950/30 shrink-0">
                   <div className="space-y-8">
                     <div className="space-y-4">
                       <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-amber-500">Service Type</h4>
@@ -1507,7 +1527,7 @@ export default function AdminDashboard() {
                             type="button"
                             onClick={() => setAdminOrderForm({ ...adminOrderForm, orderType: type as OrderType })}
                             className={cn(
-                              "py-4 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all flex flex-col items-center gap-2",
+                              "py-3 md:py-4 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all flex flex-col items-center gap-2",
                               adminOrderForm.orderType === type
                                 ? "bg-amber-500 text-stone-900 border-amber-500 shadow-lg shadow-amber-500/20"
                                 : "bg-stone-950 text-stone-500 border-stone-800 hover:border-stone-600"
@@ -1527,7 +1547,7 @@ export default function AdminDashboard() {
                           type="text"
                           value={adminOrderForm.kioskNumber}
                           onChange={(e) => setAdminOrderForm({ ...adminOrderForm, kioskNumber: e.target.value })}
-                          className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-5 py-4 text-base focus:border-amber-500 outline-none transition-all focus:ring-1 focus:ring-amber-500/20"
+                          className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-4 md:px-5 py-3 md:py-4 text-sm md:text-base focus:border-amber-500 outline-none transition-all focus:ring-1 focus:ring-amber-500/20"
                           placeholder="Table 12"
                         />
                       </div>
@@ -1536,23 +1556,22 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Middle Column: Menu Selection (2/4) */}
-                <div className="w-full lg:w-2/4 border-r border-stone-800 flex flex-col bg-stone-900">
-                  <div className="p-6 border-b border-stone-800 bg-stone-950/20">
+                <div className="w-full lg:w-2/4 border-b lg:border-b-0 lg:border-r border-stone-800 flex flex-col bg-stone-900 shrink-0 lg:shrink h-[50vh] lg:h-auto">
+                  <div className="p-4 md:p-6 border-b border-stone-800 bg-stone-950/20 shrink-0">
                     <div className="relative">
                       <input
                         type="text"
                         placeholder="Search menu items..."
-                        className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-12 py-4 text-base focus:border-amber-500 outline-none transition-all"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-10 md:px-12 py-3 md:py-4 text-sm md:text-base focus:border-amber-500 outline-none transition-all"
                         onChange={(e) => {
-                          // We can reuse the menuSearchQuery or add a local one for the modal
                           setMenuSearchQuery(e.target.value);
                         }}
                         value={menuSearchQuery}
                       />
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" size={20} />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" size={18} />
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 md:space-y-10 custom-scrollbar">
                     {['European', 'Asian', 'Mongolian', 'Drinks'].map((cat) => {
                       const catItems = menuItems.filter(i => 
                         i.category === cat && 
@@ -1564,23 +1583,23 @@ export default function AdminDashboard() {
                       return (
                         <div key={cat} className="space-y-4">
                           <div className="flex items-center gap-4">
-                            <h5 className="text-sm uppercase tracking-[0.3em] font-bold text-amber-500">{t(`menu.${cat.toLowerCase()}`)}</h5>
+                            <h5 className="text-xs md:text-sm uppercase tracking-[0.3em] font-bold text-amber-500">{t(`menu.${cat.toLowerCase()}`)}</h5>
                             <div className="flex-1 h-px bg-stone-800"></div>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                             {catItems.map((item) => (
-                              <div key={item.id} className="group bg-stone-950 border border-stone-800 rounded-2xl p-4 space-y-4 hover:border-amber-500/50 transition-all">
-                                <div className="flex justify-between items-start gap-4">
+                              <div key={item.id} className="group bg-stone-950 border border-stone-800 rounded-2xl p-3 md:p-4 space-y-3 md:space-y-4 hover:border-amber-500/50 transition-all">
+                                <div className="flex justify-between items-start gap-3 md:gap-4">
                                   <div className="space-y-1">
-                                    <span className="text-base font-bold block group-hover:text-amber-500 transition-colors">{item.name}</span>
-                                    <p className="text-xs text-stone-500 line-clamp-2">{item.description}</p>
+                                    <span className="text-sm md:text-base font-bold block group-hover:text-amber-500 transition-colors">{item.name}</span>
+                                    <p className="text-[10px] md:text-xs text-stone-500 line-clamp-2">{item.description}</p>
                                   </div>
                                   {!item.portions || item.portions.length === 0 ? (
                                     <button
                                       onClick={() => addToAdminOrder(item)}
-                                      className="p-3 bg-amber-500 text-stone-900 rounded-xl hover:bg-amber-400 transition-all active:scale-90 shadow-lg shadow-amber-500/10"
+                                      className="p-2 md:p-3 bg-amber-500 text-stone-900 rounded-xl hover:bg-amber-400 transition-all active:scale-90 shadow-lg shadow-amber-500/10 shrink-0"
                                     >
-                                      <Plus size={20} />
+                                      <Plus size={18} className="md:w-5 md:h-5" />
                                     </button>
                                   ) : null}
                                 </div>
@@ -1590,10 +1609,10 @@ export default function AdminDashboard() {
                                       <button
                                         key={idx}
                                         onClick={() => addToAdminOrder(item, p)}
-                                        className="flex justify-between items-center px-4 py-3 bg-stone-900 border border-stone-800 rounded-xl text-xs hover:border-amber-500 transition-all group/btn"
+                                        className="flex justify-between items-center px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs hover:border-amber-500 transition-all group/btn"
                                       >
-                                        <span className="text-stone-400 group-hover/btn:text-stone-200">{p.name}</span>
-                                        <span className="font-bold text-amber-500">₮{p.price.toLocaleString()}</span>
+                                        <span className="text-stone-400 group-hover/btn:text-stone-200 truncate pr-2">{p.name}</span>
+                                        <span className="font-bold text-amber-500 shrink-0">₮{p.price.toLocaleString()}</span>
                                       </button>
                                     ))}
                                   </div>
@@ -1608,45 +1627,44 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Right Column: Order Summary (1/4) */}
-                <div className="w-full lg:w-1/4 flex flex-col bg-stone-950/50">
-                  <div className="p-8 border-b border-stone-800 bg-stone-900/30">
+                <div className="w-full lg:w-1/4 flex flex-col bg-stone-950/50 shrink-0 lg:shrink h-[40vh] lg:h-auto">
+                  <div className="p-4 md:p-8 border-b border-stone-800 bg-stone-900/30 shrink-0">
                     <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-amber-500">Order Summary</h4>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
                     {adminOrderItems.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-                        <ShoppingBag size={48} className="text-stone-700" />
-                        <p className="text-sm text-stone-500 italic">Your order is empty.<br/>Select items from the menu.</p>
+                      <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50 pb-8">
+                        <ShoppingBag size={40} className="text-stone-700 md:w-12 md:h-12" />
+                        <p className="text-xs md:text-sm text-stone-500 italic">Your order is empty.<br/>Select items from the menu.</p>
                       </div>
                     ) : (
                       adminOrderItems.map((item, idx) => (
-                        <div key={idx} className="bg-stone-900 p-4 rounded-2xl border border-stone-800 space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                              <span className="text-sm font-bold block">{item.item.name}</span>
+                        <div key={idx} className="bg-stone-900 p-3 md:p-4 rounded-2xl border border-stone-800 space-y-3">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="space-y-1 min-w-0">
+                              <span className="text-xs md:text-sm font-bold block truncate">{item.item.name}</span>
                               {item.selectedPortion && (
-                                <span className="text-[10px] text-amber-500/70 uppercase tracking-widest font-bold">
+                                <span className="text-[10px] text-amber-500/70 uppercase tracking-widest font-bold block truncate">
                                   {item.selectedPortion.name}
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm font-bold tabular-nums">
+                            <span className="text-xs md:text-sm font-bold tabular-nums shrink-0">
                               ₮{((item.selectedPortion ? item.selectedPortion.price : item.item.price) * item.quantity).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-stone-800/50">
-                            <div className="flex items-center gap-4 bg-stone-950 rounded-xl px-3 py-2 border border-stone-800">
-                              <button onClick={() => removeFromAdminOrder(item.item.id, item.selectedPortion?.name)} className="text-stone-500 hover:text-amber-500 transition-colors">
-                                <Minus size={16} />
+                            <div className="flex items-center gap-3 md:gap-4 bg-stone-950 rounded-xl px-2 md:px-3 py-1.5 md:py-2 border border-stone-800">
+                              <button onClick={() => removeFromAdminOrder(item.item.id, item.selectedPortion?.name)} className="text-stone-500 hover:text-amber-500 transition-colors p-1">
+                                <Minus size={14} className="md:w-4 md:h-4" />
                               </button>
-                              <span className="text-sm font-bold w-6 text-center tabular-nums">{item.quantity}</span>
-                              <button onClick={() => addToAdminOrder(item.item, item.selectedPortion)} className="text-stone-500 hover:text-amber-500 transition-colors">
-                                <Plus size={16} />
+                              <span className="text-xs md:text-sm font-bold w-4 md:w-6 text-center tabular-nums">{item.quantity}</span>
+                              <button onClick={() => addToAdminOrder(item.item, item.selectedPortion)} className="text-stone-500 hover:text-amber-500 transition-colors p-1">
+                                <Plus size={14} className="md:w-4 md:h-4" />
                               </button>
                             </div>
                             <button 
                               onClick={() => {
-                                // Remove all of this item
                                 setAdminOrderItems(prev => prev.filter((_, i) => i !== idx));
                               }}
                               className="p-2 text-stone-600 hover:text-red-500 transition-colors"
@@ -1659,11 +1677,11 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
-                  <div className="p-8 border-t border-stone-800 bg-stone-900">
-                    <div className="space-y-6">
+                  <div className="p-4 md:p-8 border-t border-stone-800 bg-stone-900 shrink-0 sticky bottom-0 z-20">
+                    <div className="space-y-4 md:space-y-6">
                       <div className="flex justify-between items-end">
-                        <span className="text-xs text-stone-500 uppercase tracking-[0.2em] font-bold">Total Amount</span>
-                        <span className="text-3xl font-bold tabular-nums text-amber-500">
+                        <span className="text-[10px] md:text-xs text-stone-500 uppercase tracking-[0.2em] font-bold">Total Amount</span>
+                        <span className="text-xl md:text-3xl font-bold tabular-nums text-amber-500">
                           ₮{adminOrderItems.reduce((acc, curr) => acc + ((curr.selectedPortion ? curr.selectedPortion.price : curr.item.price) * curr.quantity), 0).toLocaleString()}
                         </span>
                       </div>
@@ -1671,14 +1689,14 @@ export default function AdminDashboard() {
                         onClick={handleCreateAdminOrder}
                         disabled={adminOrderItems.length === 0}
                         className={cn(
-                          "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-500/10",
+                          "w-full py-4 md:py-5 rounded-2xl text-sm md:text-base font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-500/10",
                           adminOrderItems.length > 0
                             ? "bg-amber-500 text-stone-900 hover:bg-amber-400 active:scale-95"
                             : "bg-stone-800 text-stone-600 cursor-not-allowed"
                         )}
                       >
-                        <CheckCircle2 size={20} />
-                        Create & Start Order
+                        <CheckCircle2 size={18} className="md:w-5 md:h-5" />
+                        Start Order
                       </button>
                     </div>
                   </div>
