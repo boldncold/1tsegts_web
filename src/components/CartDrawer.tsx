@@ -223,14 +223,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <div className="w-20 h-20 bg-[#D4AF37]/10 rounded-full flex items-center justify-center text-[#D4AF37]">
                     <CheckCircle size={48} />
                   </div>
-                  <h3 className="text-2xl font-medium text-stone-900">{t('cart.order_received')}</h3>
-                  
+                  <h3 className="font-serif font-medium text-[22px] text-stone-900">{t('cart.order_received')}</h3>
+
                   {orderNumber && (
                     <div className="w-full space-y-4">
                       <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 w-full space-y-2">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.order_number')}</p>
-                        <p className="text-4xl font-medium text-[#8B0000]">#{orderNumber}</p>
-                        <p className="text-xs text-stone-500 font-light">{t('cart.order_number_desc')}</p>
+                        <p className="eyebrow !text-stone-400">{t('cart.order_number')}</p>
+                        <p className="font-serif font-bold text-[80px] leading-none tabular-nums">
+                          <span className="text-[#D4AF37]">{orderNumber[0]}</span>
+                          <span className="text-[#8B0000]">{orderNumber.slice(1)}</span>
+                        </p>
+                        <p className="text-stone-500 font-light" style={{ fontSize: '13.5px' }}>{t('cart.order_number_desc')}</p>
                       </div>
 
                       {pendingOrderData && (
@@ -293,9 +296,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     </div>
                   )}
                   
-                  <p className="text-stone-500 font-light text-sm">
-                    <span className="text-[#D4AF37] font-semibold">{language === 'en' ? 'Estimated time: 15-20 mins' : 'Хүлээлтийн хугацаа: 15-20 минут'}</span>
-                  </p>
+                  <span className="inline-flex items-center px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]" style={{ background: 'var(--gold-soft-10)', border: '1px solid rgba(212,175,55,0.25)' }}>
+                    {language === 'en' ? 'Est. 15–20 mins' : 'Хүлээлт: 15–20 минут'}
+                  </span>
                   
                   <div className="flex flex-col w-full gap-3">
                     <button
@@ -338,12 +341,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {/* Order Type Toggle */}
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.order_option')}</label>
-                      <div className="flex p-1 bg-gray-50 border border-gray-200 rounded-xl">
+                      <div className="flex p-1 bg-gray-50 border border-gray-200 rounded-full">
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, orderType: 'pickup' })}
                           className={cn(
-                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-lg transition-all",
+                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
                             formData.orderType === 'pickup' ? "bg-[#8B0000] text-white" : "text-stone-500"
                           )}
                         >
@@ -353,7 +356,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           type="button"
                           onClick={() => setFormData({ ...formData, orderType: 'kiosk' })}
                           className={cn(
-                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-lg transition-all",
+                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
                             formData.orderType === 'kiosk' ? "bg-[#8B0000] text-white" : "text-stone-500"
                           )}
                         >
@@ -373,7 +376,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="text"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white border border-gray-200 rounded-full px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
                             placeholder="+976 ..."
                           />
                         </div>
@@ -385,7 +388,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="text"
                             value={formData.kioskNumber}
                             onChange={(e) => setFormData({ ...formData, kioskNumber: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white border border-gray-200 rounded-full px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
                             placeholder="e.g., Kiosk #12"
                           />
                         </div>
@@ -395,7 +398,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
+                            className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
                             placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
                           />
                         </div>

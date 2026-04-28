@@ -1,115 +1,150 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowRight, Star, Clock, MapPin } from 'lucide-react';
+import { ArrowRight, Star, Clock, MapPin, Phone } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Hero() {
   const { t } = useLanguage();
 
   return (
-    <section className="relative min-h-[100dvh] pb-10 flex items-center justify-center overflow-hidden bg-black pt-28">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://picsum.photos/seed/asian-street-food/1920/1080?blur=1"
-          alt="1ЦЭГЦ"
-          className="w-full h-full object-cover opacity-60"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-white"></div>
-      </div>
+    <section
+      className="relative min-h-screen text-white overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #1a1510 0%, #2c1810 50%, #4a1a0a 100%)',
+      }}
+    >
+      {/* Radial glow texture */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 25% 20%, rgba(212,175,55,0.18), transparent 45%), radial-gradient(circle at 75% 80%, rgba(139,0,0,0.35), transparent 50%)',
+        }}
+      />
+      {/* Subtle dot pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.12] pointer-events-none"
+        style={{
+          backgroundImage:
+            'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'><circle cx=\'30\' cy=\'30\' r=\'1\' fill=\'%23d4af37\'/></svg>")',
+        }}
+      />
 
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] pb-20 text-center flex flex-col items-center">
+        {/* Rating eyebrow pill */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="space-y-6"
+          transition={{ duration: 0.7 }}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] mb-7"
         >
-          <div className="flex items-center justify-center space-x-2 text-[#D4AF37] mb-4">
-            <Star size={16} fill="currentColor" />
-            <Star size={16} fill="currentColor" />
-            <Star size={16} fill="currentColor" />
-            <Star size={16} fill="currentColor" />
-            <Star size={16} fill="currentColor" />
-            <span className="text-xs uppercase tracking-widest text-gray-300 ml-2">{t('hero.premium')}</span>
-          </div>
-
-          <h1 className="flex items-baseline justify-center text-7xl md:text-[10rem] font-serif font-bold tracking-tighter leading-none mb-4">
-            <span className="text-[#D4AF37] mr-2">1</span>
-            <span className="text-[#8B0000]">ЦЭГЦ</span>
-          </h1>
-
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-white font-light leading-relaxed">
-            {t('hero.subtitle')}
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-8">
-            <Link
-              to="/menu"
-              className="group relative px-8 py-4 bg-[#8B0000] text-white font-bold uppercase tracking-widest rounded-full overflow-hidden transition-all hover:bg-[#6b0000] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] active:scale-95"
-            >
-              <span className="relative z-10 flex items-center">
-                {t('hero.cta')} <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
-              </span>
-            </Link>
-            <Link
-              to="/menu"
-              className="px-8 py-4 border border-white/30 text-white font-bold uppercase tracking-widest rounded-full hover:bg-white/10 hover:border-[#D4AF37] transition-all active:scale-95"
-            >
-              {t('hero.order_now')}
-            </Link>
-          </div>
-          
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="pt-4"
-          >
-            <a 
-              href="#categories" 
-              className="text-[10px] uppercase tracking-[0.2em] text-gray-400 hover:text-[#D4AF37] transition-colors font-bold"
-            >
-              {t('hero.browse')}
-            </a>
-          </motion.div>
+          <span className="flex gap-0.5 text-[#D4AF37]">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Star key={i} size={11} fill="currentColor" />
+            ))}
+          </span>
+          <span className="eyebrow">
+            {t('hero.premium')}
+          </span>
         </motion.div>
 
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-4xl mx-auto">
+        {/* Wordmark */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.08 }}
+          className="mb-5"
+        >
+          <span className="font-serif font-bold tracking-tighter leading-none flex items-baseline justify-center">
+            <span className="text-[#D4AF37]" style={{ fontSize: 'clamp(72px, 18vw, 120px)' }}>1</span>
+            <span className="text-[#8B0000]" style={{ fontSize: 'clamp(36px, 9vw, 60px)' }}>ЦЭГЦ</span>
+          </span>
+        </motion.div>
+
+        {/* Tagline */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.15 }}
+          className="eyebrow mb-6"
+        >
+          ─ {t('hero.tagline') || 'Three Worlds. One Table.'} ─
+        </motion.div>
+
+        {/* Main headline */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="font-serif font-medium leading-[1.05] tracking-[-0.025em] mb-5 text-balance"
+          style={{ fontSize: 'clamp(28px, 6vw, 44px)' }}
+        >
+          {t('hero.title')}
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.25 }}
+          className="text-[15px] leading-[1.65] text-white/72 max-w-[520px] mb-9"
+        >
+          {t('hero.subtitle')}
+        </motion.p>
+
+        {/* CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="flex gap-3 justify-center flex-wrap mb-12"
+        >
+          <Link
+            to="/menu"
+            className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#8B0000] text-white font-bold uppercase tracking-[0.12em] text-[13px] rounded-full active:scale-95 transition-all"
+            style={{ boxShadow: '0 0 0 1px rgba(212,175,55,0.4), 0 12px 32px -8px rgba(139,0,0,0.6)' }}
+          >
+            {t('hero.cta')} <ArrowRight size={14} />
+          </Link>
+          <Link
+            to="/menu"
+            className="inline-flex items-center px-7 py-3.5 border border-[rgba(212,175,55,0.45)] text-[#D4AF37] font-bold uppercase tracking-[0.12em] text-[13px] rounded-full hover:bg-white/5 transition-all active:scale-95"
+          >
+            {t('hero.order_now')}
+          </Link>
+        </motion.div>
+
+        {/* Info chips */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.38 }}
+          className="grid grid-cols-3 gap-2.5 w-full max-w-[480px]"
+        >
           {[
-            { icon: Clock, title: t('hero.hours'), detail: t('hero.hours_detail') },
-            { icon: MapPin, title: t('hero.location'), detail: t('hero.location_detail') },
-            { icon: Star, title: t('hero.quality'), detail: t('hero.quality_detail') },
-          ].map((item, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 + idx * 0.1 }}
-              className="flex items-center space-x-4 p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-lg"
+            { icon: Clock, top: t('hero.hours'), bot: t('hero.hours_detail') },
+            { icon: MapPin, top: t('hero.location'), bot: t('hero.location_detail') },
+            { icon: Phone, top: t('hero.reservations') || 'Reservations', bot: '7711 0123' },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="flex flex-col items-center text-center p-3.5 rounded-[14px] border border-[rgba(212,175,55,0.15)]"
+              style={{ background: 'rgba(255,255,255,0.04)' }}
             >
-              <div className="p-3 bg-[#D4AF37]/20 rounded-xl text-[#D4AF37]">
-                <item.icon size={20} />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] uppercase tracking-widest text-gray-300 font-bold">{item.title}</p>
-                <p className="text-sm text-white font-medium">{item.detail}</p>
-              </div>
-            </motion.div>
+              <item.icon size={16} className="text-[#D4AF37] mb-1.5" />
+              <div className="micro-label !text-white/45 mb-1">{item.top}</div>
+              <div className="text-[12px] text-white font-serif">{item.bot}</div>
+            </div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
-      {/* Scroll Indicator */}
+      {/* Scroll indicator */}
       <motion.div
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        className="hidden sm:block absolute bottom-10 left-1/2 -translate-x-1/2 text-gray-400"
+        className="hidden sm:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center"
       >
-        <div className="w-px h-12 bg-gradient-to-b from-[#8B0000] via-[#D4AF37] to-transparent"></div>
+        <div className="w-px h-10 bg-gradient-to-b from-[#D4AF37] to-transparent" />
       </motion.div>
     </section>
   );

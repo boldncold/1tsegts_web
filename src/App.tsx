@@ -58,7 +58,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/menu" element={
-          <div className="pt-20">
+          <div className="pt-14">
             <MenuSection />
           </div>
         } />
