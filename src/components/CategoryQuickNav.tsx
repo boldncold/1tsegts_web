@@ -35,7 +35,7 @@ export default function CategoryQuickNav() {
               {t('menu.explore') || 'Explore Our World'}
             </span>
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-100">
-              {t('menu.select_cuisine') || <>Select Your <em>Cuisine</em></>}
+              {t('menu.select_cuisine')}
             </h2>
           </motion.div>
         </div>

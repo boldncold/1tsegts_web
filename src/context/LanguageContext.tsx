@@ -40,6 +40,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Menu
     'menu.title': 'Culinary Journey',
     'menu.selection': 'Our Selection',
+    'menu.explore': 'Манай ертөнц',
+    'menu.select_cuisine': 'Хоолоо сонгоорой',
     'menu.search': 'Search...',
     'menu.all': 'All',
     'menu.european': 'Европ хоол',
@@ -220,6 +222,8 @@ const translations: Record<Language, Record<string, string>> = {
     // Menu
     'menu.title': 'The Culinary Journey',
     'menu.selection': 'Our Selection',
+    'menu.explore': 'Explore Our World',
+    'menu.select_cuisine': 'Select Your Cuisine',
     'menu.search': 'Search dishes...',
     'menu.all': 'All',
     'menu.european': 'European',
