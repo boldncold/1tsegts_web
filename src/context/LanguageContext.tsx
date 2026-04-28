@@ -95,9 +95,21 @@ const translations: Record<Language, Record<string, string>> = {
     'cart.order.kiosk.title': 'Таны захиалга баталгаажлаа!',
 
     // About
-    'about.title': 'About Us',
-    'about.subtitle': 'Art of Cooking',
-    'about.description': '1ЦЭГЦ нь Европын тансаг амт болон Азийн хурц амтлагчийн хооронд сонголт хийх хосгүй боломжийг олгож байна.',
+    'about.eyebrow': 'Манай тухай',
+    'about.title': 'Манай түүх',
+    'about.subtitle': 'Гурван дэлхий. Нэг ширээ.',
+    'about.description': '1ЦЭГЦ нь Европын тансаг амт болон Азийн хурц амтлагчийн хооронд сонголт хийх хосгүй боломжийг олгодог. Монголын уламжлалт хоолоор баяжуулсан цэстэй Шангри-Ла молын зоогийн газрын хамгийн онцгой газар.',
+    'about.story_label': 'Манай түүх',
+    'about.pillar1_title': 'Европ',
+    'about.pillar1_desc': 'Тив Европын сонгодог амтыг орчин үеийн нарийн боловсруулалттай хослуулав.',
+    'about.pillar2_title': 'Ази',
+    'about.pillar2_desc': 'Азийн уламжлалт амтлагч, ногоо болон арга техникийг нэгтгэсэн.',
+    'about.pillar3_title': 'Монгол',
+    'about.pillar3_desc': 'Монгол уламжлалт хоолны өв уламжлал, газар нутгийн анхны амтыг хадгалсан.',
+    'about.location_label': 'Хаана байрладаг вэ',
+    'about.hours_label': 'Цагийн хуваарь',
+    'about.hours_value': 'Мягмар–Ням: 11:00–19:00',
+    'about.closed_value': 'Даваа: Амарна',
 
     // Contact
     'contact.title': 'Contact',
@@ -278,9 +290,21 @@ const translations: Record<Language, Record<string, string>> = {
     'cart.order.kiosk.title': 'Payment Required!',
 
     // About
-    'about.title': 'Our Story',
+    'about.eyebrow': 'Our Story',
+    'about.title': 'Three Worlds. One Table.',
     'about.subtitle': 'Art of Cooking and Love',
-    'about.description': '1ЦЭГЦ was born from a simple idea: why choose between the refined flavors of Europe and the bold spices of Asia? Located in the heart of Central Mall, we bring a unique fusion dining experience to busy shoppers and food enthusiasts alike.',
+    'about.description': '1ЦЭГЦ was born from a simple idea: why choose? Located on the first floor of Shangri-La Mall, we bring together the refined flavors of Europe, the bold spices of Asia, and the honest tradition of Mongolian cuisine — under one roof, at one table.',
+    'about.story_label': 'Our Story',
+    'about.pillar1_title': 'European',
+    'about.pillar1_desc': 'Classic continental dishes crafted with modern precision and the finest imported ingredients.',
+    'about.pillar2_title': 'Asian',
+    'about.pillar2_desc': 'Authentic eastern flavors — fragrant spices, fresh vegetables, and time-honored technique.',
+    'about.pillar3_title': 'Mongolian',
+    'about.pillar3_desc': 'Traditional Mongolian heritage dishes, prepared with locally sourced ingredients and respect for roots.',
+    'about.location_label': 'Find Us',
+    'about.hours_label': 'Opening Hours',
+    'about.hours_value': 'Tue – Sun: 11:00 – 19:00',
+    'about.closed_value': 'Monday: Closed',
 
     // Contact
     'contact.title': 'Contact Us',
