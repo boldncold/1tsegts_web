@@ -263,7 +263,6 @@ export default function MenuSection() {
                     className={cn(
                       "group bg-white border border-stone-200 rounded-3xl overflow-hidden flex flex-col shadow-sm",
                       "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-10px_rgba(0,0,0,0.12)] hover:border-stone-300",
-                      hasManyPortions ? "md:col-span-2" : "",
                       !isAvailable ? "opacity-70" : ""
                     )}
                   >
@@ -338,7 +337,7 @@ export default function MenuSection() {
                       {/* Description */}
                       <p className={cn(
                         "text-stone-500 font-light leading-[1.55] mb-3 flex-1",
-                        hasManyPortions ? "line-clamp-4" : "line-clamp-2"
+                        "line-clamp-2"
                       )} style={{ fontSize: '13px' }}>
                         {item.description}
                       </p>
@@ -347,7 +346,7 @@ export default function MenuSection() {
                       {item.portions && item.portions.length > 0 && (
                         <div className="mb-3">
                           <p className="text-[9px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-2">Select Portion</p>
-                          <div className={cn("grid gap-1.5", hasManyPortions ? "grid-cols-2" : "grid-cols-1")}>
+                          <div className="grid gap-1.5 grid-cols-1">
                             {[{ name: 'Default', price: item.price }, ...item.portions].map((portion, idx) => (
                               <button
                                 key={idx}
