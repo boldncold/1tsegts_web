@@ -65,7 +65,7 @@ function MenuItemCard({
   onDelete: (id: string) => void,
   onChangeStatus: (item: MenuItem, status: ItemStatus) => void,
   onToggleFeatured: (item: MenuItem) => void,
-  onChangeCategory: (item: MenuItem, category: Category) => void,
+  onChangeCategory: (item: MenuItem, value: string) => void,
   key?: React.Key
 }) {
   const { t } = useLanguage();
@@ -126,11 +126,12 @@ function MenuItemCard({
       {/* Bottom Controls */}
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 flex items-center justify-between gap-2 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 z-10">
         <select
-          value={item.category}
-          onChange={(e) => onChangeCategory(item, e.target.value as Category)}
+          value={item.pool === 'specials' ? 'Specials' : item.category}
+          onChange={(e) => onChangeCategory(item, e.target.value)}
           className="bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-300 focus:border-amber-500 outline-none flex-1"
         >
-          <option value="Draft">{t('admin.menu.pool.master') || 'Draft'}</option>
+          <option value="Draft">{t('admin.menu.pool.master') || 'Draft Pool'}</option>
+          <option value="Specials">{t('menu.specials')}</option>
           <option value="European">{t('menu.european')}</option>
           <option value="Asian">{t('menu.asian')}</option>
           <option value="Mongolian">{t('menu.mongolian')}</option>
@@ -310,11 +311,6 @@ export default function AdminDashboard() {
     const menuUnsubscribe = onSnapshot(query(collection(db, 'menu'), orderBy('name')), (snapshot) => {
       setMenuItems(snapshot.docs.map(doc => {
         const data = doc.data();
-        // Handle legacy 'Specials' category
-        if (data.category === 'Specials') {
-          data.category = 'Mongolian';
-        }
-        // Ensure doc.id is used and not overwritten by any 'id' field in data
         const { id, ...rest } = data;
         return { id: doc.id, ...rest } as MenuItem;
       }));
@@ -465,6 +461,8 @@ export default function AdminDashboard() {
       // Strip id from editForm to avoid saving it as a field
       const { id, ...formData } = editForm;
       
+      const uiCategory = (editForm.category as any) as string;
+      const isSpecialsPool = uiCategory === 'Specials';
       const itemData = {
         ...formData,
         price: Math.round(Number(editForm.price)),
@@ -475,7 +473,8 @@ export default function AdminDashboard() {
         featured: editForm.featured ?? false,
         orderCount: editForm.orderCount ?? 0,
         tags: editForm.tags || [],
-        category: editForm.category || 'Draft',
+        category: (isSpecialsPool ? 'Draft' : (editForm.category || 'Draft')) as Category,
+        pool: isSpecialsPool ? 'specials' : null,
         image: editForm.image || `https://picsum.photos/seed/${editForm.name}/800/600`,
         sideImages: editForm.sideImages || [],
         portions: editForm.portions || []
@@ -486,7 +485,7 @@ export default function AdminDashboard() {
         toast.success('Item updated!');
       } else {
         await addDoc(collection(db, 'menu'), itemData);
-        toast.success('Item added to Master Pool!');
+        toast.success('Item added to Draft Pool!');
       }
       setIsEditing(null);
       setIsAdding(false);
@@ -583,10 +582,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleChangeCategory = async (item: MenuItem, newCategory: Category) => {
+  const handleChangeCategory = async (item: MenuItem, newValue: string) => {
     try {
-      await updateDoc(doc(db, 'menu', item.id), { category: newCategory });
-      toast.success(`${item.name} moved to ${newCategory}`);
+      if (newValue === 'Specials') {
+        await updateDoc(doc(db, 'menu', item.id), { pool: 'specials' });
+      } else {
+        await updateDoc(doc(db, 'menu', item.id), { category: newValue as Category, pool: null });
+      }
+      toast.success(`${item.name} moved to ${newValue}`);
     } catch (error) {
       console.error(error);
       toast.error('Failed to update category');
@@ -711,44 +714,56 @@ export default function AdminDashboard() {
     <div className="min-h-[100dvh] bg-stone-950 text-stone-100">
       {/* Container */}
       <div className="flex flex-col lg:flex-row h-[100dvh] overflow-hidden">
-        <aside className="w-full lg:w-64 bg-stone-900 border-b lg:border-r lg:border-b-0 border-stone-800 flex flex-col shrink-0 z-20">
-          <div className="p-4 lg:p-6 border-b border-stone-800 flex items-center justify-between lg:justify-start">
+        {/* Mobile top header */}
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-stone-900 border-b border-stone-800 shrink-0 z-20">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold text-sm shrink-0">EA</div>
+            <span className="font-bold text-base">{t('admin.title')}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            {orders.filter(o => o.status === 'pending').length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                {orders.filter(o => o.status === 'pending').length} new
+              </span>
+            )}
+            <img src={user?.photoURL} alt={user?.displayName || 'User'} className="w-8 h-8 rounded-full border border-stone-700" />
+            <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:flex lg:w-64 bg-stone-900 border-r border-stone-800 flex-col shrink-0 z-20">
+          <div className="p-6 border-b border-stone-800 flex items-center">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold shrink-0">EA</div>
-              <span className="font-bold text-base lg:text-lg">{t('admin.title')}</span>
-            </div>
-            
-            {/* Mobile user profile & logout */}
-            <div className="flex lg:hidden items-center space-x-3">
-              <img src={user?.photoURL} alt={user?.displayName || 'User'} className="w-7 h-7 rounded-full border border-stone-700" />
-              <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
-                <LogOut size={16} />
-              </button>
+              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold shrink-0">EA</div>
+              <span className="font-bold text-lg">{t('admin.title')}</span>
             </div>
           </div>
 
-          <nav className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible flex-1 p-2 lg:p-4 gap-2 lg:space-y-2 no-scrollbar">
+          <nav className="flex-1 p-4 space-y-2">
             <button
               onClick={() => setActiveTab('menu')}
               className={cn(
-                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
+                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
                 activeTab === 'menu' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <List size={18} className="lg:w-5 lg:h-5" />
-              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.menu')}</span>
+              <List size={20} />
+              <span className="text-base">{t('admin.nav.menu')}</span>
             </button>
             <button
               onClick={() => setActiveTab('orders')}
               className={cn(
-                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
+                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
                 activeTab === 'orders' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <ShoppingBag size={18} className="lg:w-5 lg:h-5" />
-              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.orders')}</span>
+              <ShoppingBag size={20} />
+              <span className="text-base">{t('admin.nav.orders')}</span>
               {orders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="ml-1 lg:ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
                   {orders.filter(o => o.status === 'pending').length}
                 </span>
               )}
@@ -756,16 +771,16 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('staff')}
               className={cn(
-                "flex-shrink-0 flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl transition-all",
+                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
                 activeTab === 'staff' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
               )}
             >
-              <Users size={18} className="lg:w-5 lg:h-5" />
-              <span className="text-sm lg:text-base whitespace-nowrap">{t('admin.nav.staff')}</span>
+              <Users size={20} />
+              <span className="text-base">{t('admin.nav.staff')}</span>
             </button>
           </nav>
 
-          <div className="hidden lg:block p-4 border-t border-stone-800">
+          <div className="p-4 border-t border-stone-800">
             <div className="flex items-center space-x-3 mb-4 px-2">
               <img src={user?.photoURL} alt={user?.displayName} className="w-8 h-8 rounded-full border border-stone-700" />
               <div className="flex-1 overflow-hidden">
@@ -784,7 +799,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-10 pb-20 lg:pb-10 bg-stone-950">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-10 pb-28 lg:pb-10 bg-stone-950">
           <AnimatePresence mode="wait">
             {activeTab === 'menu' ? (
               <motion.div
@@ -801,7 +816,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
                     <div className="flex bg-stone-900 border border-stone-800 rounded-full p-1 overflow-x-auto custom-scrollbar min-w-0 max-w-full">
-                      {['All', 'Draft', 'European', 'Asian', 'Mongolian', 'Drinks'].map((cat) => (
+                      {['All', 'Draft', 'Specials', 'European', 'Asian', 'Mongolian', 'Drinks'].map((cat) => (
                         <button
                           key={cat}
                           onClick={() => setMenuFilterCategory(cat as Category | 'All')}
@@ -863,13 +878,17 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                   {menuItems
-                    .filter(i => menuFilterCategory === 'All' || i.category === menuFilterCategory)
+                    .filter(i => {
+                      if (menuFilterCategory === 'All') return true;
+                      if (menuFilterCategory === 'Specials') return i.pool === 'specials';
+                      return i.category === menuFilterCategory && i.pool !== 'specials';
+                    })
                     .filter(i => i.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) || i.description.toLowerCase().includes(menuSearchQuery.toLowerCase()))
                     .map(item => (
                       <MenuItemCard 
                         key={item.id} 
                         item={item} 
-                        onEdit={(item) => { setIsEditing(item.id); setEditForm(item); }}
+                        onEdit={(item) => { setIsEditing(item.id); setEditForm(item.pool === 'specials' ? { ...item, category: 'Specials' as any } : item); }}
                         onDelete={handleDeleteItem}
                         onChangeStatus={handleChangeStatus}
                         onToggleFeatured={handleToggleFeatured}
@@ -877,7 +896,11 @@ export default function AdminDashboard() {
                       />
                     ))}
                   
-                  {menuItems.filter(i => menuFilterCategory === 'All' || i.category === menuFilterCategory).length === 0 && (
+                  {menuItems.filter(i => {
+                      if (menuFilterCategory === 'All') return true;
+                      if (menuFilterCategory === 'Specials') return i.pool === 'specials';
+                      return i.category === menuFilterCategory && i.pool !== 'specials';
+                    }).length === 0 && (
                     <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-stone-800 rounded-3xl text-stone-500">
                       <Package size={48} className="mb-4 opacity-20" />
                       <p className="text-lg font-bold">No items found</p>
@@ -896,26 +919,26 @@ export default function AdminDashboard() {
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div>
-                    <h2 className="text-3xl font-bold">{t('admin.orders.title')}</h2>
+                    <h2 className="text-2xl md:text-3xl font-bold">{t('admin.orders.title')}</h2>
                     <p className="text-stone-500 text-sm">{t('admin.orders.subtitle')}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                  <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                       <input
                         type="text"
-                        placeholder="Search orders (Name, ID, Phone, #)..."
+                        placeholder="Search orders..."
                         value={orderSearchQuery}
                         onChange={(e) => setOrderSearchQuery(e.target.value)}
-                        className="w-full bg-stone-900 border border-stone-800 rounded-full px-12 py-3 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full bg-stone-900 border border-stone-800 rounded-full px-10 py-2.5 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
                       />
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" size={18} />
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
                     </div>
                     <button
                       onClick={() => setIsAddingOrder(true)}
-                      className="flex items-center space-x-2 px-6 py-3 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95"
+                      className="flex items-center space-x-2 px-5 py-2.5 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95 shrink-0"
                     >
                       <Plus size={18} />
-                      <span>New Order</span>
+                      <span className="hidden sm:inline">New Order</span>
                     </button>
                   </div>
                 </div>
@@ -980,8 +1003,8 @@ export default function AdminDashboard() {
                             </h3>
                             <div className="grid grid-cols-1 gap-6">
                               {typeOrders.map((order) => (
-                                <div key={order.id} className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-xl flex flex-col md:flex-row">
-                                  <div className="p-6 border-b md:border-b-0 md:border-r border-stone-800 md:w-80 space-y-4">
+                                <div key={order.id} className="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-xl flex flex-col md:flex-row">
+                                  <div className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-stone-800 md:w-72 space-y-3">
                                     <div className="flex justify-between items-start">
                                       <div className="flex flex-col gap-1">
                                         <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold">{t('admin.orders.id')}: {order.id.slice(-6)}</span>
@@ -1030,7 +1053,7 @@ export default function AdminDashboard() {
                                     )}
                                   </div>
 
-                                  <div className="flex-1 p-6 flex flex-col">
+                                  <div className="flex-1 p-4 md:p-6 flex flex-col">
                                     <div className="flex-1 space-y-4">
                                       <h5 className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold">{t('admin.orders.items')}</h5>
                                       <div className="space-y-4">
@@ -1052,7 +1075,7 @@ export default function AdminDashboard() {
                                         ))}
                                       </div>
                                     </div>
-                                    <div className="mt-6 pt-6 border-t border-stone-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div className="mt-4 pt-4 border-t border-stone-800 flex flex-col sm:flex-row justify-between items-center gap-3">
                                       <div className="text-xl font-medium tabular-nums shrink-0">
                                         <span className="text-stone-500 text-xs font-sans font-semibold uppercase tracking-[0.2em] mr-2">{t('admin.orders.total')}</span>
                                         ₮{Math.round(order.total).toLocaleString()}
@@ -1174,6 +1197,47 @@ export default function AdminDashboard() {
             )}
           </AnimatePresence>
         </main>
+
+        {/* Mobile bottom tab bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-stone-900/95 backdrop-blur-md border-t border-stone-800 flex items-stretch">
+          <button
+            onClick={() => setActiveTab('menu')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
+              activeTab === 'menu' ? "text-amber-500" : "text-stone-500"
+            )}
+          >
+            <List size={22} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.menu')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
+              activeTab === 'orders' ? "text-amber-500" : "text-stone-500"
+            )}
+          >
+            <div className="relative">
+              <ShoppingBag size={22} />
+              {orders.filter(o => o.status === 'pending').length > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
+                  {orders.filter(o => o.status === 'pending').length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.orders')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('staff')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
+              activeTab === 'staff' ? "text-amber-500" : "text-stone-500"
+            )}
+          >
+            <Users size={22} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.staff')}</span>
+          </button>
+        </nav>
       </div>
 
       {/* Edit/Add Modal */}
@@ -1222,6 +1286,7 @@ export default function AdminDashboard() {
                         className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors appearance-none"
                       >
                         <option value="Draft">{t('admin.menu.pool.master')}</option>
+                        <option value="Specials">{t('menu.specials')}</option>
                         <option value="European">{t('menu.european')}</option>
                         <option value="Asian">{t('menu.asian')}</option>
                         <option value="Drinks">{t('menu.drinks')}</option>

@@ -19,7 +19,7 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'price', 'category', 'available', 'description']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.price is number && data.price >= 0 &&
-             data.category in ['European', 'Asian', 'Drinks', 'Mongolian', 'Draft'] &&
+             data.category in ['European', 'Asian', 'Drinks', 'Mongolian', 'Specials', 'Draft'] &&
              data.available is bool &&
              data.description is string &&
              (!('sideImages' in data) || data.sideImages is list) &&

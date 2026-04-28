@@ -23,6 +23,7 @@ export interface MenuItem {
   orderCount?: number;
   packagingPrice?: number;
   portions?: Portion[];
+  pool?: 'specials';
 }
 
 export interface CartItem extends MenuItem {

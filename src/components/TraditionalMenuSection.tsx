@@ -16,9 +16,13 @@ document.head.appendChild(fontLink);
 export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
   const { t, language } = useLanguage();
   const { addToCart, cart, itemCount: cartItemCount, total: cartSubtotal } = useCart();
-  const categories = ['Draft', 'European', 'Asian', 'Mongolian', 'Drinks'] as Category[];
-  const firstValidCategory = categories.find(cat => items.some(item => item.category === cat)) || 'European';
-  const [activeTab, setActiveTab] = useState<Category>(firstValidCategory);
+  const categories = ['Specials', 'European', 'Asian', 'Mongolian', 'Drinks'] as (Category | 'Specials')[];
+  const firstValidCategory = categories.find(cat =>
+    cat === 'Specials'
+      ? items.some(item => item.pool === 'specials')
+      : items.some(item => item.category === cat && item.pool !== 'specials')
+  ) || 'European';
+  const [activeTab, setActiveTab] = useState<Category | 'Specials'>(firstValidCategory);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -29,7 +33,11 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
   // Update activeTab to first valid category when items load for the first time
   useEffect(() => {
     if (!hasInitialized && items.length > 0) {
-      const first = categories.find(cat => items.some(item => item.category === cat));
+      const first = categories.find(cat =>
+        cat === 'Specials'
+          ? items.some(item => item.pool === 'specials')
+          : items.some(item => item.category === cat && item.pool !== 'specials')
+      );
       if (first) {
         setActiveTab(first);
         setHasInitialized(true);
@@ -72,7 +80,10 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
     );
   });
 
-  const validCategories = categories.filter(cat => filteredItems.some(item => item.category === cat));
+  const validCategories = categories.filter(cat => {
+    if (cat === 'Specials') return filteredItems.some(item => item.pool === 'specials');
+    return filteredItems.some(item => item.category === cat && item.pool !== 'specials');
+  });
 
   // Determine top 5 signature items for images
   const signatureItems = [...items]
@@ -85,7 +96,7 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
     .slice(0, 5)
     .map(i => i.id);
 
-  const scrollToCategory = (cat: Category) => {
+  const scrollToCategory = (cat: Category | 'Specials') => {
     setActiveTab(cat);
     const element = categoryRefs.current[cat];
     if (element) {
@@ -116,13 +127,13 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
     }, 1000);
   };
 
-  const getCategoryLabel = (cat: Category) => {
+  const getCategoryLabel = (cat: Category | 'Specials') => {
     switch (cat) {
       case 'European': return t('menu.european');
       case 'Asian': return t('menu.asian');
       case 'Drinks': return t('menu.drinks');
       case 'Mongolian': return t('menu.mongolian');
-      case 'Draft': return t('menu.specials');
+      case 'Specials': return t('menu.specials');
       default: return cat;
     }
   };
@@ -210,7 +221,9 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
 
       <div className="max-w-3xl mx-auto px-4 py-4">
         {validCategories.map((cat, index) => {
-          const catItems = filteredItems.filter(i => i.category === cat);
+          const catItems = cat === 'Specials'
+            ? filteredItems.filter(i => i.pool === 'specials')
+            : filteredItems.filter(i => i.category === cat && i.pool !== 'specials');
           
           return (
             <div 

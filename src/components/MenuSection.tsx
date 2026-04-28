@@ -10,7 +10,7 @@ import { cn, isStoreOpen, getDynamicStatus } from '../lib/utils';
 
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
+  const [activeCategory, setActiveCategory] = useState<Category | 'All' | 'Specials'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedPortions, setSelectedPortions] = useState<Record<string, Portion>>({});
@@ -19,15 +19,16 @@ export default function MenuSection() {
   const { t } = useLanguage();
   const location = useLocation();
 
-  // Filter out 'Draft' items and categories with no items
+  // Filter out 'Draft' items (unpublished) — pool=specials and regular categories are visible
   const visibleItems = items.filter(item => {
-    if (item.category === 'Draft') return false;
+    if (item.category === 'Draft' && item.pool !== 'specials') return false;
     const { isVisible } = getDynamicStatus(item);
     return isVisible;
   });
-  const categoriesWithItems = ['All', ...['European', 'Asian', 'Mongolian', 'Drinks'].filter(cat => 
-    visibleItems.some(item => item.category === cat)
-  )] as (Category | 'All')[];
+  const categoriesWithItems = ['All', ...['Specials', 'European', 'Asian', 'Mongolian', 'Drinks'].filter(cat => {
+    if (cat === 'Specials') return visibleItems.some(i => i.pool === 'specials');
+    return visibleItems.some(i => i.category === cat && i.pool !== 'specials');
+  })] as (Category | 'All' | 'Specials')[];
 
   useEffect(() => {
     // Check for category in URL
@@ -50,11 +51,6 @@ export default function MenuSection() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const menuItems = snapshot.docs.map(doc => {
         const data = doc.data();
-        // Handle legacy 'Specials' category
-        if (data.category === 'Specials') {
-          data.category = 'Mongolian';
-        }
-        // Ensure doc.id is used and not overwritten by any 'id' field in data
         const { id, ...rest } = data;
         return {
           id: doc.id,
@@ -80,19 +76,27 @@ export default function MenuSection() {
   }, []);
 
   const filteredItems = visibleItems.filter(item => {
-    const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    let matchesCategory: boolean;
+    if (activeCategory === 'All') {
+      matchesCategory = true;
+    } else if (activeCategory === 'Specials') {
+      matchesCategory = item.pool === 'specials';
+    } else {
+      matchesCategory = item.category === activeCategory && item.pool !== 'specials';
+    }
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const getCategoryLabel = (cat: Category | 'All') => {
+  const getCategoryLabel = (cat: Category | 'All' | 'Specials') => {
     switch (cat) {
       case 'All': return t('menu.all');
       case 'European': return t('menu.european');
       case 'Asian': return t('menu.asian');
       case 'Drinks': return t('menu.drinks');
       case 'Mongolian': return t('menu.mongolian');
+      case 'Specials': return t('menu.specials');
       default: return cat;
     }
   };
@@ -337,7 +341,7 @@ export default function MenuSection() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{getCategoryLabel(item.category)}</p>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}</p>
                           </div>
                           <h3 className="text-xl font-medium text-stone-900 group-hover:text-[#8B0000] transition-colors">{item.name}</h3>
                         </div>
