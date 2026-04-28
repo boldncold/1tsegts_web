@@ -190,9 +190,9 @@ export default function MenuSection() {
             viewport={{ once: true }}
             className="space-y-4"
           >
-            <span className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-semibold">{t('menu.selection')}</span>
-            <h2 className="text-4xl md:text-6xl font-medium text-stone-900">{t('menu.title')}</h2>
-            <div className="w-24 h-px bg-[#D4AF37] mx-auto mt-4"></div>
+            <span className="eyebrow">{t('menu.selection')}</span>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900">{t('menu.title')}</h2>
+            <div className="w-16 h-px bg-[#D4AF37] mx-auto mt-2 opacity-60"></div>
           </motion.div>
         </div>
 
@@ -235,7 +235,7 @@ export default function MenuSection() {
             <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 grid-flow-row-dense">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grid-flow-row-dense">
             <AnimatePresence mode="popLayout">
               {sortedItems.map((item) => {
                 const currentPortion = selectedPortions[item.id] || (item.portions && item.portions.length > 0 ? { name: 'Default', price: item.price } : undefined);
@@ -247,173 +247,171 @@ export default function MenuSection() {
                 const isPopular = !isDrink && popularThreshold !== Infinity && item.orderCount !== undefined && item.orderCount > 0 && item.orderCount >= popularThreshold;
                 const minPrice = Math.min(item.price, ...(item.portions?.map(p => p.price) || []));
                 const isLuxury = !isDrink && minPrice > 20000;
-                const isForGroups = hasManyPortions; // Drinks can still be groups if they have sizes
+                const isForGroups = hasManyPortions;
                 const isLimitedTime = item.status === 'daily_special' && item.statusUntil;
                 const isSpicy = item.tags?.includes('spicy');
+                const qty = quantities[item.id] || 1;
 
                 return (
                   <motion.div
                     key={item.id}
                     layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.25 }}
                     className={cn(
-                      "group bg-white border border-gray-100 rounded-3xl overflow-hidden hover:shadow-xl hover:border-[#D4AF37]/30 transition-all duration-500 flex flex-col shadow-sm",
+                      "group bg-white border border-stone-200 rounded-3xl overflow-hidden flex flex-col shadow-sm",
+                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-10px_rgba(0,0,0,0.12)] hover:border-stone-300",
                       hasManyPortions ? "md:col-span-2" : "",
-                      !isAvailable ? "opacity-75 grayscale-[0.5]" : ""
+                      !isAvailable ? "opacity-70" : ""
                     )}
                   >
-                    <div className="relative h-64 overflow-hidden flex-shrink-0">
+                    {/* Image — 4:3 aspect ratio */}
+                    <div className="relative aspect-[4/3] overflow-hidden flex-shrink-0">
                       <img
                         src={item.image || `https://picsum.photos/seed/${item.name}/800/600`}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         referrerPolicy="no-referrer"
                       />
+
+                      {/* Sold out overlay */}
                       {!isAvailable && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-10">
-                          <span className="bg-white text-stone-900 px-6 py-2 rounded-full font-bold tracking-widest uppercase text-sm shadow-xl">
-                            {t('menu.soldOut')}
+                        <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] flex items-center justify-center z-10">
+                          <span className="bg-white text-stone-900 px-5 py-1.5 rounded-full font-bold tracking-[0.18em] uppercase text-[11px] shadow-xl">
+                            {t('menu.sold_out')}
                           </span>
                         </div>
                       )}
-                      
-                      <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start z-20">
-                        {/* Featured */}
+
+                      {/* Badges — top left, stacked */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-20">
                         {item.featured && (
-                          <div className="flex items-center gap-1.5 bg-[#D4AF37]/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-[#D4AF37]/30">
-                            <Star size={10} className="fill-white text-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">Featured</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Star size={9} className="fill-white" /> Featured
+                          </span>
                         )}
-
-                        {/* Popular */}
                         {isPopular && (
-                          <div className="flex items-center gap-1.5 bg-orange-500/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-orange-400/30">
-                            <Flame size={10} className="text-white fill-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">Popular</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-orange-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Flame size={9} className="fill-white" /> Popular
+                          </span>
                         )}
-
-                        {/* Spicy */}
                         {isSpicy && (
-                          <div className="flex items-center gap-1.5 bg-[#8B0000]/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-[#8B0000]/30">
-                            <Flame size={10} className="text-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">Spicy</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-[rgba(139,0,0,0.9)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Flame size={9} /> Spicy
+                          </span>
                         )}
-
-                        {/* Luxury */}
                         {isLuxury && (
-                          <div className="flex items-center gap-1.5 bg-purple-600/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-purple-400/30">
-                            <Gem size={10} className="text-white fill-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">Luxury</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-purple-600/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Gem size={9} className="fill-white" /> Luxury
+                          </span>
                         )}
-
-                        {/* Groups */}
                         {isForGroups && (
-                          <div className="flex items-center gap-1.5 bg-blue-500/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-blue-400/30">
-                            <Users size={10} className="text-white fill-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">Recommend for Groups</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-blue-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Users size={9} /> Groups
+                          </span>
                         )}
-
-                        {/* Limited Time */}
                         {isLimitedTime && (
-                          <div className="flex items-center gap-1.5 bg-stone-900/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-stone-700/50">
-                            <Clock size={10} className="text-white" />
-                            <span className="text-[9px] uppercase font-bold tracking-widest text-white">
-                              Ends {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(item.statusUntil!))}
-                            </span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 bg-stone-900/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Clock size={9} /> Ends {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(item.statusUntil!))}
+                          </span>
                         )}
                       </div>
 
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-gray-100 shadow-lg z-20">
-                        <span className="text-[#D4AF37] font-bold tabular-nums">₮{Math.round(displayPrice).toLocaleString()}</span>
+                      {/* Price pill — top right */}
+                      <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-white/60">
+                        <span className="font-bold text-[13px] text-[#D4AF37] tabular-nums">₮{Math.round(displayPrice).toLocaleString()}</span>
                       </div>
                     </div>
 
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}</p>
-                          </div>
-                          <h3 className="text-xl font-medium text-stone-900 group-hover:text-[#8B0000] transition-colors">{item.name}</h3>
-                        </div>
-                      </div>
+                    {/* Body */}
+                    <div className="p-[18px_20px_20px] flex flex-col flex-1" style={{ padding: '18px 20px 20px' }}>
+                      {/* Category */}
+                      <p className="text-[9px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-1">
+                        {getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}
+                      </p>
+                      {/* Name */}
+                      <h3 className="font-serif font-bold text-[17px] leading-snug text-stone-900 mb-2 group-hover:text-[#8B0000] transition-colors" style={{ letterSpacing: '-0.005em' }}>
+                        {item.name}
+                      </h3>
+                      {/* Description */}
                       <p className={cn(
-                        "text-sm text-stone-500 font-light leading-relaxed mb-4 flex-1",
+                        "text-stone-500 font-light leading-[1.55] mb-3 flex-1",
                         hasManyPortions ? "line-clamp-4" : "line-clamp-2"
-                      )}>
+                      )} style={{ fontSize: '13px' }}>
                         {item.description}
                       </p>
 
+                      {/* Portion selector */}
                       {item.portions && item.portions.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-2">Select Portion</p>
-                          <div className={cn(
-                            "grid gap-2",
-                            hasManyPortions ? "grid-cols-2" : "grid-cols-1"
-                          )}>
+                        <div className="mb-3">
+                          <p className="text-[9px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-2">Select Portion</p>
+                          <div className={cn("grid gap-1.5", hasManyPortions ? "grid-cols-2" : "grid-cols-1")}>
                             {[{ name: 'Default', price: item.price }, ...item.portions].map((portion, idx) => (
                               <button
                                 key={idx}
                                 onClick={() => handlePortionSelect(item.id, portion)}
                                 className={cn(
-                                  "flex justify-between items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
+                                  "flex justify-between items-center px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all border",
                                   currentPortion?.name === portion.name
-                                    ? "bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/50"
+                                    ? "bg-[rgba(212,175,55,0.1)] text-[#D4AF37] border-[rgba(212,175,55,0.5)]"
                                     : "bg-gray-50 text-stone-500 border-gray-200 hover:border-gray-300 hover:text-stone-700"
                                 )}
                               >
-                                <span className="tracking-wide">{portion.name}</span>
-                                <span className="tabular-nums font-semibold">₮{portion.price.toLocaleString()}</span>
+                                <span>{portion.name}</span>
+                                <span className="tabular-nums font-bold">₮{portion.price.toLocaleString()}</span>
                               </button>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
-                        {(!item.portions || item.portions.length === 0) && (
-                          <div className="flex items-center space-x-3 bg-gray-50 rounded-full px-2 py-1 border border-gray-200">
-                            <button
-                              onClick={() => handleQuantityChange(item.id, -1)}
-                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
-                            >
-                              <Minus size={14} />
-                            </button>
-                            <span className="text-sm font-semibold text-stone-700 min-w-[20px] text-center tabular-nums">{quantities[item.id] || 1}</span>
-                            <button
-                              onClick={() => handleQuantityChange(item.id, 1)}
-                              className="p-1 text-stone-400 hover:text-[#8B0000] transition-colors"
-                            >
-                              <Plus size={14} />
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => {
-                            addToCart(item, currentPortion, quantities[item.id] || 1);
-                            setQuantities(prev => ({ ...prev, [item.id]: 1 }));
-                          }}
-                          disabled={!isAvailable || !isStoreOpen()}
-                          className={cn(
-                            "flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-semibold uppercase tracking-[0.15em] transition-all active:scale-95",
-                            (!item.portions || item.portions.length === 0) ? "" : "w-full justify-center",
-                            isAvailable && isStoreOpen()
-                              ? "bg-[#8B0000] text-white hover:bg-[#6b0000] hover:shadow-[0_0_15px_rgba(212,175,55,0.3)]" 
-                              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      {/* Bottom row: price + qty stepper / add button */}
+                      <div className="flex items-center justify-between pt-3.5 border-t border-gray-100 mt-auto gap-3">
+                        {/* Price (bottom left) */}
+                        <span className="font-serif font-bold text-[#8B0000] text-[17px] tabular-nums leading-none">
+                          ₮{Math.round(displayPrice).toLocaleString()}
+                        </span>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Qty stepper — only for single-portion items */}
+                          {(!item.portions || item.portions.length === 0) && isAvailable && isStoreOpen() && (
+                            <div className="inline-flex items-center gap-1 bg-[#1a1510] rounded-full p-1">
+                              <button
+                                onClick={() => handleQuantityChange(item.id, -1)}
+                                className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[#D4AF37] hover:bg-white/10 transition-colors"
+                              >
+                                <Minus size={11} />
+                              </button>
+                              <span className="min-w-[18px] text-center text-[13px] font-bold text-white tabular-nums">{qty}</span>
+                              <button
+                                onClick={() => handleQuantityChange(item.id, 1)}
+                                className="w-[26px] h-[26px] rounded-full bg-[#D4AF37] flex items-center justify-center text-[#1a1510] hover:bg-[#C5A028] transition-colors"
+                              >
+                                <Plus size={11} />
+                              </button>
+                            </div>
                           )}
-                        >
-                          <Plus size={14} />
-                          <span>{!isStoreOpen() ? t('menu.closed') : item.available ? t('menu.add_to_cart') : t('menu.sold_out')}</span>
-                        </button>
+
+                          {/* Add / disabled button */}
+                          <button
+                            onClick={() => {
+                              addToCart(item, currentPortion, quantities[item.id] || 1);
+                              setQuantities(prev => ({ ...prev, [item.id]: 1 }));
+                            }}
+                            disabled={!isAvailable || !isStoreOpen()}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
+                              isAvailable && isStoreOpen()
+                                ? "bg-[#8B0000] text-white hover:bg-[#6b0000] shadow-sm"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            )}
+                          >
+                            <Plus size={12} />
+                            {!isStoreOpen() ? t('menu.closed') : isAvailable ? t('menu.add_to_cart') : t('menu.sold_out')}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
