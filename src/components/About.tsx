@@ -22,9 +22,9 @@ export default function About() {
         >
           {t('about.description').split(/(1ЦЭГЦ)/g).map((part, i) => 
             part === '1ЦЭГЦ' ? (
-              <strong key={i} className="font-serif font-bold tracking-tighter whitespace-nowrap inline-flex items-baseline mx-4">
-                <span className="text-[200px] md:text-[300px] text-[#D4AF37] leading-none mr-2 drop-shadow-lg transform translate-y-8 md:translate-y-12">1</span>
-                <span className="text-3xl md:text-4xl text-stone-900 leading-none">ЦЭГЦ</span>
+              <strong key={i} className="font-serif font-bold tracking-tighter whitespace-nowrap inline-flex items-baseline mx-1">
+                <span className="text-[2.2em] text-[#D4AF37] leading-none mr-0.5">1</span>
+                <span className="text-[1.1em] text-[#8B0000] leading-none">ЦЭГЦ</span>
               </strong>
             ) : (
               part
