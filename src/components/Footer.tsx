@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Instagram, Facebook, Twitter } from 'lucide-react';
+import { MapPin, Phone, Instagram, Facebook, Twitter, Gem } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -13,41 +13,52 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-gray-50 border-t border-gray-200 pt-20 pb-10">
+    <footer style={{ background: '#1a1510' }} className="text-white pt-14 pb-7">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
-          <div className="space-y-6">
-            <Link 
-              to="/" 
+          <div className="space-y-5">
+            <Link
+              to="/"
               onClick={() => handleLinkClick('/')}
-              className="flex items-center space-x-2"
+              className="inline-flex items-baseline font-serif font-bold tracking-tighter"
             >
-              <span className="text-2xl font-serif font-bold tracking-tighter flex items-baseline">
-                <span className="text-[#D4AF37] text-4xl mr-1 leading-none">1</span>
-                <span className="text-[#8B0000]">ЦЭГЦ</span>
-              </span>
+              <span className="text-[#D4AF37] text-4xl mr-0.5 leading-none">1</span>
+              <span className="text-[#8B0000] text-2xl">ЦЭГЦ</span>
             </Link>
-            <p className="text-stone-500 font-light leading-relaxed">
+            <p
+              className="font-serif italic text-sm leading-relaxed max-w-[320px]"
+              style={{ color: 'rgba(255,255,255,0.5)' }}
+            >
               {t('footer.description')}
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="p-2 bg-white rounded-full text-stone-400 hover:text-[#D4AF37] hover:shadow-md transition-all border border-gray-100">
-                <Instagram size={18} />
-              </a>
-              <a href="#" className="p-2 bg-white rounded-full text-stone-400 hover:text-[#D4AF37] hover:shadow-md transition-all border border-gray-100">
-                <Facebook size={18} />
-              </a>
-              <a href="#" className="p-2 bg-white rounded-full text-stone-400 hover:text-[#D4AF37] hover:shadow-md transition-all border border-gray-100">
-                <Twitter size={18} />
-              </a>
+            <div className="flex gap-3">
+              {[
+                { Icon: Instagram, href: '#' },
+                { Icon: Facebook, href: '#' },
+                { Icon: Twitter, href: '#' },
+              ].map(({ Icon, href }, i) => (
+                <a
+                  key={i}
+                  href={href}
+                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                  className="p-1.5 hover:text-[#D4AF37] transition-colors"
+                >
+                  <Icon size={16} />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-6">
-            <h4 className="text-xs uppercase tracking-[0.3em] text-stone-900 font-bold">{t('footer.quick_links')}</h4>
-            <ul className="space-y-4">
+          {/* Quick links */}
+          <div className="space-y-5">
+            <h4
+              className="eyebrow"
+              style={{ color: '#D4AF37' }}
+            >
+              {t('footer.quick_links')}
+            </h4>
+            <ul className="space-y-3">
               {[
                 { name: t('nav.home'), path: '/' },
                 { name: t('nav.menu'), path: '/menu' },
@@ -55,10 +66,13 @@ export default function Footer() {
                 { name: t('nav.contact'), path: '/contact' },
               ].map((link) => (
                 <li key={link.path}>
-                  <Link 
-                    to={link.path} 
+                  <Link
+                    to={link.path}
                     onClick={() => handleLinkClick(link.path)}
-                    className="text-stone-500 hover:text-[#D4AF37] transition-colors text-sm"
+                    className="text-sm transition-colors"
+                    style={{ color: 'rgba(255,255,255,0.7)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#D4AF37')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
                   >
                     {link.name}
                   </Link>
@@ -67,49 +81,94 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact Info */}
-          <div className="space-y-6">
-            <h4 className="text-xs uppercase tracking-[0.3em] text-stone-900 font-bold">{t('footer.contact_us')}</h4>
-            <ul className="space-y-4">
-              <li className="flex items-start space-x-3 text-stone-500 text-sm">
-                <MapPin size={18} className="text-[#D4AF37] shrink-0" />
+          {/* Contact */}
+          <div className="space-y-5">
+            <h4
+              className="eyebrow"
+              style={{ color: '#D4AF37' }}
+            >
+              {t('footer.contact_us')}
+            </h4>
+            <ul className="space-y-3">
+              <li
+                className="flex items-start gap-2.5 text-sm"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                <MapPin size={14} className="shrink-0 mt-0.5" style={{ color: '#D4AF37' }} />
                 <span>{t('footer.location_detail')}</span>
               </li>
-              <li className="flex items-center space-x-3 text-stone-500 text-sm">
-                <Phone size={18} className="text-[#D4AF37] shrink-0" />
+              <li
+                className="flex items-center gap-2.5 text-sm"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                <Phone size={14} style={{ color: '#D4AF37' }} />
                 <span>{t('footer.phone')}</span>
-              </li>
-              <li className="flex items-center space-x-3 text-stone-500 text-sm">
-                <Mail size={18} className="text-[#D4AF37] shrink-0" />
-                <span>{t('footer.email')}</span>
               </li>
             </ul>
           </div>
 
           {/* Hours */}
-          <div className="space-y-6">
-            <h4 className="text-xs uppercase tracking-[0.3em] text-stone-900 font-bold">{t('footer.opening_hours')}</h4>
-            <ul className="space-y-4">
-              <li className="flex justify-between text-sm">
-                <span className="text-stone-500">{t('footer.mon')}</span>
-                <span className="text-[#8B0000] font-bold uppercase tracking-widest text-[10px]">{t('footer.closed')}</span>
+          <div className="space-y-5">
+            <h4
+              className="eyebrow"
+              style={{ color: '#D4AF37' }}
+            >
+              {t('footer.opening_hours')}
+            </h4>
+            <ul className="space-y-3 text-sm">
+              <li
+                className="flex justify-between"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                <span>{t('footer.mon')}</span>
+                <span
+                  className="font-bold text-[10px] uppercase tracking-widest"
+                  style={{ color: '#8B0000' }}
+                >
+                  {t('footer.closed')}
+                </span>
               </li>
-              <li className="flex justify-between text-sm">
-                <span className="text-stone-500">{t('footer.tue_sun')}</span>
-                <span className="text-stone-900 font-bold">11:00 - 19:00</span>
+              <li
+                className="flex justify-between"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                <span>{t('footer.tue_sun')}</span>
+                <span className="font-bold text-white font-variant-numeric tabular-nums">
+                  11:00 – 19:00
+                </span>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-10 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-stone-400 text-xs">
+        {/* Bottom bar */}
+        <div
+          className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-3"
+          style={{ borderTop: '1px solid rgba(212,175,55,0.15)' }}
+        >
+          <div
+            className="flex items-center gap-2 text-[11px] tracking-[0.1em]"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+          >
+            <Gem size={11} style={{ color: '#D4AF37' }} />
             {t('footer.rights')}
-          </p>
-          <div className="flex space-x-6 text-stone-400 text-xs">
-            <Link to="/admin" className="hover:text-stone-600 transition-colors">{t('footer.admin')}</Link>
-            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.privacy')}</a>
-            <a href="#" className="hover:text-stone-600 transition-colors">{t('footer.terms')}</a>
+          </div>
+          <div
+            className="flex gap-5 text-[11px]"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+          >
+            <Link
+              to="/admin"
+              className="hover:text-white transition-colors"
+            >
+              {t('footer.admin')}
+            </Link>
+            <a href="#" className="hover:text-white transition-colors">
+              {t('footer.privacy')}
+            </a>
+            <a href="#" className="hover:text-white transition-colors">
+              {t('footer.terms')}
+            </a>
           </div>
         </div>
       </div>

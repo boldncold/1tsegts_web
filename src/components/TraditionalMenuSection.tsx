@@ -100,7 +100,7 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
     setActiveTab(cat);
     const element = categoryRefs.current[cat];
     if (element) {
-      const offset = 140; // Height of sticky headers
+      const offset = 120; // Height of sticky headers (56px nav + 48px category tabs + 16px buffer)
       const bodyRect = document.body.getBoundingClientRect().top;
       const elementRect = element.getBoundingClientRect().top;
       const elementPosition = elementRect - bodyRect;
@@ -173,7 +173,7 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
       )}
 
       {/* Sticky Top Navigation */}
-      <div className="sticky top-[72px] z-40 bg-[#fcfaf5]/95 backdrop-blur-md border-b border-[#e8dfce] shadow-sm">
+      <div className="sticky top-[56px] z-40 bg-[#fcfaf5]/95 backdrop-blur-md border-b border-[#e8dfce] shadow-sm">
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex overflow-x-auto hide-scrollbar py-4 gap-6 items-center">
             {validCategories.map(cat => (
@@ -238,7 +238,7 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
                   <Gem size={14} className="text-[#8B0000] opacity-70" />
                   <div className="w-12 h-[1px] bg-[#d1c8b8]"></div>
                 </div>
-                <h2 className="font-serif-menu text-3xl md:text-4xl font-bold text-[#1a1510] uppercase tracking-widest">
+                <h2 className="font-serif-menu text-3xl md:text-4xl font-bold text-[#1a1510] uppercase tracking-[0.18em]">
                   {getCategoryLabel(cat)}
                 </h2>
               </div>

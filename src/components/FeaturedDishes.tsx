@@ -96,12 +96,26 @@ export default function FeaturedDishes() {
   return (
     <section className="relative w-full min-h-[100dvh] bg-gradient-to-b from-white via-stone-200 to-stone-950 flex flex-col justify-center overflow-hidden pt-20 pb-16 lg:pt-0 lg:pb-0">
       
-      {/* Title Section (Optional, nice to have context when standalone) */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 lg:mb-8 shrink-0 relative z-10">
-        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight">
-          {language === 'en' ? 'Featured Dishes' : 'Онцлох хоол'}
-        </h2>
-        <p className="text-stone-500 mt-2 font-medium">{language === 'en' ? 'Our most popular selections' : 'Манай хамгийн дуртай хоолнууд'}</p>
+      {/* Section header */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 lg:mb-8 shrink-0 relative z-10 flex items-baseline justify-between">
+        <div>
+          <div className="eyebrow mb-1.5">
+            {language === 'en' ? 'Selected' : 'Онцлох'}
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight">
+            {language === 'en' ? (
+              <>Featured <em className="text-[#8B0000] not-italic font-medium">Dishes</em></>
+            ) : (
+              'Онцлох хоол'
+            )}
+          </h2>
+        </div>
+        <a
+          href="/menu"
+          className="hidden sm:inline-flex items-center gap-1.5 micro-label !text-stone-500 hover:!text-[#D4AF37] transition-colors"
+        >
+          {language === 'en' ? 'View all' : 'Бүгдийг харах'} <ArrowRight size={12} />
+        </a>
       </div>
 
       {/* Horizontal Carousel List */}
