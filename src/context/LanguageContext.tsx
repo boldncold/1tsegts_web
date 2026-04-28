@@ -107,6 +107,7 @@ const translations: Record<Language, Record<string, string>> = {
     'contact.phone': 'Phone',
     'contact.phone_detail': '99138866',
     'contact.email': 'Email',
+    'contact.email_detail': '1tsegts@gmail.com',
     'contact.hours': 'Hours',
     'contact.hours.detail': 'Мягмар - Ням: 11:00 - 19:00 (Даваа гарагт амарна)',
     'contact.form.name': 'Name',
@@ -189,7 +190,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.closed': 'Амарна',
     'footer.location_detail': 'Дүнжингарав food court',
     'footer.phone': '99138866',
-    'footer.email': 'hello@1tsegts.com',
+    'footer.email': '1tsegts@gmail.com',
   },
   en: {
     // Navbar
@@ -289,6 +290,7 @@ const translations: Record<Language, Record<string, string>> = {
     'contact.phone': 'Phone',
     'contact.phone_detail': '99138866',
     'contact.email': 'Email',
+    'contact.email_detail': '1tsegts@gmail.com',
     'contact.hours': 'Hours',
     'contact.hours.detail': 'Tue - Sun: 11:00 AM - 07:00 PM (Closed on Monday)',
     'contact.form.name': 'Name',
@@ -362,7 +364,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.closed': 'Closed',
     'footer.location_detail': 'Dunjingarav Food Court',
     'footer.phone': '99138866',
-    'footer.email': 'hello@1tsegts.com',
+    'footer.email': '1tsegts@gmail.com',
   }
 };
 

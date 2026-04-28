@@ -123,7 +123,7 @@ export default function Hero() {
           {[
             { icon: Clock, top: t('hero.hours'), bot: t('hero.hours_detail') },
             { icon: MapPin, top: t('hero.location'), bot: t('hero.location_detail') },
-            { icon: Phone, top: t('hero.reservations') || 'Reservations', bot: '7711 0123' },
+            { icon: Phone, top: t('hero.reservations') || 'Reservations', bot: '99138866' },
           ].map((item, i) => (
             <div
               key={i}

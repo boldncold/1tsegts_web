@@ -57,7 +57,7 @@ export default function Contact() {
               </div>
               <div>
                 <h3 className="text-xl font-serif font-bold text-stone-100">{t('contact.email')}</h3>
-                <p className="text-stone-400">hello@euroasiacuisine.com</p>
+                <p className="text-stone-400">{t('contact.email_detail')}</p>
               </div>
             </div>
             <div className="flex items-start space-x-6">
