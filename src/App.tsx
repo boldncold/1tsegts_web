@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { StoreSettingsProvider } from './context/StoreSettingsContext';
 import { Toaster } from 'sonner';
 import Home from './components/Home';
 import AdminDashboard from './components/AdminDashboard';
@@ -76,11 +77,13 @@ function AppContent() {
 export default function App() {
   return (
     <LanguageProvider>
-      <CartProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </CartProvider>
+      <StoreSettingsProvider>
+        <CartProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </CartProvider>
+      </StoreSettingsProvider>
     </LanguageProvider>
   );
 }

@@ -6,7 +6,7 @@ import { db, collection, onSnapshot, query, where, orderBy, limit } from '../fir
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { cn } from '../lib/utils';
+import { cn, getScheduleLabel } from '../lib/utils';
 
 export default function FeaturedDishes() {
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
@@ -133,7 +133,7 @@ export default function FeaturedDishes() {
             const isLuxury = item.category !== 'Drinks' && minPrice > 20000;
             const isSpicy = item.tags?.includes('spicy');
             const isForGroups = item.portions && item.portions.length >= 2;
-            const isLimitedTime = item.status === 'daily_special' && item.statusUntil;
+            const scheduleLabel = getScheduleLabel(item);
 
             return (
               <div 
@@ -174,11 +174,11 @@ export default function FeaturedDishes() {
                       <span className="text-[9px] uppercase font-bold tracking-widest text-white">Recommend for Groups</span>
                     </div>
                   )}
-                  {isLimitedTime && (
+                  {scheduleLabel && (
                     <div className="flex items-center gap-1.5 bg-stone-900/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-stone-700/50">
                       <Clock size={10} className="text-white" />
                       <span className="text-[9px] uppercase font-bold tracking-widest text-white">
-                        Ends {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(item.statusUntil!))}
+                        {scheduleLabel}
                       </span>
                     </div>
                   )}

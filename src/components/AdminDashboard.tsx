@@ -11,9 +11,9 @@ import {
   auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged,
   collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc
 } from '../firebase';
-import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus } from '../types';
+import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
-import { cn, getMidnightTonight } from '../lib/utils';
+import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS } from '../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -52,24 +52,27 @@ const compressImage = (file: File): Promise<string> => {
   });
 };
 
-function MenuItemCard({ 
-  item, 
-  onEdit, 
-  onDelete, 
-  onChangeStatus, 
+function MenuItemCard({
+  item,
+  onEdit,
+  onDelete,
+  onChangeStatus,
   onToggleFeatured,
-  onChangeCategory
-}: { 
-  item: MenuItem, 
-  onEdit: (item: MenuItem) => void, 
+  onChangeCategory,
+  onChangeSchedule,
+}: {
+  item: MenuItem,
+  onEdit: (item: MenuItem) => void,
   onDelete: (id: string) => void,
   onChangeStatus: (item: MenuItem, status: ItemStatus) => void,
   onToggleFeatured: (item: MenuItem) => void,
   onChangeCategory: (item: MenuItem, value: string) => void,
+  onChangeSchedule: (item: MenuItem, schedule: { todayOnly: boolean; scheduledDays: number[] }) => void,
   key?: React.Key
 }) {
   const { t } = useLanguage();
   const currentStatus = item.status || (item.available ? 'available' : 'hidden');
+  const scheduleLabel = getScheduleLabel(item);
 
   let statusColorClass = "bg-stone-500/20 text-stone-400 border-stone-500/30 hover:bg-stone-500/40";
   if (currentStatus === 'available') statusColorClass = "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/40";
@@ -100,7 +103,6 @@ function MenuItemCard({
           <option value="available" className="bg-stone-900 text-green-400">Available</option>
           <option value="sold_out_today" className="bg-stone-900 text-red-400">Sold Out</option>
           <option value="hidden" className="bg-stone-900 text-stone-400">Hidden</option>
-          <option value="daily_special" className="bg-stone-900 text-yellow-400">Daily Special</option>
         </select>
         <button 
           onClick={(e) => { e.stopPropagation(); onToggleFeatured(item); }}
@@ -121,37 +123,86 @@ function MenuItemCard({
         <p className="text-xs text-amber-400 font-bold uppercase tracking-[0.2em] tabular-nums mt-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
           ₮{Math.round(item.price).toLocaleString()}
         </p>
+        {scheduleLabel && (
+          <span className="mt-2 inline-flex items-center gap-1 bg-stone-900/80 backdrop-blur-sm border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest text-amber-400">
+            <Clock size={8} /> {scheduleLabel}
+          </span>
+        )}
       </div>
 
       {/* Bottom Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 flex items-center justify-between gap-2 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 z-10">
-        <select
-          value={item.pool === 'specials' ? 'Specials' : item.category}
-          onChange={(e) => onChangeCategory(item, e.target.value)}
-          className="bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-300 focus:border-amber-500 outline-none flex-1"
-        >
-          <option value="Draft">{t('admin.menu.pool.master') || 'Draft Pool'}</option>
-          <option value="Specials">{t('menu.specials')}</option>
-          <option value="European">{t('menu.european')}</option>
-          <option value="Asian">{t('menu.asian')}</option>
-          <option value="Mongolian">{t('menu.mongolian')}</option>
-          <option value="Drinks">{t('menu.drinks')}</option>
-        </select>
-        <div className="flex gap-1">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onEdit(item); }} 
-            className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-amber-500 transition-colors border border-stone-700 hover:border-amber-500/50"
-            title="Edit"
+      <div className="absolute bottom-0 left-0 right-0 bg-stone-950/80 backdrop-blur-md border-t border-stone-800 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300 z-10">
+        {/* Schedule row */}
+        <div className="px-3 pt-2.5 pb-1.5 border-b border-stone-800/60">
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onChangeSchedule(item, { todayOnly: !item.todayOnly, scheduledDays: [] });
+              }}
+              className={cn(
+                "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-colors border",
+                item.todayOnly
+                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                  : "bg-stone-800 text-stone-500 border-stone-700 hover:border-amber-500/30 hover:text-stone-300"
+              )}
+            >
+              Today
+            </button>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, idx) => {
+              const selected = !item.todayOnly && item.scheduledDays?.includes(idx);
+              return (
+                <button
+                  key={day}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const current = item.scheduledDays || [];
+                    const updated = selected ? current.filter(d => d !== idx) : [...current, idx];
+                    onChangeSchedule(item, { scheduledDays: updated, todayOnly: false });
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-colors border",
+                    selected
+                      ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                      : "bg-stone-800 text-stone-500 border-stone-700 hover:border-amber-500/30 hover:text-stone-300"
+                  )}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Category + actions row */}
+        <div className="p-3 flex items-center justify-between gap-2">
+          <select
+            value={item.pool === 'specials' ? 'Specials' : item.category}
+            onChange={(e) => onChangeCategory(item, e.target.value)}
+            className="bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-300 focus:border-amber-500 outline-none flex-1"
           >
-            <Edit2 size={14} />
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
-            className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-red-500 transition-colors border border-stone-700 hover:border-red-500/50"
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+            <option value="Draft">{t('admin.menu.pool.master') || 'Draft Pool'}</option>
+            <option value="Specials">{t('menu.specials')}</option>
+            <option value="European">{t('menu.european')}</option>
+            <option value="Asian">{t('menu.asian')}</option>
+            <option value="Mongolian">{t('menu.mongolian')}</option>
+            <option value="Drinks">{t('menu.drinks')}</option>
+          </select>
+          <div className="flex gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+              className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-amber-500 transition-colors border border-stone-700 hover:border-amber-500/50"
+              title="Edit"
+            >
+              <Edit2 size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+              className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-red-500 transition-colors border border-stone-700 hover:border-red-500/50"
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -224,7 +275,7 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'staff'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'staff' | 'settings'>('menu');
   
   // Search States
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
@@ -278,6 +329,8 @@ export default function AdminDashboard() {
     message: '',
     onConfirm: () => {},
   });
+
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -361,10 +414,17 @@ export default function AdminDashboard() {
       setAdminEmails(snapshot.docs.map(doc => ({ id: doc.id })));
     });
 
+    const settingsUnsubscribe = onSnapshot(doc(db, 'settings', 'store'), (snap) => {
+      if (snap.exists()) {
+        setStoreSettings({ ...DEFAULT_STORE_SETTINGS, ...(snap.data() as Partial<StoreSettings>) });
+      }
+    });
+
     return () => {
       menuUnsubscribe();
       ordersUnsubscribe();
       staffUnsubscribe();
+      settingsUnsubscribe();
     };
   }, [isAdmin]);
 
@@ -480,6 +540,8 @@ export default function AdminDashboard() {
         available: editForm.available ?? true,
         status: editForm.status || 'available',
         statusUntil: editForm.statusUntil || null,
+        todayOnly: editForm.todayOnly ?? false,
+        scheduledDays: editForm.scheduledDays || [],
         featured: editForm.featured ?? false,
         orderCount: editForm.orderCount ?? 0,
         tags: editForm.tags || [],
@@ -562,13 +624,13 @@ export default function AdminDashboard() {
       const updates: Partial<MenuItem> = { status: newStatus };
       
       // Keep legacy available flag in sync for backward compatibility
-      if (newStatus === 'available' || newStatus === 'daily_special') {
+      if (newStatus === 'available') {
         updates.available = true;
       } else {
         updates.available = false;
       }
 
-      if (newStatus === 'sold_out_today' || newStatus === 'daily_special') {
+      if (newStatus === 'sold_out_today') {
         updates.statusUntil = getMidnightTonight();
       } else {
         updates.statusUntil = null as any;
@@ -589,6 +651,21 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error(error);
       toast.error('Failed to update featured status');
+    }
+  };
+
+  const handleChangeSchedule = async (item: MenuItem, schedule: { todayOnly: boolean; scheduledDays: number[] }) => {
+    try {
+      const updates: Partial<MenuItem> = {
+        todayOnly: schedule.todayOnly,
+        scheduledDays: schedule.scheduledDays,
+      };
+      if (schedule.todayOnly) updates.statusUntil = getMidnightTonight();
+      await updateDoc(doc(db, 'menu', item.id), updates);
+      toast.success(`${item.name} schedule updated`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update schedule');
     }
   };
 
@@ -692,6 +769,17 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleUpdateStoreSetting = async (updates: Partial<StoreSettings>) => {
+    try {
+      const merged = { ...storeSettings, ...updates };
+      await setDoc(doc(db, 'settings', 'store'), merged as any);
+      toast.success('Store settings updated');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update store settings');
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-stone-950 flex items-center justify-center">
       <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
@@ -787,6 +875,16 @@ export default function AdminDashboard() {
             >
               <Users size={20} />
               <span className="text-base">{t('admin.nav.staff')}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={cn(
+                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
+                activeTab === 'settings' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
+              )}
+            >
+              <Settings size={20} />
+              <span className="text-base">Store Hours</span>
             </button>
           </nav>
 
@@ -903,6 +1001,7 @@ export default function AdminDashboard() {
                         onChangeStatus={handleChangeStatus}
                         onToggleFeatured={handleToggleFeatured}
                         onChangeCategory={handleChangeCategory}
+                        onChangeSchedule={handleChangeSchedule}
                       />
                     ))}
                   
@@ -1144,7 +1243,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </motion.div>
-            ) : (
+            ) : activeTab === 'staff' ? (
               <motion.div
                 key="staff"
                 initial={{ opacity: 0, y: 10 }}
@@ -1204,6 +1303,144 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </motion.div>
+            ) : (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h2 className="text-3xl font-bold">Store Hours</h2>
+                  <p className="text-stone-500 text-sm">Manage operating hours and temporary closures</p>
+                </div>
+
+                <div className="max-w-xl space-y-6">
+                  {/* Operating Hours card */}
+                  <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-5">
+                    <h4 className="text-xs uppercase tracking-widest text-stone-500 font-bold">Operating Hours</h4>
+
+                    <div className="flex items-end gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <label className="text-xs text-stone-400">Opens at</label>
+                        <select
+                          value={storeSettings.openHour}
+                          onChange={(e) => handleUpdateStoreSetting({ openHour: Number(e.target.value) })}
+                          className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="pb-2.5 text-stone-600 font-bold">→</div>
+                      <div className="flex-1 space-y-1.5">
+                        <label className="text-xs text-stone-400">Closes at</label>
+                        <select
+                          value={storeSettings.closeHour}
+                          onChange={(e) => handleUpdateStoreSetting({ closeHour: Number(e.target.value) })}
+                          className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs text-stone-400">Regular Closed Days</label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, idx) => {
+                          const isClosed = storeSettings.closedDays.includes(idx);
+                          return (
+                            <button
+                              key={day}
+                              onClick={() => {
+                                const updated = isClosed
+                                  ? storeSettings.closedDays.filter(d => d !== idx)
+                                  : [...storeSettings.closedDays, idx];
+                                handleUpdateStoreSetting({ closedDays: updated });
+                              }}
+                              className={cn(
+                                "px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors border",
+                                isClosed
+                                  ? "bg-red-500/20 text-red-400 border-red-500/40"
+                                  : "bg-stone-800 text-stone-400 border-stone-700 hover:border-amber-500/30 hover:text-stone-200"
+                              )}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-stone-600">Red = closed that day every week</p>
+                    </div>
+                  </div>
+
+                  {/* Temporary Overrides card */}
+                  <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-6">
+                    <h4 className="text-xs uppercase tracking-widest text-stone-500 font-bold">Temporary Overrides</h4>
+
+                    {/* Closed Until */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-stone-300">Closed Until Date</label>
+                      <p className="text-xs text-stone-500">Customers cannot order until the day after this date</p>
+                      <div className="flex gap-3">
+                        <input
+                          type="date"
+                          value={storeSettings.closedUntil || ''}
+                          onChange={(e) => handleUpdateStoreSetting({ closedUntil: e.target.value || null })}
+                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm [color-scheme:dark]"
+                        />
+                        {storeSettings.closedUntil && (
+                          <button
+                            onClick={() => handleUpdateStoreSetting({ closedUntil: null })}
+                            className="px-4 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-400 hover:text-red-400 hover:border-red-500/40 transition-colors text-xs font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      {storeSettings.closedUntil && (
+                        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                          <AlertCircle size={14} />
+                          <span>Store is closed to customers through {storeSettings.closedUntil}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* No closed day until */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-stone-300">Open All Days Until Date</label>
+                      <p className="text-xs text-stone-500">Closed-day rule is suspended through this date</p>
+                      <div className="flex gap-3">
+                        <input
+                          type="date"
+                          value={storeSettings.noClosedDayUntil || ''}
+                          onChange={(e) => handleUpdateStoreSetting({ noClosedDayUntil: e.target.value || null })}
+                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm [color-scheme:dark]"
+                        />
+                        {storeSettings.noClosedDayUntil && (
+                          <button
+                            onClick={() => handleUpdateStoreSetting({ noClosedDayUntil: null })}
+                            className="px-4 py-2 bg-stone-800 border border-stone-700 rounded-xl text-stone-400 hover:text-red-400 hover:border-red-500/40 transition-colors text-xs font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      {storeSettings.noClosedDayUntil && (
+                        <div className="flex items-center gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl px-3 py-2">
+                          <CheckCircle2 size={14} />
+                          <span>Open every day through {storeSettings.noClosedDayUntil}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </main>
@@ -1246,6 +1483,16 @@ export default function AdminDashboard() {
           >
             <Users size={22} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.staff')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
+              activeTab === 'settings' ? "text-amber-500" : "text-stone-500"
+            )}
+          >
+            <Settings size={22} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Hours</span>
           </button>
         </nav>
       </div>
@@ -1306,14 +1553,14 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">Status</label>
                       <select
-                        value={editForm.status || (editForm.available ? 'available' : 'hidden')}
+                        value={editForm.status && editForm.status !== 'daily_special' ? editForm.status : (editForm.available ? 'available' : 'hidden')}
                         onChange={(e) => {
                           const newStatus = e.target.value as ItemStatus;
-                          setEditForm({ 
-                            ...editForm, 
+                          setEditForm({
+                            ...editForm,
                             status: newStatus,
-                            available: newStatus === 'available' || newStatus === 'daily_special',
-                            statusUntil: (newStatus === 'sold_out_today' || newStatus === 'daily_special') ? getMidnightTonight() : null
+                            available: newStatus === 'available',
+                            statusUntil: newStatus === 'sold_out_today' ? getMidnightTonight() : (editForm.todayOnly ? editForm.statusUntil : null)
                           });
                         }}
                         className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors appearance-none"
@@ -1321,8 +1568,69 @@ export default function AdminDashboard() {
                         <option value="available">Available</option>
                         <option value="sold_out_today">Sold Out (Resets Tomorrow)</option>
                         <option value="hidden">Hidden / Off Menu</option>
-                        <option value="daily_special">Daily Special (Ends Today)</option>
                       </select>
+                    </div>
+
+                    {/* Schedule */}
+                    <div className="space-y-3 col-span-full border border-stone-800 rounded-xl p-4">
+                      <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">Schedule <span className="text-stone-600 normal-case tracking-normal font-normal">— leave empty to always show</span></label>
+
+                      {/* Today Only toggle */}
+                      <label className="flex items-center gap-3 cursor-pointer select-none">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const enabling = !editForm.todayOnly;
+                            setEditForm({
+                              ...editForm,
+                              todayOnly: enabling,
+                              scheduledDays: enabling ? [] : editForm.scheduledDays,
+                              statusUntil: enabling ? getMidnightTonight() : (editForm.status === 'sold_out_today' ? editForm.statusUntil : null)
+                            });
+                          }}
+                          className={cn(
+                            "w-10 h-5 rounded-full transition-colors relative flex-shrink-0",
+                            editForm.todayOnly ? "bg-amber-500" : "bg-stone-700"
+                          )}
+                        >
+                          <div className={cn(
+                            "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow",
+                            editForm.todayOnly ? "left-5" : "left-0.5"
+                          )} />
+                        </button>
+                        <span className="text-sm text-stone-300">Today Only <span className="text-stone-500 text-xs font-normal">— hides at midnight</span></span>
+                      </label>
+
+                      {/* Day-of-week picker */}
+                      {!editForm.todayOnly && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-stone-600">Or choose specific days of the week</p>
+                          <div className="flex flex-wrap gap-2">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
+                              const selected = editForm.scheduledDays?.includes(idx);
+                              return (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => {
+                                    const current = editForm.scheduledDays || [];
+                                    const updated = selected
+                                      ? current.filter(d => d !== idx)
+                                      : [...current, idx];
+                                    setEditForm({ ...editForm, scheduledDays: updated });
+                                  }}
+                                  className={cn(
+                                    "px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors",
+                                    selected ? "bg-amber-500 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700"
+                                  )}
+                                >
+                                  {day}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                      <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{t('admin.modal.form.price')}</label>

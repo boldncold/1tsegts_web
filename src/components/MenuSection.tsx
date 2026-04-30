@@ -6,7 +6,8 @@ import { db, collection, onSnapshot, query, where, orderBy } from '../firebase';
 import { MenuItem, Category, Portion } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { cn, isStoreOpen, getDynamicStatus } from '../lib/utils';
+import { useStoreSettings } from '../context/StoreSettingsContext';
+import { cn, getDynamicStatus, getScheduleLabel } from '../lib/utils';
 
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -17,6 +18,7 @@ export default function MenuSection() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { addToCart } = useCart();
   const { t } = useLanguage();
+  const { storeOpen } = useStoreSettings();
   const location = useLocation();
 
   // Filter out 'Draft' items (unpublished) — pool=specials and regular categories are visible
@@ -150,8 +152,8 @@ export default function MenuSection() {
       const isPopular = (item.orderCount || 0) > 0 && (item.orderCount || 0) >= popularThreshold;
       if (isPopular) score += 7;
 
-      // Limited Time: +10 points
-      if (item.status === 'daily_special' && item.statusUntil) score += 10;
+      // Scheduled (today only or matching day): +10 points
+      if (item.todayOnly || (item.scheduledDays && item.scheduledDays.length > 0 && item.scheduledDays.includes(new Date().getDay()))) score += 10;
 
       // Group (many portions): +5 points
       if (item.portions && item.portions.length >= 2) score += 5;
@@ -248,7 +250,7 @@ export default function MenuSection() {
                 const minPrice = Math.min(item.price, ...(item.portions?.map(p => p.price) || []));
                 const isLuxury = !isDrink && minPrice > 20000;
                 const isForGroups = hasManyPortions;
-                const isLimitedTime = item.status === 'daily_special' && item.statusUntil;
+                const scheduleLabel = getScheduleLabel(item);
                 const isSpicy = item.tags?.includes('spicy');
                 const qty = quantities[item.id] || 1;
 
@@ -311,9 +313,9 @@ export default function MenuSection() {
                             <Users size={9} /> Groups
                           </span>
                         )}
-                        {isLimitedTime && (
+                        {scheduleLabel && (
                           <span className="inline-flex items-center gap-1 bg-stone-900/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Clock size={9} /> Ends {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(item.statusUntil!))}
+                            <Clock size={9} /> {scheduleLabel}
                           </span>
                         )}
                       </div>
@@ -375,7 +377,7 @@ export default function MenuSection() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Qty stepper — only for single-portion items */}
-                          {(!item.portions || item.portions.length === 0) && isAvailable && isStoreOpen() && (
+                          {(!item.portions || item.portions.length === 0) && isAvailable && storeOpen && (
                             <div className="inline-flex items-center gap-1 bg-[#1a1510] rounded-full p-1">
                               <button
                                 onClick={() => handleQuantityChange(item.id, -1)}
@@ -399,16 +401,16 @@ export default function MenuSection() {
                               addToCart(item, currentPortion, quantities[item.id] || 1);
                               setQuantities(prev => ({ ...prev, [item.id]: 1 }));
                             }}
-                            disabled={!isAvailable || !isStoreOpen()}
+                            disabled={!isAvailable || !storeOpen}
                             className={cn(
                               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
-                              isAvailable && isStoreOpen()
+                              isAvailable && storeOpen
                                 ? "bg-[#8B0000] text-white hover:bg-[#6b0000] shadow-sm"
                                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
                             )}
                           >
                             <Plus size={12} />
-                            {!isStoreOpen() ? t('menu.closed') : isAvailable ? t('menu.add_to_cart') : t('menu.sold_out')}
+                            {!storeOpen ? t('menu.closed') : isAvailable ? t('menu.add_to_cart') : t('menu.sold_out')}
                           </button>
                         </div>
                       </div>

@@ -1,5 +1,5 @@
 export type Category = 'European' | 'Asian' | 'Drinks' | 'Mongolian' | 'Draft';
-export type ItemStatus = 'available' | 'sold_out_today' | 'hidden' | 'daily_special';
+export type ItemStatus = 'available' | 'sold_out_today' | 'hidden' | 'daily_special'; // daily_special kept for backward compat
 
 export interface Portion {
   name: string;
@@ -19,6 +19,8 @@ export interface MenuItem {
   available: boolean; // Legacy, kept for backward compatibility
   status?: ItemStatus;
   statusUntil?: number;
+  scheduledDays?: number[];  // 0=Sun, 1=Mon … 6=Sat; recurring weekly schedule
+  todayOnly?: boolean;       // visible today only, resets at midnight
   featured?: boolean;
   orderCount?: number;
   packagingPrice?: number;
@@ -59,4 +61,12 @@ export interface UserProfile {
   uid: string;
   email: string;
   role: 'admin' | 'user';
+}
+
+export interface StoreSettings {
+  openHour: number;
+  closeHour: number;
+  closedDays: number[];      // 0=Sun … 6=Sat
+  closedUntil: string | null;       // YYYY-MM-DD — store closed through this date
+  noClosedDayUntil: string | null;  // YYYY-MM-DD — closed-day rule suspended through this date
 }

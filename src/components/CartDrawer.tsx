@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useStoreSettings } from '../context/StoreSettingsContext';
 import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc } from '../firebase';
-import { cn, isStoreOpen } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import ConfirmModal from './ConfirmModal';
@@ -13,6 +14,7 @@ import ConfirmModal from './ConfirmModal';
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { cart, total, removeFromCart, updateQuantity, updatePackaging, clearCart, pendingOrderId, pendingOrderData, setPendingOrderId } = useCart();
   const { t, language } = useLanguage();
+  const { storeOpen } = useStoreSettings();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -32,7 +34,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
-    if (!isStoreOpen()) {
+    if (!storeOpen) {
       toast.error(t('cart.closed'));
       return;
     }
@@ -175,132 +177,152 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               {pendingOrderId && pendingOrderData && !orderComplete && (
-                <div className="mb-8 p-5 bg-gray-50 border border-[#D4AF37]/30 rounded-2xl space-y-4 shadow-xl shadow-[#D4AF37]/5">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-semibold text-[#D4AF37] uppercase tracking-widest">
-                        {language === 'en' ? 'Pending Order' : 'Хүлээгдэж буй захиалга'}
-                      </h3>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-stone-900">#{pendingOrderData.orderNumber}</span>
+                <div className="mb-6 rounded-2xl overflow-hidden border border-[#D4AF37]/30 shadow-lg">
+                  {/* Header bar */}
+                  <div className="bg-stone-900 px-5 py-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37] mb-1">
+                        {language === 'en' ? 'Active Order' : 'Идэвхтэй захиалга'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-3xl font-bold text-white tabular-nums">#{pendingOrderData.orderNumber}</span>
                         <span className={cn(
-                          "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-widest animate-pulse",
-                          pendingOrderData.status === 'pending' ? "bg-[#D4AF37] text-white" : "bg-green-500 text-white"
+                          "px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-widest animate-pulse",
+                          pendingOrderData.status === 'pending' ? "bg-[#D4AF37] text-stone-900" : "bg-green-500 text-white"
                         )}>
-                          {pendingOrderData.status === 'pending' 
+                          {pendingOrderData.status === 'pending'
                             ? (language === 'en' ? 'Preparing' : 'Бэлтгэж байна')
-                            : (language === 'en' ? 'Ready' : 'Бэлэн болсон')}
+                            : (language === 'en' ? 'Ready!' : 'Бэлэн!')}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowCancelConfirm(true)}
-                      className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-all group"
+                      className="p-2 text-stone-400 hover:text-red-400 transition-colors rounded-full hover:bg-stone-800"
                       title={language === 'en' ? "Cancel Order" : "Захиалга цуцлах"}
                     >
                       <Trash2 size={18} />
                     </button>
                   </div>
-                  
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                    {pendingOrderData.items?.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-xs text-stone-500">
-                        <span className="flex-1 mr-2">{item.quantity}x {item.name} {item.selectedPortion?.name && <span className="text-[#D4AF37]/70">({item.selectedPortion.name})</span>}</span>
-                        <span className="tabular-nums text-stone-700">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
 
-                  <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
-                    <span className="text-xs font-medium text-stone-400 uppercase tracking-widest">{t('cart.total')}</span>
-                    <span className="text-xl font-bold text-[#8B0000] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                  {/* Items + total + hint */}
+                  <div className="bg-gray-50 px-5 py-4 space-y-3">
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                      {pendingOrderData.items?.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-xs text-stone-500">
+                          <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/70"> ({item.selectedPortion.name})</span>}</span>
+                          <span className="tabular-nums text-stone-700 font-medium">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                      <span className="text-xs font-semibold text-stone-500 uppercase tracking-widest">{t('cart.total')}</span>
+                      <span className="text-xl font-bold text-[#8B0000] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm font-bold text-[#8B0000] text-center pt-1 tracking-wide">
+                      {language === 'en'
+                        ? 'Go to the cashier and show your order number'
+                        : 'Кассанд очиж захиалгын дугаараа харуулна уу'}
+                    </p>
                   </div>
                 </div>
               )}
 
               {orderComplete ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-                  <div className="w-20 h-20 bg-[#D4AF37]/10 rounded-full flex items-center justify-center text-[#D4AF37]">
-                    <CheckCircle size={48} />
+                <div className="flex flex-col items-center text-center space-y-5 py-4">
+                  {/* Success icon */}
+                  <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center">
+                    <CheckCircle size={44} className="text-green-500" />
                   </div>
-                  <h3 className="font-serif font-medium text-[22px] text-stone-900">{t('cart.order_received')}</h3>
 
-                  {orderNumber && (
-                    <div className="w-full space-y-4">
-                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 w-full space-y-2">
-                        <p className="eyebrow !text-stone-400">{t('cart.order_number')}</p>
-                        <p className="font-serif font-bold text-[80px] leading-none tabular-nums">
-                          <span className="text-[#D4AF37]">{orderNumber[0]}</span>
-                          <span className="text-[#8B0000]">{orderNumber.slice(1)}</span>
-                        </p>
-                        <p className="text-stone-500 font-light" style={{ fontSize: '13.5px' }}>{t('cart.order_number_desc')}</p>
+                  <div className="space-y-1">
+                    <h3 className="font-serif font-bold text-2xl text-stone-900">{t('cart.order_received')}</h3>
+                    <p className="text-stone-400 text-sm">
+                      {language === 'en' ? 'Your order is being prepared' : 'Таны захиалга бэлтгэгдэж байна'}
+                    </p>
+                  </div>
+
+                  {/* Step-by-step instructions */}
+                  {completedOrderType === 'pickup' ? (
+                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left space-y-4">
+                      <h4 className="text-base font-bold text-amber-900 text-center">
+                        {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
+                      </h4>
+                      <div className="space-y-3">
+                        {(language === 'en'
+                          ? ['Go to the cashier', 'Show your order number above', 'Pay and collect your food']
+                          : ['Кассанд очно уу', 'Захиалгын дугаараа харуулна уу', 'Төлж, хоолоо авна уу']
+                        ).map((step, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                            <p className="text-sm font-semibold text-amber-900 leading-snug">{step}</p>
+                          </div>
+                        ))}
                       </div>
+                      <div className="pt-3 border-t border-amber-200 text-center space-y-1">
+                        <p className="text-xs text-amber-600">{language === 'en' ? 'Or call us at' : 'Эсвэл утасдана уу'}</p>
+                        <a href="tel:99138866" className="text-xl font-bold text-[#8B0000] hover:underline">99138866</a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full bg-blue-50 border border-blue-200 rounded-2xl p-5 text-left space-y-4">
+                      <h4 className="text-base font-bold text-blue-900 text-center">
+                        {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
+                      </h4>
+                      <div className="space-y-3">
+                        {(language === 'en'
+                          ? ['Scan the QR code at your kiosk to pay', 'Or call us to confirm & pay', 'Collect your food when ready']
+                          : ['Киоскны QR кодыг сканнэж төлнө үү', 'Эсвэл утасдаж баталгаажуулаарай', 'Бэлэн болмогц хоолоо авна уу']
+                        ).map((step, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-full bg-blue-200 text-blue-900 font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                            <p className="text-sm font-semibold text-blue-900 leading-snug">{step}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-3 border-t border-blue-200 text-center space-y-1">
+                        <p className="text-xs text-blue-600">{language === 'en' ? 'Call us at' : 'Утасны дугаар'}</p>
+                        <a href="tel:99138866" className="text-xl font-bold text-[#8B0000] hover:underline">99138866</a>
+                      </div>
+                    </div>
+                  )}
 
+                  {/* Order number — large & prominent */}
+                  {orderNumber && (
+                    <div className="w-full bg-stone-900 rounded-2xl p-6 text-center">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-2">{t('cart.order_number')}</p>
+                      <p className="font-serif font-bold leading-none tabular-nums" style={{ fontSize: '96px' }}>
+                        <span className="text-[#D4AF37]">{orderNumber[0]}</span>
+                        <span className="text-white">{orderNumber.slice(1)}</span>
+                      </p>
                       {pendingOrderData && (
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4 w-full space-y-3 shadow-sm">
-                          <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold text-left">{language === 'en' ? 'Order Summary' : 'Захиалгын хураангуй'}</p>
-                          <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        <>
+                          <div className="mt-4 pt-3 border-t border-stone-700 space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar text-left">
                             {pendingOrderData.items?.map((item: any, idx: number) => (
-                              <div key={idx} className="flex justify-between text-[10px] text-stone-500">
-                                <span className="text-left">{item.quantity}x {item.name}</span>
-                                <span className="tabular-nums">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
+                              <div key={idx} className="flex justify-between text-xs text-stone-400">
+                                <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/60"> ({item.selectedPortion.name})</span>}</span>
+                                <span className="tabular-nums text-stone-300">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
                               </div>
                             ))}
                           </div>
-                          <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
-                            <span className="text-[10px] font-medium text-stone-400 uppercase tracking-widest">{t('cart.total')}</span>
-                            <span className="text-sm font-bold text-[#8B0000] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                          <div className="mt-3 pt-3 border-t border-stone-700 flex justify-between items-center">
+                            <span className="text-xs font-semibold text-stone-400 uppercase tracking-widest">{t('cart.total')}</span>
+                            <span className="text-2xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
                   )}
 
-                  {completedOrderType === 'pickup' ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 w-full space-y-4 text-center">
-                      <h4 className="text-lg font-semibold text-amber-900">{language === 'en' ? 'Please Verify Your Order' : 'Таны захиалгыг баталгаажуулаарай'}</h4>
-                      <p className="text-sm text-amber-800 leading-relaxed">
-                        {language === 'en' 
-                          ? 'Please go to the cashier to verify your order, or call' 
-                          : 'Та цалгийн газарт очиж захиалгыг баталгаажуулаарай, эсвэл дараах дугаарт залгаарай'}
-                      </p>
-                      <a href="tel:99138866" className="inline-block text-xl font-bold text-[#8B0000] hover:underline">
-                        99138866
-                      </a>
-                      <p className="text-xs text-amber-600 italic">
-                        {language === 'en'
-                          ? 'until the admin confirms your order.'
-                          : 'админ баталгаажуулахыг хүлээнэ үү.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 w-full space-y-4 text-center">
-                      <h4 className="text-lg font-semibold text-blue-900">{language === 'en' ? 'Payment Required' : 'Төлөлт шаардлагатай'}</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm font-medium text-blue-800 mb-2">{language === 'en' ? 'Option 1: Pay via Mobile App (QR Code)' : 'Хувилбар 1: Мобайл апп-аараа төлөх (QR код)'}</p>
-                          <p className="text-xs text-blue-700">{language === 'en' ? 'Scan the QR code below to complete payment' : 'Төлөлтийг дуусгахын тулд QR код сканнех'}</p>
-                        </div>
-                        <div className="border-t border-blue-200 pt-3">
-                          <p className="text-sm font-medium text-blue-800 mb-2">{language === 'en' ? 'Option 2: Call to Confirm' : 'Хувилбар 2: Дуудлагаар баталгаажуулах'}</p>
-                          <a href="tel:99138866" className="inline-block text-xl font-bold text-[#8B0000] hover:underline mb-2">
-                            99138866
-                          </a>
-                          <p className="text-xs text-blue-600">
-                            {language === 'en'
-                              ? 'Call until admin confirms your order and processes payment.'
-                              : 'админ таны захиалга болон төлөлтийг баталгаажуулахыг хүлээнэ үү.'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]" style={{ background: 'var(--gold-soft-10)', border: '1px solid rgba(212,175,55,0.25)' }}>
-                    {language === 'en' ? 'Est. 15–20 mins' : 'Хүлээлт: 15–20 минут'}
-                  </span>
-                  
-                  <div className="flex flex-col w-full gap-3">
+                  {/* Estimated time */}
+                  <div className="flex items-center gap-2 px-5 py-2.5 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full">
+                    <span className="text-sm font-bold text-[#D4AF37]">
+                      {language === 'en' ? '⏱ Est. 15–20 mins' : '⏱ Хүлээлт: 15–20 минут'}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col w-full gap-3 pb-2">
                     <button
                       onClick={() => {
                         setOrderComplete(false);
@@ -311,13 +333,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     >
                       {t('cart.back_to_menu')}
                     </button>
-                    
+
                     {pendingOrderId && (
                       <button
                         onClick={() => setShowCancelConfirm(true)}
                         className="w-full py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
                       >
-                        {language === 'en' ? "Cancel Order" : "Захиалга цуцлах"}
+                        {language === 'en' ? 'Cancel Order' : 'Захиалга цуцлах'}
                       </button>
                     )}
                   </div>
@@ -529,32 +551,32 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isCheckingOut ? (
                   <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
+                    disabled={isSubmitting || !storeOpen || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95",
-                      (isSubmitting || !isStoreOpen() || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
+                      (isSubmitting || !storeOpen || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {isSubmitting ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
                       <>
-                        <span>{!isStoreOpen() ? t('cart.closed') : t('cart.confirm_order')}</span>
-                        {isStoreOpen() && <ArrowRight size={18} />}
+                        <span>{!storeOpen ? t('cart.closed') : t('cart.confirm_order')}</span>
+                        {storeOpen && <ArrowRight size={18} />}
                       </>
                     )}
                   </button>
                 ) : (
                   <button
                     onClick={() => setIsCheckingOut(true)}
-                    disabled={!isStoreOpen() || !!pendingOrderId}
+                    disabled={!storeOpen || !!pendingOrderId}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-lg shadow-red-900/20",
-                      (!isStoreOpen() || !!pendingOrderId) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#6b0000]"
+                      (!storeOpen || !!pendingOrderId) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#6b0000]"
                     )}
                   >
-                    <span>{!isStoreOpen() ? t('cart.closed') : t('cart.proceed')}</span>
-                    {isStoreOpen() && <ArrowRight size={18} />}
+                    <span>{!storeOpen ? t('cart.closed') : t('cart.proceed')}</span>
+                    {storeOpen && <ArrowRight size={18} />}
                   </button>
                 )}
               </div>
