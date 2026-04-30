@@ -8,7 +8,7 @@ import {
   Search, Minus, Filter
 } from 'lucide-react';
 import { 
-  auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged,
+  auth, db, googleProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged,
   collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus } from '../types';
@@ -280,16 +280,22 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
+    // Handle redirect result when Google returns to the page
+    getRedirectResult(auth).catch((error) => {
+      console.error('Redirect login error:', error);
+      toast.error('Login failed. Please try again.');
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         // Check if admin
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         const userData = userDoc.data();
-        
+
         // Also check admin_emails collection
         const adminEmailDoc = await getDoc(doc(db, 'admin_emails', currentUser.email?.toLowerCase() || ''));
-        
+
         if (userData?.role === 'admin' || currentUser.email === 'boldsaihanlolor@gmail.com' || adminEmailDoc.exists()) {
           setIsAdmin(true);
         } else {
@@ -360,7 +366,7 @@ export default function AdminDashboard() {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Failed to login.');
