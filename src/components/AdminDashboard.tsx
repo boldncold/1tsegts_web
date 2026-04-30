@@ -8,7 +8,7 @@ import {
   Search, Minus, Filter
 } from 'lucide-react';
 import { 
-  auth, db, googleProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged,
+  auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged,
   collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus } from '../types';
@@ -280,27 +280,31 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // Handle redirect result when Google returns to the page
-    getRedirectResult(auth).catch((error) => {
-      console.error('Redirect login error:', error);
-      toast.error('Login failed. Please try again.');
-    });
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Check if admin
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const userData = userDoc.data();
-
-        // Also check admin_emails collection
-        const adminEmailDoc = await getDoc(doc(db, 'admin_emails', currentUser.email?.toLowerCase() || ''));
-
-        if (userData?.role === 'admin' || currentUser.email === 'boldsaihanlolor@gmail.com' || adminEmailDoc.exists()) {
+        // Check hardcoded owner email first (no Firestore needed)
+        if (currentUser.email === 'boldsaihanlolor@gmail.com') {
           setIsAdmin(true);
-        } else {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          const userData = userDoc.data();
+          const adminEmailDoc = await getDoc(doc(db, 'admin_emails', currentUser.email?.toLowerCase() || ''));
+
+          if (userData?.role === 'admin' || adminEmailDoc.exists()) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            toast.error('Access denied. Admin privileges required.');
+          }
+        } catch (error) {
+          console.error('Admin check error:', error);
           setIsAdmin(false);
-          toast.error('Access denied. Admin privileges required.');
+          toast.error('Failed to verify admin access.');
         }
       } else {
         setIsAdmin(false);
@@ -366,7 +370,7 @@ export default function AdminDashboard() {
 
   const handleLogin = async () => {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Failed to login.');
