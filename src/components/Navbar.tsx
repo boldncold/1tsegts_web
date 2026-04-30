@@ -137,9 +137,13 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
 
             {/* Drawer footer */}
             <div className="px-6 py-5 border-t border-white/[0.06]">
-              <p className="text-[10px] text-white/40 tracking-[0.12em] uppercase">
-                1st floor, Shangri-La Mall
-              </p>
+              <Link
+                to="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2.5 text-white/40 hover:text-[#D4AF37] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
+              >
+                <span>Admin</span>
+              </Link>
             </div>
           </motion.aside>
         </>
