@@ -34,6 +34,8 @@
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
 
+  --bg-page-alt: #fafaf9;
+
   /* Shadows */
   --shadow-glow-gold: 0 0 20px rgba(212,175,55,0.40);
   --shadow-glow-red:  0 0 15px rgba(212,175,55,0.30);

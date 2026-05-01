@@ -1,244 +1,655 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, ArrowRight, ShoppingBag, Star, Flame, Gem, Users, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Minus, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db, collection, onSnapshot, query, where, orderBy, limit } from '../firebase';
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { cn, getScheduleLabel } from '../lib/utils';
 
-export default function FeaturedDishes() {
-  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
+type Variant = 'stack' | 'marquee';
+
+export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
+  const [dishes, setDishes] = useState<MenuItem[]>([]);
   const { addToCart } = useCart();
   const { language } = useLanguage();
-  
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const featuredQuery = query(
       collection(db, 'menu'),
       where('available', '==', true),
       where('featured', '==', true),
-      limit(6)
+      limit(10)
     );
-
     const unsubscribe = onSnapshot(featuredQuery, (snapshot) => {
       if (!snapshot.empty) {
-        const items = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as MenuItem[];
-        setFeaturedItems(items);
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+        setDishes(items);
       } else {
-        const mostOrderedQuery = query(
+        const fallback = query(
           collection(db, 'menu'),
           where('available', '==', true),
           orderBy('orderCount', 'desc'),
-          limit(6)
+          limit(10)
         );
-
-        onSnapshot(mostOrderedQuery, (mostOrderedSnapshot) => {
-          if (!mostOrderedSnapshot.empty) {
-            const items = mostOrderedSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as MenuItem[];
-            setFeaturedItems(items);
-          } else {
-            const fallbackQuery = query(collection(db, 'menu'), limit(6));
-            onSnapshot(fallbackQuery, (fallbackSnapshot) => {
-              const items = fallbackSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-              })) as MenuItem[];
-              setFeaturedItems(items);
-            });
-          }
+        onSnapshot(fallback, (snap) => {
+          const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+          setDishes(items);
         });
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container || featuredItems.length === 0) return;
+  const list = useMemo(() => {
+    const featured = dishes.filter(d => d.tags?.includes('chefsPick') || d.tags?.includes('popular') || d.featured);
+    const rest = dishes.filter(d => !featured.includes(d));
+    return [...featured, ...rest].slice(0, 10);
+  }, [dishes]);
 
-    let animationFrameId: number;
-    let accumulatedScroll = 0;
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const dishById = (id: string) => list.find(d => d.id === id);
 
-    const scroll = () => {
-      if (!isHovered) {
-        accumulatedScroll += 0.5; // Smooth slow rolling
-        if (accumulatedScroll >= 1) {
-          const pixelsToScroll = Math.floor(accumulatedScroll);
-          
-          if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 1) {
-             container.scrollLeft = 0;
-          } else {
-             container.scrollLeft += pixelsToScroll;
-          }
-          accumulatedScroll -= pixelsToScroll;
-        }
-      }
-      animationFrameId = requestAnimationFrame(scroll);
-    };
+  const handleAdd = useCallback((dish: MenuItem & { qty?: number }) => {
+    const qty = dish.qty || 1;
+    addToCart(dish, undefined, qty);
+    setExpanded(null);
+  }, [addToCart]);
 
-    animationFrameId = requestAnimationFrame(scroll);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [isHovered, featuredItems]);
-
-  if (featuredItems.length === 0) return null;
+  if (list.length === 0) return null;
 
   return (
-    <section className="relative w-full min-h-[100dvh] bg-gradient-to-b from-white via-stone-200 to-stone-950 flex flex-col justify-center overflow-hidden pt-20 pb-16 lg:pt-0 lg:pb-0">
-      
-      {/* Section header */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 lg:mb-8 shrink-0 relative z-10 flex items-baseline justify-between">
-        <div>
-          <div className="eyebrow mb-1.5">
-            {language === 'en' ? 'Selected' : 'Онцлох'}
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight">
-            {language === 'en' ? (
-              <>Featured <em className="text-[#8B0000] not-italic font-medium">Dishes</em></>
-            ) : (
-              'Онцлох хоол'
-            )}
-          </h2>
+    <section style={{
+      background: 'var(--stone-50, #fafaf9)',
+      paddingTop: 72,
+      paddingBottom: 48,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <div style={{ padding: '0 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>
+          {language === 'en' ? 'Selected' : 'Онцлох'}
         </div>
-        <a
-          href="/menu"
-          className="hidden sm:inline-flex items-center gap-1.5 micro-label !text-stone-500 hover:!text-[#D4AF37] transition-colors"
-        >
-          {language === 'en' ? 'View all' : 'Бүгдийг харах'} <ArrowRight size={12} />
-        </a>
+        <h2 style={{
+          fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 30, lineHeight: 1.05,
+          letterSpacing: '-0.018em', margin: 0, color: 'var(--stone-900)',
+        }}>
+          {language === 'en' ? (
+            <>Featured <em style={{ color: 'var(--red-deep)', fontStyle: 'italic', fontWeight: 500 }}>Dishes</em></>
+          ) : 'Онцлох хоол'}
+        </h2>
       </div>
 
-      {/* Horizontal Carousel List */}
-      <div 
-        ref={scrollRef}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onTouchStart={() => setIsHovered(true)}
-        onTouchEnd={() => setIsHovered(false)}
-        className="w-full overflow-x-auto px-4 sm:px-6 lg:px-8 relative z-10 flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-8 pt-4 -mt-4"
-      >
-        <div className="flex gap-4 sm:gap-6 w-max items-center after:content-[''] after:w-4 sm:after:w-8 lg:after:w-16 after:shrink-0">
-          {featuredItems.map((item) => {
-            const minPrice = Math.min(item.price, ...(item.portions?.map(p => p.price) || []));
-            const isLuxury = item.category !== 'Drinks' && minPrice > 20000;
-            const isSpicy = item.tags?.includes('spicy');
-            const isForGroups = item.portions && item.portions.length >= 2;
-            const scheduleLabel = getScheduleLabel(item);
+      {variant === 'stack'
+        ? <StackDeck list={list} onTap={(d) => setExpanded(d.id)} />
+        : <MarqueeBelt list={list} onTap={(d) => setExpanded(d.id)} paused={expanded != null} language={language} />
+      }
 
-            return (
-              <div 
-                key={item.id} 
-                className="shrink-0 relative w-[85vw] sm:w-[50vw] md:w-[40vw] lg:w-[30vw] h-[58vh] min-h-[420px] max-h-[600px] rounded-3xl overflow-hidden shadow-2xl bg-stone-900 group border border-stone-700/50"
-              >
-                <img
-                  src={item.image || `https://picsum.photos/seed/${item.name}/600/800`}
-                  alt={item.name}
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-transparent" />
-                
-                {/* Keywords Marks (Top Left) */}
-                <div className="absolute top-4 left-4 right-4 flex flex-wrap gap-1.5 items-start z-20">
-                  {item.featured && (
-                    <div className="flex items-center gap-1.5 bg-[#D4AF37]/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-[#D4AF37]/30">
-                      <Star size={10} className="fill-white text-white" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-white">Featured</span>
-                    </div>
-                  )}
-                  {isSpicy && (
-                    <div className="flex items-center gap-1.5 bg-[#8B0000]/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-[#8B0000]/30">
-                      <Flame size={10} className="text-white" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-white">Spicy</span>
-                    </div>
-                  )}
-                  {isLuxury && (
-                    <div className="flex items-center gap-1.5 bg-purple-600/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-purple-400/30">
-                      <Gem size={10} className="text-white fill-white" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-white">Luxury</span>
-                    </div>
-                  )}
-                  {isForGroups && (
-                    <div className="flex items-center gap-1.5 bg-blue-500/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-blue-400/30">
-                      <Users size={10} className="text-white fill-white" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-white">Recommend for Groups</span>
-                    </div>
-                  )}
-                  {scheduleLabel && (
-                    <div className="flex items-center gap-1.5 bg-stone-900/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-stone-700/50">
-                      <Clock size={10} className="text-white" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-white">
-                        {scheduleLabel}
-                      </span>
-                    </div>
-                  )}
-                </div>
+      {expanded != null && (
+        <BottomSheet
+          dish={dishById(expanded)!}
+          onClose={() => setExpanded(null)}
+          onAdd={handleAdd}
+          language={language}
+        />
+      )}
 
-                {/* Content (Bottom) */}
-                <div className="absolute inset-0 p-5 sm:p-6 flex flex-col justify-end pointer-events-none">
-                  <div className="mb-4">
-                    <span className="inline-block px-2.5 py-1 bg-stone-900/80 backdrop-blur-sm border border-stone-700/50 rounded-md text-[#D4AF37] text-[10px] uppercase tracking-widest font-bold mb-2 shadow-lg">
-                      {item.category || (language === 'en' ? 'Featured' : 'Онцлох')}
-                    </span>
-                    <h3 className="text-2xl sm:text-3xl font-serif text-white font-bold tracking-tight leading-tight drop-shadow-lg">
-                      {item.name}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-3 pointer-events-auto">
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="w-full px-4 py-2 sm:py-3 bg-[#D4AF37] text-stone-950 font-bold uppercase tracking-wider rounded-full hover:bg-[#C5A028] transition-colors text-xs lg:text-sm shadow-xl shadow-[#D4AF37]/20 flex items-center justify-center gap-2"
-                    >
-                      <ShoppingBag size={16} />
-                      {language === 'en' ? 'Add To Cart' : 'Сагсанд Нэмэх'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {/* View Full Menu Card */}
-          <Link
-            to="/menu"
-            className="shrink-0 relative w-[85vw] sm:w-[50vw] md:w-[40vw] lg:w-[30vw] h-[58vh] min-h-[420px] max-h-[600px] rounded-3xl overflow-hidden shadow-2xl bg-stone-900/60 backdrop-blur-sm border border-stone-700/50 hover:border-[#D4AF37]/50 transition-colors group flex flex-col items-center justify-center p-8 text-center"
-          >
-            <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#D4AF37]/20 transition-all duration-300">
-              <ArrowRight size={28} className="text-[#D4AF37]" />
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-3">
-              {language === 'en' ? 'Explore Full Menu' : 'Бүтэн цэстэй танилцах'}
-            </h3>
-            <p className="text-stone-300 text-sm max-w-[200px]">
-              {language === 'en' ? 'Discover all our culinary offerings' : 'Манай бүх хоолны сонголттой танилцана уу'}
-            </p>
-          </Link>
-        </div>
-      </div>
-
-      {/* Global Controls at Bottom */}
-      <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none z-20">
-        <div className="flex flex-col items-center pointer-events-auto">
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-stone-500 flex flex-col items-center"
-          >
-            <span className="hidden lg:block text-[10px] uppercase tracking-[0.2em] font-bold mb-2 text-stone-400 drop-shadow-md">Scroll</span>
-            <div className="w-px h-6 sm:h-8 bg-gradient-to-b from-[#D4AF37] to-transparent"></div>
-            <ChevronDown size={14} className="text-[#D4AF37] mt-1" />
-          </motion.div>
-        </div>
-      </div>
+      <style>{`
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .featured-track::-webkit-scrollbar { display: none; }
+      `}</style>
     </section>
+  );
+}
+
+// ─── STACK DECK ──────────────────────────────────────────────
+function StackDeck({ list, onTap }: { list: MenuItem[]; onTap: (d: MenuItem) => void }) {
+  const [order, setOrder] = useState(() => list.map((_, i) => i));
+  const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
+  const [exiting, setExiting] = useState<{ direction: number } | null>(null);
+
+  useEffect(() => { setOrder(list.map((_, i) => i)); }, [list.length]);
+
+  const top = order[0];
+  const startRef = useRef({ x: 0, y: 0, t: 0 });
+  const cardRef = useRef<HTMLElement>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (exiting) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+    setDrag({ x: 0, y: 0, active: true });
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.active) return;
+    setDrag({ x: e.clientX - startRef.current.x, y: e.clientY - startRef.current.y, active: true });
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!drag.active) return;
+    const dx = e.clientX - startRef.current.x;
+    const dt = Date.now() - startRef.current.t;
+    const v = Math.abs(dx) / Math.max(dt, 1);
+    const threshold = 80;
+    const fast = v > 0.5;
+    setDrag({ x: 0, y: 0, active: false });
+    if (Math.abs(dx) > threshold || fast) {
+      const direction = dx > 0 ? 1 : -1;
+      setExiting({ direction });
+      setTimeout(() => {
+        setOrder(prev => [...prev.slice(1), prev[0]]);
+        setExiting(null);
+      }, 320);
+    } else if (Math.abs(dx) < 6 && Math.abs(e.clientY - startRef.current.y) < 6 && dt < 220) {
+      onTap(list[top]);
+    }
+  };
+
+  const skip = (direction: number) => {
+    if (exiting) return;
+    setExiting({ direction });
+    setTimeout(() => {
+      setOrder(prev => [...prev.slice(1), prev[0]]);
+      setExiting(null);
+    }, 320);
+  };
+
+  const visibleCount = Math.min(3, order.length);
+
+  return (
+    <div style={{ position: 'relative', padding: '0 20px', maxWidth: 480, margin: '0 auto' }}>
+      <div style={{ position: 'relative', height: 460, userSelect: 'none', touchAction: 'pan-y' }}>
+        {Array.from({ length: visibleCount }).map((_, depth) => {
+          const dishIdx = order[depth];
+          if (dishIdx == null) return null;
+          const dish = list[dishIdx];
+          const isTop = depth === 0;
+          const isExiting = isTop && exiting;
+
+          const restingScale = 1 - depth * 0.06;
+          const restingY = depth * 14;
+          const restingRotate = depth === 1 ? -2 : depth === 2 ? 2.4 : 0;
+
+          let transform: string;
+          let transition: string;
+          if (isExiting) {
+            transform = `translate(${exiting!.direction * 520}px, ${drag.y * 0.5}px) rotate(${exiting!.direction * 22}deg)`;
+            transition = 'transform 320ms cubic-bezier(.55,.05,.7,1), opacity 320ms';
+          } else if (isTop && drag.active) {
+            const rot = drag.x * 0.06;
+            transform = `translate(${drag.x}px, ${drag.y * 0.4}px) rotate(${rot}deg)`;
+            transition = 'none';
+          } else if (isTop) {
+            transform = `translate(0, 0) rotate(0deg)`;
+            transition = 'transform 360ms cubic-bezier(.22,.95,.36,1)';
+          } else {
+            const liftBoost = drag.active ? Math.min(Math.abs(drag.x) / 200, 1) : 0;
+            const yLift = restingY - liftBoost * 8 * (3 - depth);
+            const sLift = restingScale + liftBoost * 0.03 * (3 - depth);
+            transform = `translateY(${yLift}px) scale(${sLift}) rotate(${restingRotate}deg)`;
+            transition = 'transform 360ms cubic-bezier(.22,.95,.36,1)';
+          }
+
+          const parallaxX = isTop && drag.active ? drag.x * 0.18 : 0;
+          const intent = isTop && drag.active ? Math.max(-1, Math.min(1, drag.x / 110)) : 0;
+
+          return (
+            <article
+              key={dish.id + '-' + depth}
+              ref={isTop ? cardRef : null}
+              onPointerDown={isTop ? onPointerDown : undefined}
+              onPointerMove={isTop ? onPointerMove : undefined}
+              onPointerUp={isTop ? onPointerUp : undefined}
+              onPointerCancel={isTop ? onPointerUp : undefined}
+              style={{
+                position: 'absolute', inset: 0, margin: 'auto',
+                width: '100%', maxWidth: 360, aspectRatio: '3 / 4.2',
+                borderRadius: 22, overflow: 'hidden', background: '#1a1510',
+                cursor: isTop ? (drag.active ? 'grabbing' : 'grab') : 'default',
+                transform, transition,
+                opacity: isExiting ? 0.2 : 1,
+                zIndex: 10 - depth,
+                boxShadow: isTop
+                  ? '0 28px 60px -20px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.18)'
+                  : `0 ${10 + depth * 4}px ${24 + depth * 6}px -14px rgba(0,0,0,0.35)`,
+                pointerEvents: isTop ? 'auto' : 'none',
+              }}
+            >
+              <DishImage dish={dish} parallaxX={parallaxX} />
+              <CardInfo dish={dish} />
+              {isTop && Math.abs(intent) > 0.05 && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: intent > 0
+                    ? `linear-gradient(90deg, transparent 50%, rgba(212,175,55,${intent * 0.35}) 100%)`
+                    : `linear-gradient(270deg, transparent 50%, rgba(139,0,0,${-intent * 0.35}) 100%)`,
+                  pointerEvents: 'none', transition: 'opacity 120ms',
+                }} />
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 4px 0', gap: 16 }}>
+        <button
+          onClick={() => skip(-1)}
+          aria-label="Previous"
+          style={{
+            background: '#fff', border: '1px solid var(--stone-200)', width: 44, height: 44, borderRadius: 999,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--stone-700)', boxShadow: '0 2px 8px -2px rgba(0,0,0,0.08)',
+          }}
+        ><ChevronLeft size={18} /></button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+            color: 'var(--stone-500)', fontVariantNumeric: 'tabular-nums',
+          }}>
+            <span style={{ color: 'var(--stone-900)' }}>{String(order[0] + 1).padStart(2, '0')}</span>
+            <span style={{ opacity: 0.4 }}> / {String(list.length).padStart(2, '0')}</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--stone-400)', letterSpacing: '0.04em' }}>
+            Swipe or tap to view
+          </div>
+        </div>
+
+        <button
+          onClick={() => skip(1)}
+          aria-label="Next"
+          style={{
+            background: 'var(--stone-900)', border: 'none', width: 44, height: 44, borderRadius: 999,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--gold)', boxShadow: '0 6px 18px -6px rgba(0,0,0,0.35)',
+          }}
+        ><ChevronRight size={18} /></button>
+      </div>
+    </div>
+  );
+}
+
+// ─── MARQUEE BELT ────────────────────────────────────────────
+function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: MenuItem[]; onTap: (d: MenuItem) => void; paused?: boolean; language?: string }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(0);
+  const velocityRef = useRef(0.5);
+  const targetVelRef = useRef(0.5);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const draggingRef = useRef(false);
+  const lastDragRef = useRef({ x: 0, t: 0 });
+  const rafRef = useRef<number>(0);
+  const [tilt, setTilt] = useState(0);
+  const tiltSetterRef = useRef(0);
+
+  const tripled = useMemo(() => [...list, ...list, ...list], [list]);
+  const setWidthRef = useRef(0);
+
+  useEffect(() => {
+    const tick = () => {
+      const t = trackRef.current;
+      if (!t) { rafRef.current = requestAnimationFrame(tick); return; }
+      if (!setWidthRef.current && t.scrollWidth > 0) {
+        setWidthRef.current = t.scrollWidth / 3;
+        offsetRef.current = setWidthRef.current;
+      }
+      if (pausedRef.current) {
+        velocityRef.current *= 0.9;
+      } else if (!draggingRef.current) {
+        velocityRef.current += (targetVelRef.current - velocityRef.current) * 0.04;
+        offsetRef.current += velocityRef.current;
+      }
+      const w = setWidthRef.current;
+      if (w > 0) {
+        if (offsetRef.current > w * 2) offsetRef.current -= w;
+        if (offsetRef.current < w) offsetRef.current += w;
+      }
+      t.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
+
+      const tiltTarget = Math.max(-6, Math.min(6, velocityRef.current * -2.4));
+      tiltSetterRef.current += (tiltTarget - tiltSetterRef.current) * 0.12;
+      setTilt(prev => Math.abs(prev - tiltSetterRef.current) > 0.15 ? tiltSetterRef.current : prev);
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const tapStartRef = useRef({ x: 0, y: 0, t: 0 });
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const onDown = (e: PointerEvent) => {
+      draggingRef.current = true;
+      lastDragRef.current = { x: e.clientX, t: performance.now() };
+      tapStartRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+      el.setPointerCapture?.(e.pointerId);
+      el.style.cursor = 'grabbing';
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
+      const dx = e.clientX - lastDragRef.current.x;
+      const dt = Math.max(performance.now() - lastDragRef.current.t, 1);
+      offsetRef.current -= dx;
+      velocityRef.current = -dx / dt * 16;
+      lastDragRef.current = { x: e.clientX, t: performance.now() };
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      el.style.cursor = 'grab';
+
+      const drift = Math.hypot(e.clientX - tapStartRef.current.x, e.clientY - tapStartRef.current.y);
+      const duration = performance.now() - tapStartRef.current.t;
+      if (drift < 8 && duration < 300) {
+        el.releasePointerCapture?.(e.pointerId);
+        const card = document.elementsFromPoint(e.clientX, e.clientY)
+          .find(el => el.matches('[data-dish-id]')) as HTMLElement | undefined;
+        if (card) {
+          const idx = parseInt(card.dataset.dishId!, 10);
+          const dish = tripled[idx];
+          if (dish) onTap(dish);
+        }
+      }
+    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('pointerleave', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('pointerleave', onUp);
+    };
+  }, [tripled, onTap]);
+
+  const onEnter = () => { targetVelRef.current = 0; };
+  const onLeave = () => { targetVelRef.current = 0.5; };
+
+  return (
+    <div
+      ref={wrapperRef}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      style={{
+        position: 'relative', cursor: 'grab', userSelect: 'none', touchAction: 'pan-y',
+        padding: '8px 0 4px',
+        WebkitMaskImage: 'linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)',
+        maskImage: 'linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)',
+      }}
+    >
+      <div
+        ref={trackRef}
+        style={{ display: 'flex', gap: 14, paddingInline: 20, willChange: 'transform', width: 'max-content' }}
+      >
+        {tripled.map((dish, i) => {
+          const menuCard = (i + 1) % list.length === 0 && (
+            <Link
+              key={'cta-' + i}
+              to="/menu"
+              style={{
+                position: 'relative', flex: '0 0 auto', width: 240, aspectRatio: '3 / 4.2',
+                borderRadius: 18, overflow: 'hidden',
+                background: 'var(--stone-900)', border: '1px solid rgba(212,175,55,0.25)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: 24, textAlign: 'center', textDecoration: 'none',
+                transform: `rotate(${tilt}deg)`,
+                transition: 'transform 220ms ease-out, box-shadow 220ms',
+                boxShadow: '0 14px 32px -14px rgba(0,0,0,0.35)',
+              }}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 999,
+                background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 16,
+              }}>
+                <ArrowRight size={22} color="var(--gold)" />
+              </div>
+              <h3 style={{
+                fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 18,
+                color: '#fff', margin: '0 0 8px',
+              }}>
+                {language === 'en' ? 'Explore Full Menu' : 'Бүтэн цэс'}
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--stone-400)', margin: 0, lineHeight: 1.4 }}>
+                {language === 'en' ? 'Discover all our dishes' : 'Бүх хоолтой танилцах'}
+              </p>
+            </Link>
+          );
+          return (
+            <React.Fragment key={dish.id + '-' + i}>
+              <article
+                data-dish-id={i}
+                style={{
+                  position: 'relative', flex: '0 0 auto', width: 240, aspectRatio: '3 / 4.2',
+                  borderRadius: 18, overflow: 'hidden', background: '#1a1510',
+                  transform: `rotate(${tilt}deg)`,
+                  transition: 'transform 220ms ease-out, box-shadow 220ms',
+                  boxShadow: '0 14px 32px -14px rgba(0,0,0,0.35)',
+                  cursor: 'pointer',
+                }}
+              >
+                <DishImage dish={dish} />
+                <CardInfo dish={dish} compact />
+              </article>
+              {menuCard}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 18, padding: '0 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+        color: 'var(--stone-400)',
+      }}>
+        <ArrowRight size={12} style={{ transform: 'rotate(180deg)' }} />
+        <span>Drag to slow · Tap to open</span>
+        <ArrowRight size={12} />
+      </div>
+    </div>
+  );
+}
+
+// ─── DISH IMAGE ──────────────────────────────────────────────
+function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number }) {
+  const hasImage = !!dish.image;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {hasImage ? (
+        <img
+          src={dish.image}
+          alt={dish.name}
+          referrerPolicy="no-referrer"
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%', objectFit: 'cover',
+            transform: parallaxX !== 0 ? `translateX(${parallaxX}px) scale(1.1)` : 'none',
+            transition: parallaxX !== 0 ? 'transform 80ms linear' : 'none',
+          }}
+        />
+      ) : (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `radial-gradient(ellipse 80% 60% at 40% 30%, #7c3f28, transparent 65%),
+            radial-gradient(circle at 50% 50%, #2a1a0e, #1a1510 70%)`,
+        }} />
+      )}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.85) 100%)',
+        pointerEvents: 'none',
+      }} />
+    </div>
+  );
+}
+
+// ─── CARD INFO ───────────────────────────────────────────────
+function CardInfo({ dish, compact = false }: { dish: MenuItem; compact?: boolean }) {
+  const minPrice = Math.min(dish.price, ...(dish.portions?.map(p => p.price) || [dish.price]));
+  return (
+    <div style={{
+      position: 'absolute', left: 0, right: 0, bottom: 0,
+      padding: compact ? '14px 16px' : '20px 22px',
+      color: '#fff',
+    }}>
+      <h3 style={{
+        fontFamily: 'var(--font-serif)', fontWeight: 700,
+        fontSize: compact ? 18 : 24, lineHeight: 1.15, letterSpacing: '-0.012em',
+        margin: '0 0 6px', color: '#fff',
+        textShadow: '0 2px 14px rgba(0,0,0,0.4)',
+      }}>{dish.name}</h3>
+      <p style={{
+        fontSize: compact ? 11.5 : 13, lineHeight: 1.4, color: 'rgba(255,255,255,0.78)',
+        margin: '0 0 12px',
+        display: '-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient: 'vertical' as const,
+        overflow: 'hidden',
+      }}>{dish.description}</p>
+      <div style={{
+        fontFamily: 'var(--font-serif)', fontWeight: 700,
+        fontSize: compact ? 16 : 19, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
+        letterSpacing: '0.01em',
+      }}>₮{minPrice.toLocaleString()}</div>
+    </div>
+  );
+}
+
+// ─── BOTTOM SHEET ────────────────────────────────────────────
+function BottomSheet({ dish, onClose, onAdd, language }: {
+  dish: MenuItem;
+  onClose: () => void;
+  onAdd: (d: MenuItem & { qty: number }) => void;
+  language: string;
+}) {
+  const [qty, setQty] = useState(1);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsVisible(true));
+    document.body.style.overflow = 'hidden';
+    return () => {
+      cancelAnimationFrame(id);
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  const close = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 260);
+  };
+
+  if (!dish) return null;
+
+  const cuisineLabels: Record<string, string> = {
+    European: language === 'en' ? 'European' : 'Европ',
+    Asian: language === 'en' ? 'Asian' : 'Ази',
+    Mongolian: language === 'en' ? 'Mongolian' : 'Монгол',
+    Drinks: language === 'en' ? 'Drinks' : 'Ундаа',
+  };
+  const cuisineLabel = cuisineLabels[dish.category] || '';
+  const minPrice = Math.min(dish.price, ...(dish.portions?.map(p => p.price) || [dish.price]));
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div onClick={close} style={{
+        position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        opacity: isVisible ? 1 : 0, transition: 'opacity 240ms ease-out',
+      }} />
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: 480, maxHeight: '88vh', overflow: 'hidden',
+        background: '#fcfaf5', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column',
+        transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 320ms cubic-bezier(.22,.95,.36,1)',
+        boxShadow: '0 -24px 48px -12px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <span style={{ display: 'block', width: 40, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.18)' }} />
+        </div>
+
+        <div style={{
+          height: 220, position: 'relative', overflow: 'hidden',
+          background: `radial-gradient(ellipse 80% 60% at 40% 30%, #7c3f28, transparent 65%),
+            radial-gradient(circle at 50% 50%, #2a1a0e, #1a1510 70%)`,
+        }}>
+          {dish.image && (
+            <img
+              src={dish.image}
+              alt={dish.name}
+              referrerPolicy="no-referrer"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          )}
+          <button onClick={close} aria-label="Close" style={{
+            position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+            border: 'none', color: '#fff', borderRadius: 999, width: 36, height: 36, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <X size={16} />
+          </button>
+          {cuisineLabel && (
+            <span style={{
+              position: 'absolute', bottom: 14, left: 14,
+              background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)',
+              color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase' as const,
+              padding: '6px 12px', borderRadius: 999,
+            }}>{cuisineLabel}</span>
+          )}
+        </div>
+
+        <div style={{ padding: '20px 24px 24px', overflowY: 'auto' }}>
+          <h3 style={{
+            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 26, color: 'var(--stone-900)',
+            margin: '0 0 10px', letterSpacing: '-0.01em',
+          }}>{dish.name}</h3>
+          <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--stone-500)', margin: '0 0 22px' }}>
+            {dish.description}
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: 'var(--stone-500)' }}>
+              {language === 'en' ? 'Quantity' : 'Тоо ширхэг'}
+            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1510', color: '#fff', borderRadius: 999, padding: 5 }}>
+              <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{
+                background: 'transparent', border: 'none', color: 'var(--gold)', width: 32, height: 32,
+                borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}><Minus size={14} /></button>
+              <span style={{ minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>{qty}</span>
+              <button onClick={() => setQty(q => q + 1)} style={{
+                background: 'var(--gold)', border: 'none', color: '#1a1510', width: 32, height: 32,
+                borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}><Plus size={14} /></button>
+            </div>
+          </div>
+
+          <button onClick={() => onAdd({ ...dish, qty })} style={{
+            width: '100%', background: 'var(--red-deep)', color: '#fff', border: 'none', borderRadius: 999,
+            padding: '15px 22px', fontSize: 13, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between',
+            fontFamily: 'var(--font-sans)',
+            boxShadow: '0 14px 30px -10px rgba(139,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)',
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <Plus size={14} /> {language === 'en' ? 'Add to Cart' : 'Сагсанд нэмэх'}
+            </span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-serif)', fontSize: 16, letterSpacing: 0 }}>
+              ₮{(minPrice * qty).toLocaleString()}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
