@@ -45,15 +45,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!pendingOrderId) return;
 
-    // Check if 20 mins passed
+    // Stretch the local cleanup to 35 min for bank-transfer orders (the server-side
+    // PAYMENT_WINDOW_MINUTES is 30; +5 buffer so we don't drop a still-valid pending order).
+    // Cash orders keep the original 20-min cleanup.
     const orderTime = localStorage.getItem('grand_pending_order_time');
     if (orderTime) {
       const diff = (new Date().getTime() - new Date(orderTime).getTime()) / 60000;
-      if (diff >= 20) {
+      if (diff >= 35) {
         setPendingOrderId(null);
         return;
       }
     }
+
+    // Track previous paymentStatus so we only toast on the transition, not every snapshot.
+    let prevPaymentStatus: string | undefined;
 
     const unsubscribe = onSnapshot(doc(db, 'orders', pendingOrderId), (snapshot) => {
       if (!snapshot.exists()) {
@@ -64,13 +69,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const orderData = snapshot.data();
       setPendingOrderData(orderData);
-      
+
+      // Payment status transitions — both QPay and bank-transfer flows go
+      // through AWAITING_PAYMENT → CONFIRMED (or EXPIRED).
+      const newPaymentStatus = orderData.paymentStatus;
+      const isNonCashPayment =
+        orderData.paymentMethod === 'qpay' ||
+        orderData.paymentMethod === 'bank_transfer';
+      if (isNonCashPayment && newPaymentStatus !== prevPaymentStatus) {
+        if (newPaymentStatus === 'CONFIRMED') {
+          if (orderData.paymentMethod === 'qpay') {
+            toast.success(language === 'en'
+              ? 'QPay payment confirmed! Your order is being prepared.'
+              : 'QPay төлбөр амжилттай! Захиалга бэлтгэгдэж байна.');
+          } else {
+            toast.success(language === 'en'
+              ? 'Payment confirmed! Your order is being prepared.'
+              : 'Төлбөр баталгаажлаа! Захиалга бэлтгэгдэж байна.');
+          }
+        } else if (newPaymentStatus === 'EXPIRED') {
+          toast.error(language === 'en'
+            ? 'Payment window expired. Please reorder.'
+            : 'Төлбөрийн хугацаа дууслаа. Захиалгаа дахин өгнө үү.');
+          setPendingOrderId(null);
+          setPendingOrderData(null);
+          return;
+        }
+      }
+      prevPaymentStatus = newPaymentStatus;
+
       if (orderData.status !== 'pending') {
         setPendingOrderId(null);
         setPendingOrderData(null);
 
         if (orderData.status === 'cancelled') {
-          toast.error(language === 'en' 
+          toast.error(language === 'en'
             ? "Your order was cancelled by the restaurant."
             : "Таны захиалгыг ресторан цуцаллаа.");
         }

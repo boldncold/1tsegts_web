@@ -38,6 +38,30 @@ export interface CartItem extends MenuItem {
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'pickup' | 'kiosk';
 
+// Payment-method + payment-status are kept SEPARATE from kitchen `status`.
+// An order can be paymentStatus=CONFIRMED while status=preparing; the kitchen
+// should never start cooking a non-cash order until paymentStatus is CONFIRMED.
+// For cash orders the payment fields stay default (paymentStatus stays undefined
+// or 'CONFIRMED' if you want to require any explicit ack).
+//
+// 'qpay' is the primary payment method (one-tap pay via QPay-supported bank
+// apps). 'cash' and 'bank_transfer' are kept as side options.
+export type PaymentMethod = 'qpay' | 'cash' | 'bank_transfer';
+export type PaymentStatus =
+  | 'AWAITING_PAYMENT'   // QR shown / ref code shown to customer, waiting for payment
+  | 'CONFIRMED'          // QPay webhook confirmed, OR admin verified bank credit
+  | 'EXPIRED'            // payment window passed, order auto-cancelled
+  | 'MANUAL_REVIEW'      // ambiguous — wrong amount, missing ref, etc.
+  | 'REFUNDED';
+
+/** A bank deeplink entry from QPay's `qPay_deeplink` array. */
+export interface QpayBankDeeplink {
+  name: string;          // "Khan bank"
+  description: string;   // "Хаан банк"
+  logo: string;          // CDN logo URL
+  link: string;          // bank-app-specific deeplink (khanbank://q?qPay_QRcode=...)
+}
+
 export interface Order {
   id: string;
   items: {
@@ -55,12 +79,65 @@ export interface Order {
   notes?: string;
   status: OrderStatus;
   timestamp: string;
+
+  // Payment fields — all optional so the existing cash flow keeps working unchanged.
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  referenceCode?: string;        // e.g. "GR-K7P3M9", appears in bank memo
+  amountMnt?: number;            // mirror of `total` rounded to integer MNT
+  paymentExpiresAt?: string;     // ISO timestamp; client expires after this
+  matchedTxId?: string;          // id of the matched bank_transactions doc
+  paidAt?: string;               // ISO timestamp set when payment confirmed
+  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse';
+
+  // QPay-specific fields (set when createQpayInvoice cloud function returns)
+  qpayInvoiceId?: string;        // QPay invoice uuid — passed to /payment/check
+  qpayPaymentId?: string;        // QPay payment id, set by webhook on PAID
+  qpayQrText?: string;           // EMV-MPM QR payload string
+  qpayQrImage?: string;          // base64 PNG
+  qpayShortUrl?: string;         // https://s.qpay.mn/... — short link, opens QPay
+  qpayDeeplinks?: QpayBankDeeplink[];
+
+  // Admin test-mode fields
+  isTest?: boolean;              // placed by an admin while signed in, bypassing customer gates
+  adminDiscountMnt?: number;     // ₮ subtracted from cart subtotal before charging
 }
 
 export interface UserProfile {
   uid: string;
   email: string;
   role: 'admin' | 'user';
+}
+
+/**
+ * Bank credit notifications, primarily ingested from Khan Bank emails to
+ * `battsetseg1977@gmail.com` via a Gmail Apps Script (see GMAIL_INGESTION_SETUP.md).
+ * Used by the Bank History admin tab.
+ */
+export type BankTxSource = 'manual' | 'gmail_apps_script' | 'gmail_api';
+export type BankTxDirection = 'credit' | 'debit';
+export type BankTxMatchStatus =
+  | 'unmatched'         // no order ref code in description
+  | 'matched'           // ref code matches an AWAITING_PAYMENT order with same amount
+  | 'amount_mismatch'   // ref code matches an order but amount differs
+  | 'unknown_ref'       // looks like a ref code but no order has it
+  | 'reconciled';       // tx has been linked to an order that's now CONFIRMED
+
+export interface BankTransaction {
+  id: string;
+  source: BankTxSource;
+  amountMnt: number;            // integer MNT
+  direction: BankTxDirection;   // we mostly care about 'credit'
+  description: string;          // raw memo text from the bank
+  referenceCode?: string;       // extracted GR-XXXXXX if found in description
+  bankTxId?: string;            // bank's own transaction reference number (from email)
+  senderName?: string;
+  senderAccount?: string;
+  postedAt: string;             // ISO timestamp from the bank notification
+  receivedAt: string;           // ISO timestamp when we ingested it
+  matchedOrderId?: string;      // set after admin confirms the match
+  matchStatus: BankTxMatchStatus;
+  rawEmailSnippet?: string;     // first ~200 chars of the email for debugging
 }
 
 export interface StoreSettings {

@@ -42,7 +42,32 @@
         "kioskNumber": { "type": "string" },
         "notes": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "preparing", "ready", "completed", "cancelled"] },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "timestamp": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string", "enum": ["qpay", "cash", "bank_transfer"] },
+        "paymentStatus": { "type": "string", "enum": ["AWAITING_PAYMENT", "CONFIRMED", "EXPIRED", "MANUAL_REVIEW", "REFUNDED"] },
+        "referenceCode": { "type": "string" },
+        "amountMnt": { "type": "integer" },
+        "paymentExpiresAt": { "type": "string", "format": "date-time" },
+        "matchedTxId": { "type": "string" },
+        "paidAt": { "type": "string", "format": "date-time" },
+        "paidVia": { "type": "string", "enum": ["qpay", "admin_manual", "monpay", "email_parse"] },
+        "qpayInvoiceId": { "type": "string" },
+        "qpayPaymentId": { "type": "string" },
+        "qpayQrText": { "type": "string" },
+        "qpayQrImage": { "type": "string" },
+        "qpayShortUrl": { "type": "string" },
+        "qpayDeeplinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "logo": { "type": "string" },
+              "link": { "type": "string" }
+            }
+          }
+        }
       },
       "required": ["items", "total", "customerName", "phone", "orderType", "status", "timestamp"]
     }

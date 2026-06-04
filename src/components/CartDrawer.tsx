@@ -1,20 +1,186 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, CheckCircle } from 'lucide-react';
+import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, CheckCircle, Copy, Banknote, Building2, Clock, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc } from '../firebase';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import ConfirmModal from './ConfirmModal';
+import { generateReferenceCode } from '../lib/referenceCode';
+import { BANK_DETAILS, PAYMENT_WINDOW_MINUTES } from '../lib/bankConfig';
+import { QPAY_ENABLED, QPAY_PAYMENT_WINDOW_MINUTES } from '../lib/qpayConfig';
+import QpayPaymentPanel from './QpayPaymentPanel';
+import type { PaymentMethod } from '../types';
+
+/**
+ * Bank-transfer payment instructions panel.
+ *
+ * Shown when the customer's pending order is paymentMethod=bank_transfer and
+ * paymentStatus=AWAITING_PAYMENT. The customer reads off the account number,
+ * makes the transfer in their banking app with the reference code in the
+ * description, then waits — the admin will mark the order paid in the admin
+ * dashboard, which flips paymentStatus to CONFIRMED, which the existing
+ * onSnapshot listener in CartContext picks up and surfaces as a toast.
+ */
+function BankPaymentPanel({ order }: { order: any }) {
+  const { language } = useLanguage();
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [, forceTick] = useState(0);
+
+  // Re-render every 30s so the countdown updates.
+  React.useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const copy = async (value: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      toast.success(language === 'en' ? 'Copied!' : 'Хуулагдлаа');
+      setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      // clipboard can fail on http or older browsers — fall back to selection
+      toast.error(language === 'en' ? 'Copy failed — long-press to copy' : 'Хуулж чадсангүй');
+    }
+  };
+
+  const minutesLeft = order.paymentExpiresAt
+    ? Math.max(
+        0,
+        Math.ceil((new Date(order.paymentExpiresAt).getTime() - Date.now()) / 60_000)
+      )
+    : null;
+
+  const Row = ({ label, value, field, mono = false }: {
+    label: string; value: string; field: string; mono?: boolean;
+  }) => (
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-stone-200 last:border-b-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-0.5">{label}</p>
+        <p className={cn(
+          "text-stone-900 font-semibold truncate",
+          mono ? "tabular-nums text-base" : "text-sm"
+        )}>{value}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => copy(value, field)}
+        className={cn(
+          "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-full border transition-all flex items-center gap-1.5 shrink-0",
+          copiedField === field
+            ? "bg-green-50 text-green-700 border-green-200"
+            : "bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900"
+        )}
+      >
+        {copiedField === field ? <CheckCircle size={12} /> : <Copy size={12} />}
+        {language === 'en'
+          ? (copiedField === field ? 'Copied' : 'Copy')
+          : (copiedField === field ? 'Хуулсан' : 'Хуулах')}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="rounded-2xl overflow-hidden border-2 border-amber-400 shadow-xl">
+      {/* Status banner */}
+      <div className="bg-amber-400 px-5 py-3 flex items-center gap-3">
+        <Banknote size={22} className="text-stone-900" />
+        <div className="flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900/70">
+            {language === 'en' ? 'Awaiting Payment' : 'Төлбөр хүлээгдэж байна'}
+          </p>
+          <p className="text-sm font-bold text-stone-900">
+            {language === 'en'
+              ? `Transfer ₮${order.amountMnt?.toLocaleString()} to confirm your order`
+              : `Захиалгаа баталгаажуулахын тулд ₮${order.amountMnt?.toLocaleString()} шилжүүлнэ үү`}
+          </p>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-white px-5 py-4 space-y-3">
+        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <Building2 size={16} className="text-amber-700 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-900 leading-snug">
+            {language === 'en'
+              ? 'Open your Khan Bank app, transfer the exact amount below, and put the reference code in the description.'
+              : 'Хаан банкны аппликейшнаа нээж, доорх дансанд яг тэгдэг дүнг шилжүүлээд, гүйлгээний утгад жишиг кодыг бичнэ үү.'}
+          </p>
+        </div>
+
+        <div className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-1">
+          <Row
+            label={language === 'en' ? 'Bank' : 'Банк'}
+            value={BANK_DETAILS.bankName[language]}
+            field="bank"
+          />
+          <Row
+            label={language === 'en' ? 'Account Number' : 'Дансны дугаар'}
+            value={BANK_DETAILS.accountNumber}
+            field="account"
+            mono
+          />
+          <Row
+            label={language === 'en' ? 'Account Holder' : 'Дансны эзэн'}
+            value={BANK_DETAILS.accountHolder}
+            field="holder"
+          />
+          <Row
+            label={language === 'en' ? 'Amount (MNT)' : 'Шилжүүлэх дүн (₮)'}
+            value={order.amountMnt?.toLocaleString() ?? ''}
+            field="amount"
+            mono
+          />
+          <Row
+            label={language === 'en' ? 'Reference Code' : 'Гүйлгээний утга'}
+            value={order.referenceCode ?? ''}
+            field="ref"
+            mono
+          />
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl">
+          <span className="text-xs text-red-700 leading-snug">
+            <strong>
+              {language === 'en' ? 'Important: ' : 'Анхаар: '}
+            </strong>
+            {language === 'en'
+              ? `Without the reference code "${order.referenceCode}" in the description, we cannot match your transfer.`
+              : `Гүйлгээний утгад "${order.referenceCode}" гэж бичээгүй бол шилжүүлгийг тань таних боломжгүй.`}
+          </span>
+        </div>
+
+        {minutesLeft !== null && (
+          <div className="flex items-center justify-center gap-2 px-3 py-2 bg-stone-100 rounded-full">
+            <Clock size={14} className="text-stone-600" />
+            <span className="text-xs font-semibold text-stone-700">
+              {language === 'en' ? 'Payment window: ' : 'Хугацаа: '}
+              <span className="tabular-nums">{minutesLeft} {language === 'en' ? 'min left' : 'минут'}</span>
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { cart, total, removeFromCart, updateQuantity, updatePackaging, clearCart, pendingOrderId, pendingOrderData, setPendingOrderId } = useCart();
   const { t, language } = useLanguage();
   const { storeOpen } = useStoreSettings();
+  const { isAdmin } = useAuth();
+  // Admins testing the customer flow bypass all the gates (store hours,
+  // cancellation block, pending-order lock) and get a custom-discount input.
+  const effectiveStoreOpen = storeOpen || isAdmin;
+  const [adminDiscount, setAdminDiscount] = useState(0);
+  const clampedDiscount = Math.max(0, Math.min(adminDiscount, Math.floor(total)));
+  const chargedTotal = Math.max(0, total - clampedDiscount);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -28,32 +194,38 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     phone: '',
     notes: '',
     orderType: 'pickup' as 'pickup' | 'kiosk',
-    kioskNumber: ''
+    kioskNumber: '',
+    // QPay is the primary payment method. Falls back to cash if the QPAY_ENABLED
+    // feature flag is off (e.g. during a soft-rollback).
+    paymentMethod: (QPAY_ENABLED ? 'qpay' : 'cash') as PaymentMethod
   });
+  const [showOtherPaymentMethods, setShowOtherPaymentMethods] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
-    if (!storeOpen) {
+    if (!storeOpen && !isAdmin) {
       toast.error(t('cart.closed'));
       return;
     }
 
-    // Security Checks
-    const blockUntil = localStorage.getItem('grand_block_until');
-    if (blockUntil && new Date(blockUntil) > new Date()) {
-      const timeLeft = Math.ceil((new Date(blockUntil).getTime() - new Date().getTime()) / 60000);
-      toast.error(language === 'en' 
-        ? `You are temporarily blocked from ordering for ${timeLeft} more minutes due to multiple cancellations.` 
-        : `Та олон удаа захиалга цуцалсан тул ${timeLeft} минутын турш захиалга өгөх боломжгүй байна.`);
-      return;
-    }
+    if (!isAdmin) {
+      // Security Checks — skipped for admins testing the flow.
+      const blockUntil = localStorage.getItem('grand_block_until');
+      if (blockUntil && new Date(blockUntil) > new Date()) {
+        const timeLeft = Math.ceil((new Date(blockUntil).getTime() - new Date().getTime()) / 60000);
+        toast.error(language === 'en'
+          ? `You are temporarily blocked from ordering for ${timeLeft} more minutes due to multiple cancellations.`
+          : `Та олон удаа захиалга цуцалсан тул ${timeLeft} минутын турш захиалга өгөх боломжгүй байна.`);
+        return;
+      }
 
-    if (pendingOrderId) {
-      toast.error(language === 'en'
-        ? "You already have a pending order. Please wait for it to be processed."
-        : "Танд хүлээгдэж буй захиалга байна. Түр хүлээнэ үү.");
-      return;
+      if (pendingOrderId) {
+        toast.error(language === 'en'
+          ? "You already have a pending order. Please wait for it to be processed."
+          : "Танд хүлээгдэж буй захиалга байна. Түр хүлээнэ үү.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -73,14 +245,20 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           if (item.selectedPortion !== undefined) mappedItem.selectedPortion = item.selectedPortion;
           return mappedItem;
         }),
-        total,
+        total: chargedTotal,
         customerName: formData.name || (formData.orderType === 'pickup' ? 'Pickup Customer' : 'Kiosk Customer'),
         phone: formData.phone || 'N/A',
         orderType: formData.orderType,
         orderNumber: generatedOrderNumber,
         status: 'pending',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        paymentMethod: formData.paymentMethod,
       };
+
+      if (isAdmin) {
+        order.isTest = true;
+        if (clampedDiscount > 0) order.adminDiscountMnt = clampedDiscount;
+      }
 
       if (formData.orderType === 'kiosk') {
         order.kioskNumber = formData.kioskNumber;
@@ -88,6 +266,36 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
       if (formData.notes) {
         order.notes = formData.notes;
+      }
+
+      // Admin test mode with a full discount (chargedTotal === 0) skips the
+      // payment-provider round trip — QPay/bank-transfer would reject a
+      // zero-amount invoice anyway.
+      const skipPayment = isAdmin && chargedTotal === 0;
+
+      if (skipPayment) {
+        order.paymentStatus = 'CONFIRMED';
+        order.paidVia = 'admin_manual';
+        order.amountMnt = 0;
+        order.paidAt = new Date().toISOString();
+      } else if (formData.paymentMethod === 'bank_transfer') {
+        // Bank-transfer-specific fields. For cash orders these stay absent so
+        // the existing "go to cashier" flow runs unchanged.
+        order.paymentStatus = 'AWAITING_PAYMENT';
+        order.referenceCode = generateReferenceCode();
+        order.amountMnt = Math.round(chargedTotal);
+        order.paymentExpiresAt = new Date(
+          Date.now() + PAYMENT_WINDOW_MINUTES * 60_000
+        ).toISOString();
+      } else if (formData.paymentMethod === 'qpay') {
+        // QPay flow: order is created in AWAITING_PAYMENT, the createQpayInvoice
+        // cloud function (called by QpayPaymentPanel on mount) fills in
+        // qpayInvoiceId / qpayQrText / etc.
+        order.paymentStatus = 'AWAITING_PAYMENT';
+        order.amountMnt = Math.round(chargedTotal);
+        order.paymentExpiresAt = new Date(
+          Date.now() + QPAY_PAYMENT_WINDOW_MINUTES * 60_000
+        ).toISOString();
       }
 
       const docRef = await addDoc(collection(db, 'orders'), order);
@@ -110,6 +318,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       setCompletedOrderType(formData.orderType);
       setOrderComplete(true);
       clearCart();
+      setAdminDiscount(0);
       toast.success(t('cart.success'));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
@@ -176,7 +385,31 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {pendingOrderId && pendingOrderData && !orderComplete && (
+              {/* QPay order awaiting payment: show QR + bank deeplinks. */}
+              {pendingOrderId && pendingOrderData && !orderComplete &&
+                pendingOrderData.paymentMethod === 'qpay' &&
+                pendingOrderData.paymentStatus === 'AWAITING_PAYMENT' && (
+                <div className="mb-6">
+                  <QpayPaymentPanel order={{ ...pendingOrderData, id: pendingOrderId }} />
+                </div>
+              )}
+
+              {/* Bank-transfer order awaiting payment: show bank instructions
+                  instead of the "go to cashier" panel. */}
+              {pendingOrderId && pendingOrderData && !orderComplete &&
+                pendingOrderData.paymentMethod === 'bank_transfer' &&
+                pendingOrderData.paymentStatus === 'AWAITING_PAYMENT' && (
+                <div className="mb-6">
+                  <BankPaymentPanel order={pendingOrderData} />
+                </div>
+              )}
+
+              {/* Active-order panel: shown for cash orders and for non-cash orders
+                  (QPay, bank-transfer) whose payment has already been confirmed. */}
+              {pendingOrderId && pendingOrderData && !orderComplete &&
+                ((pendingOrderData.paymentMethod !== 'bank_transfer' &&
+                  pendingOrderData.paymentMethod !== 'qpay') ||
+                 pendingOrderData.paymentStatus === 'CONFIRMED') && (
                 <div className="mb-6 rounded-2xl overflow-hidden border border-[#D4AF37]/30 shadow-lg">
                   {/* Header bar */}
                   <div className="bg-stone-900 px-5 py-4 flex justify-between items-center">
@@ -238,12 +471,45 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <div className="space-y-1">
                     <h3 className="font-serif font-bold text-2xl text-stone-900">{t('cart.order_received')}</h3>
                     <p className="text-stone-400 text-sm">
-                      {language === 'en' ? 'Your order is being prepared' : 'Таны захиалга бэлтгэгдэж байна'}
+                      {pendingOrderData?.paymentMethod === 'qpay' &&
+                       pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT'
+                        ? (language === 'en'
+                            ? 'Scan the QR below to pay with any bank app'
+                            : 'Доорх QR-г аль ч банкны аппаар сканнэж төлнө үү')
+                        : pendingOrderData?.paymentMethod === 'bank_transfer' &&
+                          pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT'
+                          ? (language === 'en'
+                              ? 'Complete the bank transfer below to confirm'
+                              : 'Захиалгаа баталгаажуулахын тулд доорх дансаар шилжүүлнэ үү')
+                          : (language === 'en'
+                              ? 'Your order is being prepared'
+                              : 'Таны захиалга бэлтгэгдэж байна')}
                     </p>
                   </div>
 
-                  {/* Step-by-step instructions */}
-                  {completedOrderType === 'pickup' ? (
+                  {/* QPay panel — shown when this is a QPay order awaiting payment. */}
+                  {pendingOrderData?.paymentMethod === 'qpay' &&
+                   pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT' && (
+                    <div className="w-full">
+                      <QpayPaymentPanel order={{ ...pendingOrderData, id: pendingOrderId }} />
+                    </div>
+                  )}
+
+                  {/* Bank-transfer instructions panel — only when awaiting payment.
+                      Replaces the "go to cashier" steps below. */}
+                  {pendingOrderData?.paymentMethod === 'bank_transfer' &&
+                   pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT' && (
+                    <div className="w-full">
+                      <BankPaymentPanel order={pendingOrderData} />
+                    </div>
+                  )}
+
+                  {/* Step-by-step instructions — only for cash orders or post-payment.
+                      Hidden while QPay/bank-transfer are awaiting payment. */}
+                  {!((pendingOrderData?.paymentMethod === 'bank_transfer' ||
+                      pendingOrderData?.paymentMethod === 'qpay') &&
+                     pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT') &&
+                   (completedOrderType === 'pickup' ? (
                     <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left space-y-4">
                       <h4 className="text-base font-bold text-amber-900 text-center">
                         {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
@@ -285,7 +551,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         <a href="tel:99138866" className="text-xl font-bold text-[#8B0000] hover:underline">99138866</a>
                       </div>
                     </div>
-                  )}
+                  ))}
 
                   {/* Order number — large & prominent */}
                   {orderNumber && (
@@ -426,10 +692,133 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
                       </div>
                     )}
-                    <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl">
-                      <p className="text-xs text-[#D4AF37] leading-relaxed">
-                        {t('cart.cash_only')}
-                      </p>
+                    {isAdmin && (
+                      <div className="space-y-2">
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[10px] uppercase tracking-[0.2em] text-amber-800 font-semibold text-center">
+                          {t('cart.admin.test_mode_hint')}
+                        </div>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                          {t('cart.admin.discount_label')}
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={Math.floor(total)}
+                          step={100}
+                          value={adminDiscount}
+                          onChange={(e) => setAdminDiscount(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
+                          className="w-full bg-white border border-amber-300 rounded-full px-5 py-3 text-stone-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all tabular-nums"
+                          placeholder="0"
+                        />
+                        {chargedTotal === 0 && clampedDiscount > 0 && (
+                          <p className="text-[11px] text-amber-700 italic px-1">
+                            {t('cart.admin.zero_charge_hint')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Payment method picker — QPay is primary, cash + bank
+                        transfer collapse into an "other methods" section. */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                        {t('cart.payment_method')}
+                      </label>
+
+                      {/* Primary: QPay (only shown when the feature flag is on) */}
+                      {QPAY_ENABLED && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, paymentMethod: 'qpay' })}
+                          className={cn(
+                            "w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 relative",
+                            formData.paymentMethod === 'qpay'
+                              ? "bg-[#8B0000] text-white border-[#8B0000] shadow-lg shadow-red-900/20"
+                              : "bg-white text-stone-700 border-[#D4AF37]/40 hover:border-[#D4AF37]"
+                          )}
+                        >
+                          <span className={cn(
+                            "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                            formData.paymentMethod === 'qpay' ? "bg-white/15" : "bg-[#D4AF37]/15"
+                          )}>
+                            <QrCode size={22} className={formData.paymentMethod === 'qpay' ? 'text-white' : 'text-[#D4AF37]'} />
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-base">{t('cart.payment.qpay')}</p>
+                              <span className={cn(
+                                "text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full",
+                                formData.paymentMethod === 'qpay'
+                                  ? "bg-white/20 text-white"
+                                  : "bg-[#D4AF37] text-stone-900"
+                              )}>
+                                {language === 'en' ? 'Recommended' : 'Санал болгож буй'}
+                              </span>
+                            </div>
+                            <p className={cn(
+                              "text-xs mt-0.5",
+                              formData.paymentMethod === 'qpay' ? "text-white/80" : "text-stone-500"
+                            )}>
+                              {language === 'en'
+                                ? 'One-tap pay from any bank app'
+                                : 'Аль ч банкны аппаас нэг товшилтоор'}
+                            </p>
+                          </div>
+                          {formData.paymentMethod === 'qpay' && <CheckCircle size={18} className="text-white shrink-0" />}
+                        </button>
+                      )}
+
+                      {/* Collapsible — other payment methods */}
+                      <button
+                        type="button"
+                        onClick={() => setShowOtherPaymentMethods((v) => !v)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold hover:text-stone-900 transition-colors"
+                      >
+                        <span>
+                          {language === 'en' ? 'Other payment methods' : 'Бусад төлбөрийн арга'}
+                        </span>
+                        {showOtherPaymentMethods ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+
+                      {showOtherPaymentMethods && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, paymentMethod: 'cash' })}
+                            className={cn(
+                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
+                              formData.paymentMethod === 'cash'
+                                ? "bg-[#8B0000] text-white border-[#8B0000]"
+                                : "bg-white text-stone-500 border-gray-200 hover:border-stone-300"
+                            )}
+                          >
+                            <Banknote size={16} />
+                            {t('cart.payment.cash')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, paymentMethod: 'bank_transfer' })}
+                            className={cn(
+                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
+                              formData.paymentMethod === 'bank_transfer'
+                                ? "bg-[#8B0000] text-white border-[#8B0000]"
+                                : "bg-white text-stone-500 border-gray-200 hover:border-stone-300"
+                            )}
+                          >
+                            <Building2 size={16} />
+                            {t('cart.payment.bank')}
+                          </button>
+                        </div>
+                      )}
+                      {formData.paymentMethod === 'bank_transfer' && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mt-2">
+                          <p className="text-xs text-amber-800 leading-relaxed">
+                            {language === 'en'
+                              ? `After confirming, you'll get bank details + a reference code. Transfer the exact amount to ${BANK_DETAILS.bankName.en} with the reference in the description. We confirm your order once we see the transfer.`
+                              : `Захиалгаа баталгаажуулсны дараа дансны мэдээлэл болон жишиг кодыг харуулна. ${BANK_DETAILS.bankName.mn}-ны данс руу яг тэгдэг дүнг гүйлгээний утганд жишиг кодтойгоо хамт шилжүүлнэ үү. Гүйлгээг харсны дараа баталгаажуулна.`}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <button
@@ -531,14 +920,39 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               <div className="p-6 border-t border-gray-100 bg-gray-50 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-stone-500 uppercase tracking-[0.2em] text-xs font-semibold">{t('cart.subtotal')}</span>
-                  <span className="text-2xl font-medium tabular-nums text-stone-900">₮{Math.round(total).toLocaleString()}</span>
+                  <span className={cn(
+                    "tabular-nums",
+                    isAdmin && clampedDiscount > 0
+                      ? "text-base font-medium text-stone-500 line-through"
+                      : "text-2xl font-medium text-stone-900"
+                  )}>₮{Math.round(total).toLocaleString()}</span>
                 </div>
-                {isBlocked && (
+                {isAdmin && clampedDiscount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-amber-700 uppercase tracking-[0.2em] text-xs font-semibold">
+                        {t('cart.admin.discount_label')}
+                      </span>
+                      <span className="tabular-nums text-amber-700 font-semibold">
+                        –₮{clampedDiscount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-stone-900 uppercase tracking-[0.2em] text-xs font-bold">
+                        {language === 'en' ? 'Charged' : 'Төлбөр'}
+                      </span>
+                      <span className="text-2xl font-bold tabular-nums text-stone-900">
+                        ₮{Math.round(chargedTotal).toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {isBlocked && !isAdmin && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center">
                     <p className="text-xs text-red-600 font-semibold uppercase tracking-widest">{blockReason}</p>
                   </div>
                 )}
-                {pendingOrderId && (
+                {pendingOrderId && !isAdmin && (
                   <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl text-center space-y-2">
                     <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-widest">
                       {language === 'en' ? 'Pending order must finish first' : 'Захиалга дуусахыг хүлээнэ үү'}
@@ -551,32 +965,32 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isCheckingOut ? (
                   <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !storeOpen || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
+                    disabled={isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95",
-                      (isSubmitting || !storeOpen || isBlocked || !!pendingOrderId || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
+                      (isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {isSubmitting ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
                       <>
-                        <span>{!storeOpen ? t('cart.closed') : t('cart.confirm_order')}</span>
-                        {storeOpen && <ArrowRight size={18} />}
+                        <span>{!effectiveStoreOpen ? t('cart.closed') : t('cart.confirm_order')}</span>
+                        {effectiveStoreOpen && <ArrowRight size={18} />}
                       </>
                     )}
                   </button>
                 ) : (
                   <button
                     onClick={() => setIsCheckingOut(true)}
-                    disabled={!storeOpen || !!pendingOrderId}
+                    disabled={!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)}
                     className={cn(
                       "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-lg shadow-red-900/20",
-                      (!storeOpen || !!pendingOrderId) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#6b0000]"
+                      (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#6b0000]"
                     )}
                   >
-                    <span>{!storeOpen ? t('cart.closed') : t('cart.proceed')}</span>
-                    {storeOpen && <ArrowRight size={18} />}
+                    <span>{!effectiveStoreOpen ? t('cart.closed') : t('cart.proceed')}</span>
+                    {effectiveStoreOpen && <ArrowRight size={18} />}
                   </button>
                 )}
               </div>

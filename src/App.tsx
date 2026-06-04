@@ -1,7 +1,8 @@
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { StoreSettingsProvider } from './context/StoreSettingsContext';
+import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'sonner';
 import Home from './components/Home';
 import AdminDashboard from './components/AdminDashboard';
@@ -12,7 +13,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
 import { useState, useEffect } from 'react';
-import { auth, db, onAuthStateChanged, doc, getDoc } from './firebase';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -27,29 +27,10 @@ function ScrollToTop() {
 function AppContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const isAdminRoute = location.pathname.startsWith('/admin');
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser && location.pathname === '/') {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          const userData = userDoc.data();
-          
-          const adminEmailDoc = await getDoc(doc(db, 'admin_emails', currentUser.email?.toLowerCase() || ''));
-          
-          if (userData?.role === 'admin' || currentUser.email === 'boldsaihanlolor@gmail.com' || adminEmailDoc.exists()) {
-            navigate('/admin');
-          }
-        } catch (error) {
-          console.error("Error checking admin status for redirect:", error);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [location.pathname, navigate]);
+  // No auto-redirect from / → /admin. Admins land on /admin via the footer
+  // link (or by typing the URL); from there they can use the Home button in
+  // the dashboard to browse customer pages in test mode.
 
   return (
     <div className="bg-white min-h-screen text-stone-900 selection:bg-[#D4AF37] selection:text-white">
@@ -78,11 +59,13 @@ export default function App() {
   return (
     <LanguageProvider>
       <StoreSettingsProvider>
-        <CartProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </CartProvider>
+        <Router>
+          <AuthProvider>
+            <CartProvider>
+              <AppContent />
+            </CartProvider>
+          </AuthProvider>
+        </Router>
       </StoreSettingsProvider>
     </LanguageProvider>
   );
