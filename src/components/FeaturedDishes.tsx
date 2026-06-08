@@ -8,10 +8,25 @@ import { useLanguage } from '../context/LanguageContext';
 
 type Variant = 'stack' | 'marquee';
 
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= breakpoint : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = () => setIsMobile(mq.matches);
+    handler();
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
   const [dishes, setDishes] = useState<MenuItem[]>([]);
   const { addToCart } = useCart();
   const { language } = useLanguage();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const featuredQuery = query(
@@ -60,17 +75,17 @@ export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
   return (
     <section style={{
       background: 'var(--stone-50, #fafaf9)',
-      paddingTop: 72,
-      paddingBottom: 48,
+      paddingTop: isMobile ? 44 : 72,
+      paddingBottom: isMobile ? 36 : 48,
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <div style={{ padding: '0 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '0 18px 20px' : '0 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>
           {language === 'en' ? 'Selected' : 'Онцлох'}
         </div>
         <h2 style={{
-          fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 30, lineHeight: 1.05,
+          fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 25 : 30, lineHeight: 1.05,
           letterSpacing: '-0.018em', margin: 0, color: 'var(--stone-900)',
         }}>
           {language === 'en' ? (
@@ -269,6 +284,11 @@ function StackDeck({ list, onTap }: { list: MenuItem[]; onTap: (d: MenuItem) => 
 
 // ─── MARQUEE BELT ────────────────────────────────────────────
 function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: MenuItem[]; onTap: (d: MenuItem) => void; paused?: boolean; language?: string }) {
+  const isMobile = useIsMobile();
+  const cardW = isMobile ? 168 : 240;
+  const cardGap = isMobile ? 12 : 14;
+  const cardAspect = '3 / 4';
+
   const trackRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
   const velocityRef = useRef(0.5);
@@ -283,6 +303,9 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
 
   const tripled = useMemo(() => [...list, ...list, ...list], [list]);
   const setWidthRef = useRef(0);
+
+  // Recompute the loop width when the card dimensions change (e.g. orientation / breakpoint change).
+  useEffect(() => { setWidthRef.current = 0; }, [isMobile, list.length]);
 
   useEffect(() => {
     const tick = () => {
@@ -305,9 +328,9 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
       }
       t.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
 
-      const tiltTarget = Math.max(-6, Math.min(6, velocityRef.current * -2.4));
-      tiltSetterRef.current += (tiltTarget - tiltSetterRef.current) * 0.12;
-      setTilt(prev => Math.abs(prev - tiltSetterRef.current) > 0.15 ? tiltSetterRef.current : prev);
+      const tiltTarget = Math.max(-2.4, Math.min(2.4, velocityRef.current * -1.1));
+      tiltSetterRef.current += (tiltTarget - tiltSetterRef.current) * 0.1;
+      setTilt(prev => Math.abs(prev - tiltSetterRef.current) > 0.1 ? tiltSetterRef.current : prev);
 
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -386,7 +409,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
     >
       <div
         ref={trackRef}
-        style={{ display: 'flex', gap: 14, paddingInline: 20, willChange: 'transform', width: 'max-content' }}
+        style={{ display: 'flex', gap: cardGap, paddingInline: isMobile ? 16 : 20, willChange: 'transform', width: 'max-content' }}
       >
         {tripled.map((dish, i) => {
           const menuCard = (i + 1) % list.length === 0 && (
@@ -394,30 +417,30 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
               key={'cta-' + i}
               to="/menu"
               style={{
-                position: 'relative', flex: '0 0 auto', width: 240, aspectRatio: '3 / 4.2',
+                position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
                 borderRadius: 18, overflow: 'hidden',
                 background: 'var(--stone-900)', border: '1px solid rgba(212,175,55,0.25)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: 24, textAlign: 'center', textDecoration: 'none',
+                padding: isMobile ? 18 : 24, textAlign: 'center', textDecoration: 'none',
                 transform: `rotate(${tilt}deg)`,
                 transition: 'transform 220ms ease-out, box-shadow 220ms',
                 boxShadow: '0 14px 32px -14px rgba(0,0,0,0.35)',
               }}
             >
               <div style={{
-                width: 48, height: 48, borderRadius: 999,
+                width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, borderRadius: 999,
                 background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 16,
+                marginBottom: isMobile ? 12 : 16,
               }}>
-                <ArrowRight size={22} color="var(--gold)" />
+                <ArrowRight size={isMobile ? 18 : 22} color="var(--gold)" />
               </div>
               <h3 style={{
-                fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 18,
+                fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 15 : 18,
                 color: '#fff', margin: '0 0 8px',
               }}>
                 {language === 'en' ? 'Explore Full Menu' : 'Бүтэн цэс'}
               </h3>
-              <p style={{ fontSize: 12, color: 'var(--stone-400)', margin: 0, lineHeight: 1.4 }}>
+              <p style={{ fontSize: isMobile ? 11 : 12, color: 'var(--stone-400)', margin: 0, lineHeight: 1.4 }}>
                 {language === 'en' ? 'Discover all our dishes' : 'Бүх хоолтой танилцах'}
               </p>
             </Link>
@@ -427,7 +450,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
               <article
                 data-dish-id={i}
                 style={{
-                  position: 'relative', flex: '0 0 auto', width: 240, aspectRatio: '3 / 4.2',
+                  position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
                   borderRadius: 18, overflow: 'hidden', background: '#1a1510',
                   transform: `rotate(${tilt}deg)`,
                   transition: 'transform 220ms ease-out, box-shadow 220ms',
@@ -436,7 +459,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
                 }}
               >
                 <DishImage dish={dish} />
-                <CardInfo dish={dish} compact />
+                <CardInfo dish={dish} compact mobile={isMobile} />
               </article>
               {menuCard}
             </React.Fragment>
@@ -445,14 +468,14 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
       </div>
 
       <div style={{
-        marginTop: 18, padding: '0 20px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-        fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+        marginTop: isMobile ? 14 : 18, padding: '0 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        fontSize: isMobile ? 10 : 11, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase' as const,
         color: 'var(--stone-400)',
       }}>
-        <ArrowRight size={12} style={{ transform: 'rotate(180deg)' }} />
-        <span>Drag to slow · Tap to open</span>
-        <ArrowRight size={12} />
+        <ArrowRight size={11} style={{ transform: 'rotate(180deg)' }} />
+        <span>{language === 'en' ? 'Drag to slow · Tap to open' : 'Чирж удаашруул · Дарж нээ'}</span>
+        <ArrowRight size={11} />
       </div>
     </div>
   );
@@ -493,30 +516,34 @@ function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number
 }
 
 // ─── CARD INFO ───────────────────────────────────────────────
-function CardInfo({ dish, compact = false }: { dish: MenuItem; compact?: boolean }) {
+function CardInfo({ dish, compact = false, mobile = false }: { dish: MenuItem; compact?: boolean; mobile?: boolean }) {
   const minPrice = Math.min(dish.price, ...(dish.portions?.map(p => p.price) || [dish.price]));
+  const small = compact && mobile;
   return (
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
-      padding: compact ? '14px 16px' : '20px 22px',
+      padding: small ? '12px 13px' : compact ? '14px 16px' : '20px 22px',
       color: '#fff',
     }}>
       <h3 style={{
         fontFamily: 'var(--font-serif)', fontWeight: 700,
-        fontSize: compact ? 18 : 24, lineHeight: 1.15, letterSpacing: '-0.012em',
-        margin: '0 0 6px', color: '#fff',
+        fontSize: small ? 15 : compact ? 18 : 24, lineHeight: 1.15, letterSpacing: '-0.012em',
+        margin: '0 0 5px', color: '#fff',
         textShadow: '0 2px 14px rgba(0,0,0,0.4)',
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
       }}>{dish.name}</h3>
-      <p style={{
-        fontSize: compact ? 11.5 : 13, lineHeight: 1.4, color: 'rgba(255,255,255,0.78)',
-        margin: '0 0 12px',
-        display: '-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient: 'vertical' as const,
-        overflow: 'hidden',
-      }}>{dish.description}</p>
+      {!small && (
+        <p style={{
+          fontSize: compact ? 11.5 : 13, lineHeight: 1.4, color: 'rgba(255,255,255,0.78)',
+          margin: '0 0 12px',
+          display: '-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient: 'vertical' as const,
+          overflow: 'hidden',
+        }}>{dish.description}</p>
+      )}
       <div style={{
         fontFamily: 'var(--font-serif)', fontWeight: 700,
-        fontSize: compact ? 16 : 19, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
-        letterSpacing: '0.01em',
+        fontSize: small ? 14 : compact ? 16 : 19, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
+        letterSpacing: '0.01em', marginTop: small ? 4 : 0,
       }}>₮{minPrice.toLocaleString()}</div>
     </div>
   );
@@ -531,6 +558,9 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
 }) {
   const [qty, setQty] = useState(1);
   const [isVisible, setIsVisible] = useState(false);
+  // The tap that opens the sheet is followed by a synthetic `click` at the same
+  // coordinates, which would otherwise land on the backdrop and close it instantly.
+  const openedAtRef = useRef(performance.now());
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setIsVisible(true));
@@ -544,6 +574,11 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
   const close = () => {
     setIsVisible(false);
     setTimeout(onClose, 260);
+  };
+
+  const onBackdrop = () => {
+    if (performance.now() - openedAtRef.current < 400) return; // ignore ghost click
+    close();
   };
 
   if (!dish) return null;
@@ -562,7 +597,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
       position: 'fixed', inset: 0, zIndex: 200,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
-      <div onClick={close} style={{
+      <div onClick={onBackdrop} style={{
         position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         opacity: isVisible ? 1 : 0, transition: 'opacity 240ms ease-out',
