@@ -53,6 +53,7 @@ interface CachedToken {
   expires_at: Timestamp; // when access_token becomes unusable
   refresh_expires_at: Timestamp;
   cached_at: Timestamp;
+  base_url?: string;     // which QPay env this token was issued against
 }
 
 export async function getAccessToken(config: QpayConfig): Promise<string> {
@@ -64,7 +65,11 @@ export async function getAccessToken(config: QpayConfig): Promise<string> {
   if (snap.exists) {
     const data = snap.data() as CachedToken;
     const expiresAtMs = data.expires_at.toMillis();
-    if (expiresAtMs - now > REAUTH_BUFFER_SECONDS * 1000) {
+    // Treat a missing base_url field as "unknown env" — force re-auth. The
+    // field is new; legacy cache entries (from before the prod→sandbox
+    // migration) lack it and must not be trusted.
+    const sameEnv = data.base_url === config.baseUrl;
+    if (sameEnv && expiresAtMs - now > REAUTH_BUFFER_SECONDS * 1000) {
       return data.access_token;
     }
   }
@@ -72,11 +77,11 @@ export async function getAccessToken(config: QpayConfig): Promise<string> {
   // Re-auth. Don't try to refresh — spec says refresh is one-shot per token,
   // and we'd rather burn a fresh auth than risk a revoked refresh.
   const fresh = await qpayAuth(config.baseUrl, config.username, config.password);
-  await ref.set(toCached(fresh));
+  await ref.set(toCached(fresh, config.baseUrl));
   return fresh.access_token;
 }
 
-function toCached(r: QpayAuthResponse): CachedToken {
+function toCached(r: QpayAuthResponse, baseUrl: string): CachedToken {
   // QPay returns Unix timestamps (seconds) in expires_in / refresh_expires_in.
   return {
     access_token: r.access_token,
@@ -84,5 +89,6 @@ function toCached(r: QpayAuthResponse): CachedToken {
     expires_at: Timestamp.fromMillis(r.expires_in * 1000),
     refresh_expires_at: Timestamp.fromMillis(r.refresh_expires_in * 1000),
     cached_at: Timestamp.now(),
+    base_url: baseUrl,
   };
 }

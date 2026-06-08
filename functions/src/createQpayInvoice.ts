@@ -72,34 +72,57 @@ export const createQpayInvoice = onCall(
       };
     }
 
-    const config = readConfigFromEnv();
-    const accessToken = await getAccessToken(config);
-    const webhookBase = process.env.QPAY_WEBHOOK_URL!;
-    const callbackUrl =
-      `${webhookBase}?order_id=${encodeURIComponent(orderId)}` +
-      `&token=${encodeURIComponent(config.callbackToken)}`;
+    // Wrap the QPay round-trip so failures surface useful detail to the
+    // client instead of an opaque "INTERNAL".
+    try {
+      const config = readConfigFromEnv();
+      const webhookBase = process.env.QPAY_WEBHOOK_URL!;
+      if (!webhookBase || webhookBase.includes('placeholder.invalid')) {
+        throw new HttpsError(
+          'failed-precondition',
+          'QPAY_WEBHOOK_URL is still the placeholder. Update the secret to the deployed qpayWebhook URL and redeploy createQpayInvoice.',
+        );
+      }
+      const accessToken = await getAccessToken(config);
+      // QPay PROD rejected the previous "?order_id=…&token=…" form as
+      // callback_url: INVALID. Some merchant configs only accept a clean URL
+      // with no query string. Encode both values into path segments instead;
+      // qpayWebhook parses them from req.path. Token comes first so leaking
+      // an orderId alone doesn't expose the callback secret.
+      const trimmedWebhook = webhookBase.replace(/\/+$/, '');
+      const callbackUrl =
+        `${trimmedWebhook}/${encodeURIComponent(config.callbackToken)}` +
+        `/${encodeURIComponent(orderId)}`;
 
-    const description = (order.orderNumber
-      ? `1tsegts order #${order.orderNumber}`
-      : `1tsegts order ${orderId}`).slice(0, 255);
+      const description = (order.orderNumber
+        ? `1tsegts order #${order.orderNumber}`
+        : `1tsegts order ${orderId}`).slice(0, 255);
 
-    const qpayResponse = await qpayCreateInvoice(config.baseUrl, accessToken, {
-      invoice_code: config.invoiceCode,
-      sender_invoice_no: orderId,           // unique per merchant
-      invoice_receiver_code: 'terminal',    // anonymous QR-pay
-      invoice_description: description,
-      amount: Math.round(Number(order.amountMnt ?? order.total ?? 0)),
-      callback_url: callbackUrl,
-    });
+      const qpayResponse = await qpayCreateInvoice(config.baseUrl, accessToken, {
+        invoice_code: config.invoiceCode,
+        sender_invoice_no: orderId,
+        invoice_receiver_code: 'terminal',
+        invoice_description: description,
+        amount: Math.round(Number(order.amountMnt ?? order.total ?? 0)),
+        callback_url: callbackUrl,
+      });
 
-    await ref.update({
-      qpayInvoiceId: qpayResponse.invoice_id,
-      qpayQrText: qpayResponse.qr_text,
-      qpayQrImage: qpayResponse.qr_image,
-      qpayShortUrl: qpayResponse.qPay_shortUrl,
-      qpayDeeplinks: qpayResponse.qPay_deeplink,
-    });
+      await ref.update({
+        qpayInvoiceId: qpayResponse.invoice_id,
+        qpayQrText: qpayResponse.qr_text,
+        qpayQrImage: qpayResponse.qr_image,
+        qpayShortUrl: qpayResponse.qPay_shortUrl,
+        qpayDeeplinks: qpayResponse.qPay_deeplink,
+      });
 
-    return qpayResponse;
+      return qpayResponse;
+    } catch (err) {
+      // Re-throw HttpsErrors as-is.
+      if (err instanceof HttpsError) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      // Surface the real reason (e.g. "QPay createInvoice failed: HTTP 401 — ...")
+      // so the client toast/panel shows something actionable.
+      throw new HttpsError('internal', message);
+    }
   },
 );

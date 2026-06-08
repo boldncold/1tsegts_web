@@ -38,11 +38,27 @@ export const qpayWebhook = onRequest(
     cors: false,
   },
   async (req, res) => {
-    const orderId = String(req.query.order_id ?? '');
-    const token = String(req.query.token ?? '');
+    // Prefer path segments — QPay PROD rejects callback URLs with a query
+    // string as INVALID, so we register the callback as
+    //   .../qpayWebhook/<token>/<orderId>
+    // Query-string form (.../qpayWebhook?order_id=…&token=…) is kept as a
+    // fallback for any invoice created before the format change.
+    let orderId = '';
+    let token = '';
+    const segments = String(req.path || '').split('/').filter(Boolean);
+    if (segments.length >= 2) {
+      token = decodeURIComponent(segments[0]);
+      orderId = decodeURIComponent(segments[1]);
+    } else {
+      orderId = String(req.query.order_id ?? '');
+      token = String(req.query.token ?? '');
+    }
 
     if (!orderId || !token) {
-      logger.warn('qpayWebhook: missing order_id or token', { query: req.query });
+      logger.warn('qpayWebhook: missing order_id or token', {
+        path: req.path,
+        query: req.query,
+      });
       res.status(400).send('bad request');
       return;
     }
