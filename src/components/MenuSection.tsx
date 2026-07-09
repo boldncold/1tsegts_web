@@ -304,12 +304,12 @@ export default function MenuSection() {
                       {/* Badges — top left, stacked */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-20">
                         {item.featured && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-[#080606] shadow-md">
-                            <Star size={9} className="fill-[#080606]" /> Featured
+                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Star size={9} className="fill-white" /> Featured
                           </span>
                         )}
                         {isPopular && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(178,74,47,0.9)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                          <span className="inline-flex items-center gap-1 bg-orange-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
                             <Flame size={9} className="fill-white" /> Popular
                           </span>
                         )}
@@ -319,12 +319,12 @@ export default function MenuSection() {
                           </span>
                         )}
                         {isLuxury && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(230,213,160,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-[#080606] shadow-md">
-                            <Gem size={9} className="fill-[#080606]" /> Luxury
+                          <span className="inline-flex items-center gap-1 bg-purple-600/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                            <Gem size={9} className="fill-white" /> Luxury
                           </span>
                         )}
                         {isForGroups && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(21,16,10,0.85)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md border border-[rgba(212,175,55,0.20)]">
+                          <span className="inline-flex items-center gap-1 bg-blue-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
                             <Users size={9} /> Groups
                           </span>
                         )}

@@ -137,6 +137,9 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     return () => clearInterval(id);
   }, []);
 
+  // Guards the mobile auto-launch below so it can only fire once per mount.
+  const autoLaunched = React.useRef(false);
+
   // Fetch the QR + deeplinks on mount unless already cached on the order doc.
   useEffect(() => {
     if (invoice) return;
@@ -157,7 +160,21 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
           'createQpayInvoice',
         );
         const res = await fn({ orderId: order.id });
-        if (!cancelled) setInvoice(res.data);
+        if (!cancelled) {
+          setInvoice(res.data);
+          // Mobile auto-enter: a freshly minted invoice means the customer
+          // JUST checked out — send them straight into payment via the
+          // universal qpay.mn link, no tap needed. Deliberately only on this
+          // path: when the invoice is hydrated from the order doc (drawer
+          // reopened, page refreshed) we must not yank them away — they may
+          // be here to check status or cancel. https navigation is allowed
+          // without a user gesture; custom bank schemes are not, which is why
+          // the auto path uses qpay.mn rather than the per-bank deeplinks.
+          if (isMobile && res.data?.qr_text && !autoLaunched.current) {
+            autoLaunched.current = true;
+            window.location.href = buildQpayUniversalLink(res.data.qr_text);
+          }
+        }
       } catch (e: any) {
         if (!cancelled) {
           setError(e?.message ?? 'Failed to load QPay invoice');
@@ -169,7 +186,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     return () => {
       cancelled = true;
     };
-  }, [order.id, invoice]);
+  }, [order.id, invoice, isMobile]);
 
   const minutesLeft = order.paymentExpiresAt
     ? Math.max(

@@ -210,6 +210,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       pendingOrderData.paymentMethod === 'bank_transfer') &&
     pendingOrderData.paymentStatus === 'CONFIRMED';
 
+  // Online order whose money hasn't landed yet. The completion screen must NOT
+  // claim "Order received" here — nothing is confirmed until the webhook flips
+  // paymentStatus. Show a "waiting for payment" state instead.
+  const awaitingOnlinePayment =
+    !!pendingOrderData &&
+    (pendingOrderData.paymentMethod === 'qpay' ||
+      pendingOrderData.paymentMethod === 'bank_transfer') &&
+    pendingOrderData.paymentStatus === 'AWAITING_PAYMENT';
+
   // Sticky version of paidOnline: pendingOrderData clears once the kitchen
   // advances the order, but the completion screen can still be on screen — it
   // must not fall back to "pay at the cashier" copy for an order already paid.
@@ -338,7 +347,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       setOrderComplete(true);
       clearCart();
       setAdminDiscount(0);
-      toast.success(t('cart.success'));
+      // Non-cash orders aren't "placed successfully" until payment verifies —
+      // only cash / zero-charge orders get the success toast here.
+      const isOnlinePayment =
+        !skipPayment &&
+        (formData.paymentMethod === 'qpay' ||
+          formData.paymentMethod === 'bank_transfer');
+      if (isOnlinePayment) {
+        toast.info(language === 'en'
+          ? 'Order created — complete payment to confirm'
+          : 'Захиалга үүслээ — баталгаажуулахын тулд төлбөрөө төлнө үү');
+      } else {
+        toast.success(t('cart.success'));
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
     } finally {
@@ -539,13 +560,24 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
               ) : orderComplete ? (
                 <div className="flex flex-col items-center text-center space-y-5 py-4">
-                  {/* Success icon */}
-                  <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center">
-                    <CheckCircle size={44} className="text-green-500" />
-                  </div>
+                  {/* Status icon — amber "waiting" until payment is verified,
+                      green check only once the money is in (or for cash). */}
+                  {awaitingOnlinePayment ? (
+                    <div className="w-20 h-20 bg-amber-500/10 border-2 border-amber-500/30 rounded-full flex items-center justify-center">
+                      <Clock size={44} className="text-amber-400 animate-pulse" />
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center">
+                      <CheckCircle size={44} className="text-green-500" />
+                    </div>
+                  )}
 
                   <div className="space-y-1">
-                    <h3 className="font-serif font-bold text-2xl text-white">{t('cart.order_received')}</h3>
+                    <h3 className="font-serif font-bold text-2xl text-white">
+                      {awaitingOnlinePayment
+                        ? (language === 'en' ? 'Waiting for payment' : 'Төлбөр хүлээгдэж байна')
+                        : t('cart.order_received')}
+                    </h3>
                     <p className="text-white/45 text-sm">
                       {pendingOrderData?.paymentMethod === 'qpay' &&
                        pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT'
