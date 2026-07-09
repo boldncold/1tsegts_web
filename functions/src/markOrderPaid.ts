@@ -17,6 +17,11 @@ export type PaidSource = 'qpay' | 'monpay' | 'admin_manual' | 'email_parse';
 export interface PaidMeta {
   source: PaidSource;
   qpayPaymentId?: string;
+  // QPay payment type ('P2P' | 'CARD') and wallet, captured at confirm time so
+  // the refund path can tell whether QPay can auto-refund (CARD only) without a
+  // second round-trip to the API.
+  qpayPaymentType?: string;
+  qpayPaymentWallet?: string;
   monpayTxnId?: string;
   bankTxId?: string;
 }
@@ -47,6 +52,8 @@ export async function markOrderPaid(
       paidAt: Timestamp.now().toDate().toISOString(),
       paidVia: meta.source,
       ...(meta.qpayPaymentId ? { qpayPaymentId: meta.qpayPaymentId } : {}),
+      ...(meta.qpayPaymentType ? { qpayPaymentType: meta.qpayPaymentType } : {}),
+      ...(meta.qpayPaymentWallet ? { qpayPaymentWallet: meta.qpayPaymentWallet } : {}),
       ...(meta.monpayTxnId ? { monpayTxnId: meta.monpayTxnId } : {}),
       ...(meta.bankTxId ? { matchedTxId: meta.bankTxId } : {}),
     });

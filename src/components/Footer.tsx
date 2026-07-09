@@ -13,7 +13,7 @@ export default function Footer() {
   };
 
   return (
-    <footer style={{ background: '#1a1510' }} className="text-white pt-14 pb-7">
+    <footer style={{ background: 'var(--espresso)' }} className="text-white pt-14 pb-7">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand */}

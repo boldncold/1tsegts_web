@@ -1,0 +1,30 @@
+# WORKFLOW.md
+
+Git, testing, reviews, and releases for 1tsegts.
+
+## Git
+
+- Feature branches, PRs to the default branch; short kebab-case branch names.
+- Small focused commits; imperative subject, body explains *why* when non-obvious.
+- Never commit secrets or `.env` files. Clean up stray artifacts (e.g. `*.tmp` files) before committing.
+- Multi-agent discipline: separate branches per agent/task (`claude/<task>`, `codex/<task>`).
+
+## Testing
+
+No automated test runner yet — verification is manual:
+
+1. `npm run lint` (typecheck) must pass.
+2. Exercise the changed flow in `npm run dev`.
+3. Payment changes: test the full order → invoice → webhook → status flow against QPay sandbox before production; verify idempotency (replay the webhook).
+4. Firestore rules changes: verify both the allowed and the denied path.
+
+## Reviews
+
+- Self-review the diff against the Code Review Checklist in [CLAUDE.md](CLAUDE.md) before any PR.
+- Payment and Firestore-rules changes get a second opinion (Codex) — money and security are the correctness-critical domains.
+
+## Releases
+
+- Firebase deploy; deploy Functions before (or with) hosting when the client depends on new function behavior.
+- After deploying: place a test order end-to-end (menu → cart → QPay → admin sees the order), and confirm `expirePendingQpayInvoices` still runs.
+- Update the vault note (`MyAiVault/10_Projects/1tsegts.md`) when a release changes project reality.

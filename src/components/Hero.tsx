@@ -1,59 +1,54 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, Star, Clock, MapPin, Phone } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
+const fadeUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+};
+
 export default function Hero() {
   const { t } = useLanguage();
+  const reduceMotion = useReducedMotion();
+  const motionTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.8, ease: [0.22, 0.95, 0.36, 1] as const };
 
   return (
     <section
-      className="relative min-h-screen text-white overflow-hidden"
-      style={{
-        background: 'linear-gradient(135deg, #1a1510 0%, #2c1810 50%, #4a1a0a 100%)',
-      }}
+      className="relative min-h-[92vh] text-white overflow-hidden"
+      style={{ background: 'var(--gradient-hero)' }}
     >
-      {/* Radial glow texture */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--glow-hero)' }} />
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 25% 20%, rgba(212,175,55,0.18), transparent 45%), radial-gradient(circle at 75% 80%, rgba(139,0,0,0.35), transparent 50%)',
-        }}
-      />
-      {/* Subtle dot pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none"
+        className="absolute inset-0 opacity-[0.10] pointer-events-none"
         style={{
           backgroundImage:
             'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'><circle cx=\'30\' cy=\'30\' r=\'1\' fill=\'%23d4af37\'/></svg>")',
         }}
       />
+      <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
       <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] pb-20 text-center flex flex-col items-center">
-        {/* Rating eyebrow pill */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] mb-7"
+          {...fadeUp}
+          transition={motionTransition}
+          className="inline-flex items-center gap-2 px-4 py-[7px] rounded-full border border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.06)] backdrop-blur-[10px] mb-8"
         >
           <span className="flex gap-0.5 text-[#D4AF37]">
             {[0, 1, 2, 3, 4].map((i) => (
               <Star key={i} size={11} fill="currentColor" />
             ))}
           </span>
-          <span className="eyebrow">
-            {t('hero.premium')}
-          </span>
+          <span className="eyebrow !text-[10px]">{t('hero.premium')}</span>
         </motion.div>
 
-        {/* Wordmark */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.08 }}
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.09 }}
           className="mb-5"
+          style={{ textShadow: '0 6px 40px rgba(212,175,55,0.25)' }}
         >
           <span className="font-serif font-bold tracking-tighter leading-none flex items-baseline justify-center">
             <span className="text-[#D4AF37]" style={{ fontSize: 'clamp(72px, 18vw, 120px)' }}>1</span>
@@ -61,21 +56,20 @@ export default function Hero() {
           </span>
         </motion.div>
 
-        {/* Tagline */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.15 }}
-          className="eyebrow mb-6"
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.18 }}
+          className="flex items-center gap-3 mb-7"
         >
-          ─ {t('hero.tagline') || 'Three Worlds. One Table.'} ─
+          <span className="block w-7 h-px bg-[rgba(212,175,55,0.4)]" />
+          <span className="eyebrow !text-[10px]">{t('hero.tagline') || 'Three Worlds. One Table.'}</span>
+          <span className="block w-7 h-px bg-[rgba(212,175,55,0.4)]" />
         </motion.div>
 
-        {/* Main headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.27 }}
           className="font-serif font-medium leading-[1.05] tracking-[-0.025em] mb-5 text-balance"
           style={{ fontSize: 'clamp(28px, 6vw, 44px)' }}
         >
@@ -83,25 +77,22 @@ export default function Hero() {
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.25 }}
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.36 }}
           className="text-[15px] leading-[1.65] text-white/72 max-w-[520px] mb-9"
         >
           {t('hero.subtitle')}
         </motion.p>
 
-        {/* CTAs */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.45 }}
           className="flex gap-3 justify-center flex-wrap mb-12"
         >
           <Link
             to="/menu"
-            className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#8B0000] text-white font-bold uppercase tracking-[0.12em] text-[13px] rounded-full active:scale-95 transition-all"
-            style={{ boxShadow: '0 0 0 1px rgba(212,175,55,0.4), 0 12px 32px -8px rgba(139,0,0,0.6)' }}
+            className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#D4AF37] text-[#080606] font-bold uppercase tracking-[0.12em] text-[13px] rounded-full active:scale-95 transition-all hover:bg-[#C5A028] hover:text-[#080606]"
+            style={{ boxShadow: 'var(--shadow-cta-hero)' }}
           >
             {t('hero.cta')} <ArrowRight size={14} />
           </Link>
@@ -113,11 +104,9 @@ export default function Hero() {
           </Link>
         </motion.div>
 
-        {/* Info chips */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.38 }}
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.54 }}
           className="grid grid-cols-3 gap-2.5 w-full max-w-[480px]"
         >
           {[
@@ -127,8 +116,7 @@ export default function Hero() {
           ].map((item, i) => (
             <div
               key={i}
-              className="flex flex-col items-center text-center p-3.5 rounded-[14px] border border-[rgba(212,175,55,0.15)]"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
+              className="flex flex-col items-center text-center p-3.5 rounded-[14px] border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.10)]"
             >
               <item.icon size={16} className="text-[#D4AF37] mb-1.5" />
               <div className="micro-label !text-white/45 mb-1">{item.top}</div>
@@ -138,14 +126,15 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="hidden sm:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center"
-      >
-        <div className="w-px h-10 bg-gradient-to-b from-[#D4AF37] to-transparent" />
-      </motion.div>
+      {!reduceMotion && (
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="hidden sm:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center"
+        >
+          <div className="w-px h-10 bg-gradient-to-b from-[#D4AF37] to-transparent" />
+        </motion.div>
+      )}
     </section>
   );
 }

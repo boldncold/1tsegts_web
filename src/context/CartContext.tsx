@@ -17,6 +17,10 @@ interface CartContextType {
   pendingOrderId: string | null;
   pendingOrderData: any | null;
   setPendingOrderId: (id: string | null) => void;
+  /** True when the last pending order died because its payment window expired.
+      Cleared as soon as a new order is placed. Lets the UI show a proper
+      "expired — order again" state instead of a stale success screen. */
+  pendingOrderExpired: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -30,11 +34,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const [pendingOrderId, setPendingOrderIdState] = useState<string | null>(() => localStorage.getItem('grand_pending_order_id'));
   const [pendingOrderData, setPendingOrderData] = useState<any | null>(null);
+  const [pendingOrderExpired, setPendingOrderExpired] = useState(false);
 
   const setPendingOrderId = (id: string | null) => {
     if (id) {
       localStorage.setItem('grand_pending_order_id', id);
       localStorage.setItem('grand_pending_order_time', new Date().toISOString());
+      setPendingOrderExpired(false);
     } else {
       localStorage.removeItem('grand_pending_order_id');
       localStorage.removeItem('grand_pending_order_time');
@@ -91,6 +97,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           toast.error(language === 'en'
             ? 'Payment window expired. Please reorder.'
             : 'Төлбөрийн хугацаа дууслаа. Захиалгаа дахин өгнө үү.');
+          setPendingOrderExpired(true);
           setPendingOrderId(null);
           setPendingOrderData(null);
           return;
@@ -169,7 +176,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       itemCount,
       pendingOrderId,
       pendingOrderData,
-      setPendingOrderId
+      setPendingOrderId,
+      pendingOrderExpired
     }}>
       {children}
     </CartContext.Provider>

@@ -158,13 +158,30 @@ and flips `paymentStatus` to `EXPIRED` inside a transaction so an in-flight
 `CONFIRMED` write can't be clobbered. Auth failures are non-fatal — the next
 run picks the order up again.
 
+### Refunds
+Implemented end-to-end. The admin dashboard shows a **Refund** button on QPay
+orders whose `paymentStatus === 'CONFIRMED'`. It calls the `refundQpayPayment`
+callable (admin-verified server-side), which hits `DELETE /v2/payment/refund/{id}`
+and flips the order to `REFUNDED`.
+
+Caveat from the spec (`payment_refund` sheet): **QPay can only auto-refund CARD
+payments.** P2P (bank-app QR) payments — the common case for restaurant orders —
+must be reversed with a manual bank transfer. We capture `qpayPaymentType` at
+confirm time, so the refund function short-circuits P2P with a clear
+`P2P_NOT_REFUNDABLE` message instead of a confusing QPay error.
+
+### Amount-mismatch handling
+If QPay reports a `PAID` payment whose amount doesn't match what we billed
+(partial / overpayment / stale invoice), the webhook no longer 500-loops
+forever. It flips the order to `MANUAL_REVIEW` (recording expected vs observed
+amount and the payment id) and acks QPay with `200 SUCCESS` so retries stop. An
+admin reconciles from the dashboard.
+
 ### What's still NOT implemented yet
 - QPay invoice cancellation on customer-cancelled orders (separate from the
   scheduled expiry path above). The order doc gets deleted, but the QPay
   invoice stays open. Low impact (no money has moved), but worth wiring up
   later.
-- Refunds. QPay supports `/v2/payment/refund/{id}` — we have the client
-  method, but no admin UI yet.
 
 ---
 

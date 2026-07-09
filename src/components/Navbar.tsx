@@ -40,8 +40,8 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   };
 
   const navBg = scrolled
-    ? 'bg-[rgba(26,21,16,0.92)] border-b border-[rgba(212,175,55,0.18)]'
-    : 'bg-[rgba(26,21,16,0.55)] border-b border-transparent';
+    ? 'bg-[rgba(15,12,8,0.94)] border-b border-[rgba(212,175,55,0.18)]'
+    : 'bg-[rgba(15,12,8,0.60)] border-b border-transparent';
 
   const sideDrawer = typeof document !== 'undefined' && createPortal(
     <AnimatePresence>
@@ -56,7 +56,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[#1a1510] shadow-2xl flex flex-col border-r border-[rgba(212,175,55,0.15)]"
+            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[var(--espresso)] shadow-2xl flex flex-col border-r border-[rgba(212,175,55,0.15)]"
           >
             {/* Drawer header */}
             <div className="flex justify-between items-center px-6 py-6">
@@ -103,7 +103,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'mn'
-                        ? 'bg-[#8B0000] text-white border-[#8B0000]'
+                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -114,7 +114,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'en'
-                        ? 'bg-[#8B0000] text-white border-[#8B0000]'
+                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -193,7 +193,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             >
               <ShoppingCart size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#8B0000] text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-[#080606] text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {itemCount}
                 </span>
               )}

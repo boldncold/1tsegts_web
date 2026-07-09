@@ -27,19 +27,19 @@ export default function About() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--surface-page)]">
 
       {/* ── Hero ────────────────────────────────────────────── */}
       <section
         className="relative min-h-[60vh] flex items-end pb-20 pt-32 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #1a1510 0%, #2c1810 55%, #4a1a0a 100%)' }}
+        style={{ background: 'var(--gradient-hero)' }}
       >
         {/* Radial glows */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 20% 50%, rgba(212,175,55,0.15), transparent 50%), radial-gradient(circle at 80% 20%, rgba(139,0,0,0.25), transparent 45%)',
+              'var(--glow-hero)',
           }}
         />
         {/* Dot pattern */}
@@ -79,7 +79,7 @@ export default function About() {
       </section>
 
       {/* ── Story ───────────────────────────────────────────── */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-[var(--surface-page)]">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             {/* Text */}
@@ -89,8 +89,8 @@ export default function About() {
               viewport={{ once: true }}
               className="space-y-6"
             >
-              <span className="eyebrow !text-[#8B0000]">{t('about.story_label')}</span>
-              <p className="text-stone-600 text-[17px] leading-[1.75] font-light">
+              <span className="eyebrow">{t('about.story_label')}</span>
+              <p className="text-white/60 text-[17px] leading-[1.75] font-light">
                 {t('about.description').split(/(1ЦЭГЦ)/g).map((part, i) =>
                   part === '1ЦЭГЦ' ? (
                     <strong key={i} className="font-serif font-bold tracking-tighter whitespace-nowrap inline-flex items-baseline">
@@ -105,14 +105,14 @@ export default function About() {
 
               {/* Location & hours pills */}
               <div className="flex flex-col gap-3 pt-2">
-                <div className="inline-flex items-center gap-2.5 text-stone-600 text-sm">
+                <div className="inline-flex items-center gap-2.5 text-white/60 text-sm">
                   <MapPin size={15} className="text-[#D4AF37] shrink-0" />
                   <span>{t('footer.location_detail')}</span>
                 </div>
-                <div className="inline-flex items-center gap-2.5 text-stone-600 text-sm">
+                <div className="inline-flex items-center gap-2.5 text-white/60 text-sm">
                   <Clock size={15} className="text-[#D4AF37] shrink-0" />
                   <span>{t('about.hours_value')}</span>
-                  <span className="text-[#8B0000] font-semibold text-[11px] uppercase tracking-wider">
+                  <span className="text-[#D4AF37] font-semibold text-[11px] uppercase tracking-wider">
                     · {t('about.closed_value')}
                   </span>
                 </div>
@@ -124,7 +124,7 @@ export default function About() {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="aspect-[4/3] rounded-3xl overflow-hidden shadow-xl border border-stone-100"
+              className="aspect-[4/3] rounded-3xl overflow-hidden shadow-xl border border-[rgba(212,175,55,0.15)]"
             >
               <img
                 src="https://picsum.photos/seed/restaurant-interior/800/600"
@@ -196,9 +196,9 @@ export default function About() {
       </section>
 
       {/* ── Location card ────────────────────────────────────── */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-[var(--surface-page)]">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="rounded-3xl overflow-hidden border border-stone-200 shadow-xl grid md:grid-cols-2">
+          <div className="rounded-3xl overflow-hidden border border-[rgba(212,175,55,0.15)] shadow-xl grid md:grid-cols-2 bg-[var(--espresso)]">
             {/* Map placeholder */}
             <div className="aspect-[4/3] md:aspect-auto bg-stone-100 relative overflow-hidden">
               <img
@@ -207,41 +207,41 @@ export default function About() {
                 className="w-full h-full object-cover opacity-80"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
             </div>
 
             {/* Info */}
-            <div className="p-10 flex flex-col justify-center space-y-6 bg-white">
+            <div className="p-10 flex flex-col justify-center space-y-6 bg-[var(--espresso)]">
               <div className="space-y-2">
-                <span className="eyebrow !text-[#8B0000]">{t('about.location_label')}</span>
-                <h3 className="text-2xl font-serif font-bold text-stone-900">Shangri-La Mall</h3>
-                <p className="text-stone-500 text-sm leading-relaxed">{t('footer.location_detail')}</p>
+                <span className="eyebrow">{t('about.location_label')}</span>
+                <h3 className="text-2xl font-serif font-bold text-white">Shangri-La Mall</h3>
+                <p className="text-white/50 text-sm leading-relaxed">{t('footer.location_detail')}</p>
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center gap-3 text-stone-600 text-sm">
+                <div className="flex items-center gap-3 text-white/60 text-sm">
                   <Clock size={15} className="text-[#D4AF37] shrink-0" />
                   <div>
-                    <p className="font-semibold text-stone-800">{t('about.hours_label')}</p>
+                    <p className="font-semibold text-white">{t('about.hours_label')}</p>
                     <p>{t('about.hours_value')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="w-[15px] shrink-0" />
-                  <p className="text-[#8B0000] font-semibold text-[11px] uppercase tracking-wider">{t('about.closed_value')}</p>
+                  <p className="text-[#D4AF37] font-semibold text-[11px] uppercase tracking-wider">{t('about.closed_value')}</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-stone-100 space-y-2">
+              <div className="pt-4 border-t border-white/[0.06] space-y-2">
                 <a
                   href="tel:99138866"
-                  className="inline-flex items-center gap-2 text-stone-700 hover:text-[#8B0000] transition-colors text-sm font-medium"
+                  className="inline-flex items-center gap-2 text-white/60 hover:text-[#D4AF37] transition-colors text-sm font-medium"
                 >
                   📞 99138866
                 </a>
                 <a
                   href="mailto:1tsegts@gmail.com"
-                  className="flex items-center gap-2 text-stone-700 hover:text-[#D4AF37] transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 text-white/60 hover:text-[#D4AF37] transition-colors text-sm font-medium"
                 >
                   ✉ 1tsegts@gmail.com
                 </a>

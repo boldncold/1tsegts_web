@@ -22,6 +22,46 @@ const QPAY_BASE_URL = defineSecret('QPAY_BASE_URL');
 const QPAY_CALLBACK_TOKEN = defineSecret('QPAY_CALLBACK_TOKEN');
 const QPAY_WEBHOOK_URL = defineSecret('QPAY_WEBHOOK_URL'); // the deployed qpayWebhook URL
 
+/**
+ * Normalize the QPAY_WEBHOOK_URL secret into a clean https origin+path — no
+ * trailing slash, query, hash, or stray whitespace.
+ *
+ * QPay validates callback_url strictly and rejects the whole invoice with
+ * `callback_url: INVALID` if it's even slightly malformed. The two classic
+ * causes:
+ *   1. A trailing newline/space — extremely common when the secret is piped
+ *      into `firebase functions:secrets:set` instead of typed at the prompt.
+ *   2. A missing scheme (e.g. "qpaywebhook-x.a.run.app" with no "https://").
+ * We fix what we safely can and throw a clear, actionable error otherwise.
+ */
+function normalizeWebhookBase(raw: string | undefined): string {
+  let base = (raw ?? '').trim();
+  if (!base || base.includes('placeholder.invalid')) {
+    throw new HttpsError(
+      'failed-precondition',
+      'QPAY_WEBHOOK_URL is not set (or still the placeholder). Set it to the ' +
+        'deployed qpayWebhook URL and redeploy createQpayInvoice.',
+    );
+  }
+  if (!/^https?:\/\//i.test(base)) base = `https://${base}`;
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    throw new HttpsError(
+      'failed-precondition',
+      `QPAY_WEBHOOK_URL is not a valid URL: "${base}"`,
+    );
+  }
+  if (url.protocol !== 'https:') {
+    throw new HttpsError(
+      'failed-precondition',
+      `QPAY_WEBHOOK_URL must be https, got "${url.protocol}//…"`,
+    );
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+}
+
 export const createQpayInvoice = onCall(
   {
     region: 'asia-east1',
@@ -76,22 +116,13 @@ export const createQpayInvoice = onCall(
     // client instead of an opaque "INTERNAL".
     try {
       const config = readConfigFromEnv();
-      const webhookBase = process.env.QPAY_WEBHOOK_URL!;
-      if (!webhookBase || webhookBase.includes('placeholder.invalid')) {
-        throw new HttpsError(
-          'failed-precondition',
-          'QPAY_WEBHOOK_URL is still the placeholder. Update the secret to the deployed qpayWebhook URL and redeploy createQpayInvoice.',
-        );
-      }
+      const webhookBase = normalizeWebhookBase(process.env.QPAY_WEBHOOK_URL);
       const accessToken = await getAccessToken(config);
-      // QPay PROD rejected the previous "?order_id=…&token=…" form as
-      // callback_url: INVALID. Some merchant configs only accept a clean URL
-      // with no query string. Encode both values into path segments instead;
-      // qpayWebhook parses them from req.path. Token comes first so leaking
-      // an orderId alone doesn't expose the callback secret.
-      const trimmedWebhook = webhookBase.replace(/\/+$/, '');
+      // Register a clean path-based callback: <webhook>/<token>/<orderId>.
+      // qpayWebhook parses both path segments and ?query (fallback). Token comes
+      // first so leaking an orderId alone doesn't expose the callback secret.
       const callbackUrl =
-        `${trimmedWebhook}/${encodeURIComponent(config.callbackToken)}` +
+        `${webhookBase}/${encodeURIComponent(config.callbackToken)}` +
         `/${encodeURIComponent(orderId)}`;
 
       const description = (order.orderNumber
@@ -107,15 +138,25 @@ export const createQpayInvoice = onCall(
         callback_url: callbackUrl,
       });
 
+      // QPay's response shape is not guaranteed: deep links in particular are
+      // often omitted, and the static type (qpayClient.ts) lies about it. Passing
+      // `undefined` to Firestore throws "Cannot use undefined as a Firestore
+      // value", which the catch below would surface as a generic "can't reach
+      // QPay" error even though the invoice was created fine. Coalesce every
+      // optional field to a safe, defined value before writing.
+      const deeplinks = qpayResponse.qPay_deeplink ?? [];
+
       await ref.update({
         qpayInvoiceId: qpayResponse.invoice_id,
-        qpayQrText: qpayResponse.qr_text,
-        qpayQrImage: qpayResponse.qr_image,
-        qpayShortUrl: qpayResponse.qPay_shortUrl,
-        qpayDeeplinks: qpayResponse.qPay_deeplink,
+        qpayQrText: qpayResponse.qr_text ?? null,
+        qpayQrImage: qpayResponse.qr_image ?? null,
+        qpayShortUrl: qpayResponse.qPay_shortUrl ?? null,
+        qpayDeeplinks: deeplinks,
       });
 
-      return qpayResponse;
+      // Return the same normalized shape so the client never renders an
+      // undefined deeplink list.
+      return { ...qpayResponse, qPay_deeplink: deeplinks };
     } catch (err) {
       // Re-throw HttpsErrors as-is.
       if (err instanceof HttpsError) throw err;

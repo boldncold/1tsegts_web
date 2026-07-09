@@ -8,9 +8,10 @@ import {
   Clock, CheckCircle2, XCircle, Package, Star, Users,
   Search, Minus, Filter, Banknote, Inbox, Link2, Home
 } from 'lucide-react';
-import { 
+import {
   auth, db, googleProvider, signInWithPopup, signOut,
-  collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc
+  collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc,
+  functions, httpsCallable
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
@@ -757,6 +758,39 @@ export default function AdminDashboard() {
     }
   };
 
+  // QPay refund — calls the refundQpayPayment cloud function (admin-verified).
+  // Card payments are auto-refunded by QPay; P2P (bank-app) payments can't be,
+  // so the function returns a P2P_NOT_REFUNDABLE error we surface as guidance.
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+  const refundQpayOrder = async (orderId: string) => {
+    if (!window.confirm(t('admin.orders.confirm_refund'))) return;
+    setRefundingId(orderId);
+    try {
+      const fn = httpsCallable<{ orderId: string }, { refunded: boolean }>(
+        functions,
+        'refundQpayPayment',
+      );
+      await fn({ orderId });
+      toast.success(t('admin.orders.refund.success'));
+    } catch (error: any) {
+      const msg: string = error?.message ?? '';
+      // The cloud function encodes P2P as a failed-precondition with this token.
+      if (msg.includes('P2P_NOT_REFUNDABLE')) {
+        toast.error(t('admin.orders.refund.p2p'));
+      } else {
+        const code = msg.match(/QPAY_([A-Z_]+)/)?.[1];
+        toast.error(
+          code
+            ? `${t('admin.orders.refund.failed')}: ${code}`
+            : t('admin.orders.refund.failed'),
+        );
+      }
+      console.error('Refund error:', error);
+    } finally {
+      setRefundingId(null);
+    }
+  };
+
   /**
    * Computes the live match status of a bank tx against the current orders list.
    * Pure function — no side effects. The persistent `matchStatus` field on the
@@ -1315,17 +1349,26 @@ export default function AdminDashboard() {
                                         </span>
                                         {/* Payment badge — only shown for bank-transfer orders.
                                             Cash orders don't get a badge to keep the existing flow uncluttered. */}
-                                        {(order as any).paymentMethod === 'bank_transfer' && (
+                                        {((order as any).paymentMethod === 'bank_transfer' ||
+                                          (order as any).paymentMethod === 'qpay') && (
                                           <span className={cn(
                                             "text-[9px] uppercase font-bold tracking-[0.18em] px-2.5 py-0.5 rounded-full border whitespace-nowrap",
                                             (order as any).paymentStatus === 'CONFIRMED'
                                               ? "bg-green-500/10 text-green-400 border-green-500/30"
+                                              : (order as any).paymentStatus === 'REFUNDED'
+                                              ? "bg-purple-500/10 text-purple-300 border-purple-500/30"
+                                              : (order as any).paymentStatus === 'MANUAL_REVIEW'
+                                              ? "bg-red-500/15 text-red-300 border-red-500/40 animate-pulse"
                                               : (order as any).paymentStatus === 'EXPIRED'
                                               ? "bg-stone-800 text-stone-500 border-stone-700"
                                               : "bg-yellow-500/15 text-yellow-400 border-yellow-500/40 animate-pulse"
                                           )}>
                                             {(order as any).paymentStatus === 'CONFIRMED'
                                               ? `₮ ${t('admin.orders.payment.confirmed')}`
+                                              : (order as any).paymentStatus === 'REFUNDED'
+                                              ? `₮ ${t('admin.orders.payment.refunded')}`
+                                              : (order as any).paymentStatus === 'MANUAL_REVIEW'
+                                              ? `₮ ${t('admin.orders.payment.review')}`
                                               : (order as any).paymentStatus === 'EXPIRED'
                                               ? `₮ ${t('admin.orders.payment.expired')}`
                                               : `₮ ${t('admin.orders.payment.awaiting')}`}
@@ -1422,11 +1465,30 @@ export default function AdminDashboard() {
                                             ₮ {t('admin.orders.action.mark_paid')}
                                           </button>
                                         )}
-                                        {/* Start Preparing: blocked for bank-transfer orders that haven't been paid yet,
-                                            so the kitchen doesn't start cooking before payment is confirmed. */}
+                                        {/* Refund: QPay orders whose payment is confirmed. Card payments
+                                            refund through QPay; P2P payments report back as not auto-refundable. */}
+                                        {(order as any).paymentMethod === 'qpay' &&
+                                         (order as any).paymentStatus === 'CONFIRMED' && (
+                                          <button
+                                            onClick={() => refundQpayOrder(order.id)}
+                                            disabled={refundingId === order.id}
+                                            className={cn(
+                                              "px-4 py-2 bg-purple-600 text-white text-xs font-bold uppercase tracking-[0.15em] rounded-full hover:bg-purple-500 transition-all",
+                                              refundingId === order.id && "opacity-50 cursor-not-allowed"
+                                            )}
+                                            title={t('admin.orders.confirm_refund')}
+                                          >
+                                            {refundingId === order.id ? '…' : t('admin.orders.action.refund')}
+                                          </button>
+                                        )}
+                                        {/* Start Preparing: non-cash orders must be CONFIRMED before the
+                                            kitchen starts. Allowlist on purpose — any other payment state
+                                            (awaiting, review, EXPIRED, REFUNDED, future ones) is blocked
+                                            by default. */}
                                         {order.status === 'pending' &&
-                                         !((order as any).paymentMethod === 'bank_transfer' &&
-                                           (order as any).paymentStatus === 'AWAITING_PAYMENT') && (
+                                         (((order as any).paymentMethod !== 'bank_transfer' &&
+                                           (order as any).paymentMethod !== 'qpay') ||
+                                          (order as any).paymentStatus === 'CONFIRMED') && (
                                           <button
                                             onClick={() => updateOrderStatus(order.id, 'preparing')}
                                             className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-blue-400 transition-all"

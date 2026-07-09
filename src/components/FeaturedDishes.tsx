@@ -8,6 +8,9 @@ import { useLanguage } from '../context/LanguageContext';
 
 type Variant = 'stack' | 'marquee';
 
+const DISH_FALLBACK_BG =
+  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+
 function useIsMobile(breakpoint = 640) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= breakpoint : false
@@ -74,24 +77,51 @@ export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
 
   return (
     <section style={{
-      background: 'var(--stone-50, #fafaf9)',
+      background: 'var(--stone-950, #080606)',
       paddingTop: isMobile ? 44 : 72,
       paddingBottom: isMobile ? 36 : 48,
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <div style={{ padding: isMobile ? '0 18px 20px' : '0 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{
+        padding: isMobile ? '0 18px 20px' : '0 20px 28px',
+        maxWidth: 1100,
+        margin: '0 auto',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: 16,
+      }}>
+        <div>
         <div className="eyebrow" style={{ marginBottom: 8 }}>
           {language === 'en' ? 'Selected' : 'Онцлох'}
         </div>
         <h2 style={{
           fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 25 : 30, lineHeight: 1.05,
-          letterSpacing: '-0.018em', margin: 0, color: 'var(--stone-900)',
+          letterSpacing: '-0.018em', margin: 0, color: '#fff',
         }}>
           {language === 'en' ? (
-            <>Featured <em style={{ color: 'var(--red-deep)', fontStyle: 'italic', fontWeight: 500 }}>Dishes</em></>
+            <>Featured <em style={{ color: 'var(--gold)', fontStyle: 'italic', fontWeight: 500 }}>Dishes</em></>
           ) : 'Онцлох хоол'}
         </h2>
+        </div>
+        <Link
+          to="/menu"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--gold)',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            paddingBottom: 5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {language === 'en' ? 'All' : 'Бүгд'} <ArrowRight size={11} />
+        </Link>
       </div>
 
       {variant === 'stack'
@@ -419,28 +449,29 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
               style={{
                 position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
                 borderRadius: 18, overflow: 'hidden',
-                background: 'var(--stone-900)', border: '1px solid rgba(212,175,55,0.25)',
+                background: 'linear-gradient(170deg, var(--gold) 0%, var(--gold-hover) 100%)',
+                border: '1px solid rgba(212,175,55,0.25)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: isMobile ? 18 : 24, textAlign: 'center', textDecoration: 'none',
                 transform: `rotate(${tilt}deg)`,
                 transition: 'transform 220ms ease-out, box-shadow 220ms',
-                boxShadow: '0 14px 32px -14px rgba(0,0,0,0.35)',
+                boxShadow: 'var(--shadow-btn-gold)',
               }}
             >
               <div style={{
                 width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, borderRadius: 999,
-                background: 'rgba(212,175,55,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(12,10,9,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: isMobile ? 12 : 16,
               }}>
-                <ArrowRight size={isMobile ? 18 : 22} color="var(--gold)" />
+                <ArrowRight size={isMobile ? 18 : 22} color="var(--stone-950)" />
               </div>
               <h3 style={{
                 fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 15 : 18,
-                color: '#fff', margin: '0 0 8px',
+                color: 'var(--stone-950)', margin: '0 0 8px',
               }}>
                 {language === 'en' ? 'Explore Full Menu' : 'Бүтэн цэс'}
               </h3>
-              <p style={{ fontSize: isMobile ? 11 : 12, color: 'var(--stone-400)', margin: 0, lineHeight: 1.4 }}>
+              <p style={{ fontSize: isMobile ? 11 : 12, color: 'rgba(12,10,9,0.65)', margin: 0, lineHeight: 1.4 }}>
                 {language === 'en' ? 'Discover all our dishes' : 'Бүх хоолтой танилцах'}
               </p>
             </Link>
@@ -502,8 +533,7 @@ function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number
       ) : (
         <div style={{
           position: 'absolute', inset: 0,
-          background: `radial-gradient(ellipse 80% 60% at 40% 30%, #7c3f28, transparent 65%),
-            radial-gradient(circle at 50% 50%, #2a1a0e, #1a1510 70%)`,
+          background: DISH_FALLBACK_BG,
         }} />
       )}
       <div style={{
@@ -615,8 +645,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
 
         <div style={{
           height: 220, position: 'relative', overflow: 'hidden',
-          background: `radial-gradient(ellipse 80% 60% at 40% 30%, #7c3f28, transparent 65%),
-            radial-gradient(circle at 50% 50%, #2a1a0e, #1a1510 70%)`,
+          background: DISH_FALLBACK_BG,
         }}>
           {dish.image && (
             <img
@@ -670,11 +699,11 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
           </div>
 
           <button onClick={() => onAdd({ ...dish, qty })} style={{
-            width: '100%', background: 'var(--red-deep)', color: '#fff', border: 'none', borderRadius: 999,
+            width: '100%', background: 'var(--gold)', color: 'var(--stone-950)', border: 'none', borderRadius: 999,
             padding: '15px 22px', fontSize: 13, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between',
             fontFamily: 'var(--font-sans)',
-            boxShadow: '0 14px 30px -10px rgba(139,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)',
+            boxShadow: 'var(--shadow-btn-gold)',
           }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
               <Plus size={14} /> {language === 'en' ? 'Add to Cart' : 'Сагсанд нэмэх'}

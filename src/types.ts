@@ -88,15 +88,28 @@ export interface Order {
   paymentExpiresAt?: string;     // ISO timestamp; client expires after this
   matchedTxId?: string;          // id of the matched bank_transactions doc
   paidAt?: string;               // ISO timestamp set when payment confirmed
-  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse';
+  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse' | 'auto_email_match';
 
   // QPay-specific fields (set when createQpayInvoice cloud function returns)
   qpayInvoiceId?: string;        // QPay invoice uuid — passed to /payment/check
   qpayPaymentId?: string;        // QPay payment id, set by webhook on PAID
+  qpayPaymentType?: string;      // 'P2P' | 'CARD' — captured at confirm; refunds are CARD-only
+  qpayPaymentWallet?: string;    // bank/app the customer paid from
   qpayQrText?: string;           // EMV-MPM QR payload string
   qpayQrImage?: string;          // base64 PNG
   qpayShortUrl?: string;         // https://s.qpay.mn/... — short link, opens QPay
   qpayDeeplinks?: QpayBankDeeplink[];
+
+  // Refund fields (set by the refundQpayPayment cloud function)
+  refundedAt?: string;           // ISO timestamp when the refund succeeded
+  refundedVia?: 'qpay';
+  refundNote?: string;
+
+  // Manual-review fields (set by qpayWebhook when real money can't be auto-confirmed)
+  paymentReviewReason?: string;        // e.g. 'qpay_amount_mismatch'
+  paymentReviewExpectedMnt?: number;   // what we billed
+  paymentReviewObservedMnt?: number;   // what QPay reported as paid
+  flaggedForReviewAt?: string;         // ISO timestamp
 
   // Admin test-mode fields
   isTest?: boolean;              // placed by an admin while signed in, bypassing customer gates

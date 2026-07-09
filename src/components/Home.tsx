@@ -9,11 +9,11 @@ export default function Home() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="bg-stone-950 min-h-screen"
+      className="bg-[var(--surface-page)] min-h-screen"
     >
+      <Hero />
       <FeaturedDishes />
       <CategoryQuickNav />
-      <Hero />
       <div id="menu">
         <MenuSection />
       </div>

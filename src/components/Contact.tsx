@@ -79,18 +79,18 @@ export default function Contact() {
           >
             <form className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{t('contact.form.name')}</label>
-                <input type="text" className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors" placeholder={t('contact.form.placeholder.name')} />
+                <label className="text-[10px] uppercase tracking-widest text-white/45 font-bold">{t('contact.form.name')}</label>
+                <input type="text" className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-stone-100 placeholder:text-white/35 focus:border-[#D4AF37] outline-none transition-colors" placeholder={t('contact.form.placeholder.name')} />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{t('contact.form.email')}</label>
-                <input type="email" className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors" placeholder={t('contact.form.placeholder.email')} />
+                <label className="text-[10px] uppercase tracking-widest text-white/45 font-bold">{t('contact.form.email')}</label>
+                <input type="email" className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-stone-100 placeholder:text-white/35 focus:border-[#D4AF37] outline-none transition-colors" placeholder={t('contact.form.placeholder.email')} />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{t('contact.form.message')}</label>
-                <textarea className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors h-32 resize-none" placeholder={t('contact.form.placeholder.message')}></textarea>
+                <label className="text-[10px] uppercase tracking-widest text-white/45 font-bold">{t('contact.form.message')}</label>
+                <textarea className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-stone-100 placeholder:text-white/35 focus:border-[#D4AF37] outline-none transition-colors h-32 resize-none" placeholder={t('contact.form.placeholder.message')}></textarea>
               </div>
-              <button className="w-full py-4 bg-amber-500 text-stone-900 font-bold uppercase tracking-widest rounded-full hover:bg-amber-400 transition-all active:scale-95 shadow-lg shadow-amber-500/20">
+              <button className="w-full py-4 bg-[#D4AF37] text-[#080606] font-bold uppercase tracking-widest rounded-full hover:bg-[#C5A028] transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]">
                 {t('contact.form.send')}
               </button>
             </form>

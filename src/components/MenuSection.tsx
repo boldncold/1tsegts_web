@@ -10,6 +10,9 @@ import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { cn, getDynamicStatus, getScheduleLabel } from '../lib/utils';
 
+const DISH_FALLBACK_BG =
+  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'All' | 'Specials'>('All');
@@ -188,7 +191,7 @@ export default function MenuSection() {
   });
 
   return (
-    <section id="menu-section" className="py-24 bg-white min-h-screen">
+    <section id="menu-section" className="py-24 bg-[var(--surface-page)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.div
@@ -198,7 +201,7 @@ export default function MenuSection() {
             className="space-y-4"
           >
             <span className="eyebrow">{t('menu.selection')}</span>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900">{t('menu.title')}</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white">{t('menu.title')}</h2>
             <div className="w-16 h-px bg-[#D4AF37] mx-auto mt-2 opacity-60"></div>
           </motion.div>
         </div>
@@ -214,8 +217,8 @@ export default function MenuSection() {
                 className={cn(
                   "px-5 py-2.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 border",
                   activeCategory === cat
-                    ? "bg-[#8B0000] text-white border-[#8B0000] font-semibold shadow-lg shadow-red-900/20"
-                    : "bg-white text-stone-500 border-gray-200 hover:border-[#D4AF37] hover:text-[#D4AF37]"
+                    ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37] font-semibold shadow-[var(--shadow-btn-gold)]"
+                    : "bg-transparent text-white/50 border-white/15 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:bg-white/[0.04]"
                 )}
               >
                 {getCategoryLabel(cat)}
@@ -230,9 +233,9 @@ export default function MenuSection() {
               placeholder={t('menu.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-full px-12 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+              className="w-full bg-white/[0.04] border border-white/15 rounded-full px-12 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
           </div>
         </div>
 
@@ -268,19 +271,26 @@ export default function MenuSection() {
                     exit={{ opacity: 0, y: 8 }}
                     transition={{ duration: 0.25 }}
                     className={cn(
-                      "group bg-white border border-stone-200 rounded-3xl overflow-hidden flex flex-col shadow-sm",
-                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-10px_rgba(0,0,0,0.12)] hover:border-stone-300",
+                      "group bg-[var(--espresso)] border border-white/[0.06] rounded-3xl overflow-hidden flex flex-col",
+                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[var(--shadow-belt-card)] hover:border-[rgba(212,175,55,0.30)]",
                       !isAvailable ? "opacity-70" : ""
                     )}
                   >
                     {/* Image — 4:3 aspect ratio */}
                     <div className="relative aspect-[4/3] overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.image || `https://picsum.photos/seed/${item.name}/800/600`}
-                        alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        referrerPolicy="no-referrer"
-                      />
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div
+                          className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
+                          style={{ background: DISH_FALLBACK_BG }}
+                        />
+                      )}
 
                       {/* Sold out overlay */}
                       {!isAvailable && (
@@ -294,12 +304,12 @@ export default function MenuSection() {
                       {/* Badges — top left, stacked */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-20">
                         {item.featured && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Star size={9} className="fill-white" /> Featured
+                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-[#080606] shadow-md">
+                            <Star size={9} className="fill-[#080606]" /> Featured
                           </span>
                         )}
                         {isPopular && (
-                          <span className="inline-flex items-center gap-1 bg-orange-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                          <span className="inline-flex items-center gap-1 bg-[rgba(178,74,47,0.9)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
                             <Flame size={9} className="fill-white" /> Popular
                           </span>
                         )}
@@ -309,12 +319,12 @@ export default function MenuSection() {
                           </span>
                         )}
                         {isLuxury && (
-                          <span className="inline-flex items-center gap-1 bg-purple-600/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Gem size={9} className="fill-white" /> Luxury
+                          <span className="inline-flex items-center gap-1 bg-[rgba(230,213,160,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-[#080606] shadow-md">
+                            <Gem size={9} className="fill-[#080606]" /> Luxury
                           </span>
                         )}
                         {isForGroups && (
-                          <span className="inline-flex items-center gap-1 bg-blue-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+                          <span className="inline-flex items-center gap-1 bg-[rgba(21,16,10,0.85)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md border border-[rgba(212,175,55,0.20)]">
                             <Users size={9} /> Groups
                           </span>
                         )}
@@ -326,7 +336,7 @@ export default function MenuSection() {
                       </div>
 
                       {/* Price pill — top right */}
-                      <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-white/60">
+                      <div className="absolute top-3 right-3 z-20 bg-[rgba(21,16,10,0.85)] backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-[rgba(212,175,55,0.25)]">
                         <span className="font-bold text-[13px] text-[#D4AF37] tabular-nums">₮{Math.round(displayPrice).toLocaleString()}</span>
                       </div>
                     </div>
@@ -334,16 +344,16 @@ export default function MenuSection() {
                     {/* Body */}
                     <div className="p-[18px_20px_20px] flex flex-col flex-1" style={{ padding: '18px 20px 20px' }}>
                       {/* Category */}
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-1">
+                      <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-1">
                         {getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}
                       </p>
                       {/* Name */}
-                      <h3 className="font-serif font-bold text-[17px] leading-snug text-stone-900 mb-2 group-hover:text-[#8B0000] transition-colors" style={{ letterSpacing: '-0.005em' }}>
+                      <h3 className="font-serif font-bold text-[17px] leading-snug text-white mb-2 group-hover:text-[#D4AF37] transition-colors" style={{ letterSpacing: '-0.005em' }}>
                         {item.name}
                       </h3>
                       {/* Description */}
                       <p className={cn(
-                        "text-stone-500 font-light leading-[1.55] mb-3 flex-1",
+                        "text-white/45 font-light leading-[1.55] mb-3 flex-1",
                         "line-clamp-2"
                       )} style={{ fontSize: '13px' }}>
                         {item.description}
@@ -352,7 +362,7 @@ export default function MenuSection() {
                       {/* Portion selector */}
                       {item.portions && item.portions.length > 0 && (
                         <div className="mb-3">
-                          <p className="text-[9px] uppercase tracking-[0.2em] text-stone-400 font-semibold mb-2">Select Portion</p>
+                          <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-2">Select Portion</p>
                           <div className="grid gap-1.5 grid-cols-1">
                             {[{ name: 'Default', price: item.price }, ...item.portions].map((portion, idx) => (
                               <button
@@ -362,7 +372,7 @@ export default function MenuSection() {
                                   "flex justify-between items-center px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all border",
                                   currentPortion?.name === portion.name
                                     ? "bg-[rgba(212,175,55,0.1)] text-[#D4AF37] border-[rgba(212,175,55,0.5)]"
-                                    : "bg-gray-50 text-stone-500 border-gray-200 hover:border-gray-300 hover:text-stone-700"
+                                    : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[rgba(212,175,55,0.35)] hover:text-white/70"
                                 )}
                               >
                                 <span>{portion.name}</span>
@@ -374,9 +384,9 @@ export default function MenuSection() {
                       )}
 
                       {/* Bottom row: price + qty stepper / add button */}
-                      <div className="flex items-center justify-between pt-3.5 border-t border-gray-100 mt-auto gap-3">
+                      <div className="flex items-center justify-between pt-3.5 border-t border-white/[0.06] mt-auto gap-3">
                         {/* Price (bottom left) */}
-                        <span className="font-serif font-bold text-[#8B0000] text-[17px] tabular-nums leading-none">
+                        <span className="font-serif font-bold text-[#D4AF37] text-[17px] tabular-nums leading-none">
                           ₮{Math.round(displayPrice).toLocaleString()}
                         </span>
 
@@ -410,8 +420,8 @@ export default function MenuSection() {
                             className={cn(
                               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
                               isAvailable && storeOpen
-                                ? "bg-[#8B0000] text-white hover:bg-[#6b0000] shadow-sm"
-                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                ? "bg-[#D4AF37] text-[#080606] hover:bg-[#C5A028] shadow-sm"
+                                : "bg-white/[0.06] text-white/40 cursor-not-allowed"
                             )}
                           >
                             <Plus size={12} />
@@ -429,7 +439,7 @@ export default function MenuSection() {
 
         {!loading && filteredItems.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-stone-500 text-lg italic">{t('menu.no_items')}</p>
+            <p className="text-white/45 text-lg italic">{t('menu.no_items')}</p>
           </div>
         )}
       </div>

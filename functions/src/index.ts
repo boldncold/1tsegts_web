@@ -18,3 +18,4 @@ export const FUNCTIONS_DEPLOY_REV = 2;
 export { createQpayInvoice } from './createQpayInvoice.js';
 export { qpayWebhook } from './qpayWebhook.js';
 export { expirePendingQpayInvoices } from './expirePendingQpayInvoices.js';
+export { refundQpayPayment } from './refundQpayPayment.js';

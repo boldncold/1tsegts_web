@@ -40,8 +40,11 @@ export interface QpayCreateInvoiceRequest {
 
 export interface QpayPaymentRow {
   payment_id: string;
-  payment_status: 'NEW' | 'FAILED' | 'PAID' | 'REFUNDED' | 'CANCELLED' | string;
-  payment_amount: number;
+  payment_status: 'NEW' | 'FAILED' | 'PAID' | 'PARTIAL' | 'REFUNDED' | 'CANCELLED' | string;
+  // NOTE: QPay sends amounts as decimal STRINGS in JSON (e.g. "100.00"), even
+  // though the spec table types them "decimal". Always coerce with Number()
+  // before comparing — never trust the static type here.
+  payment_amount: number | string;
   payment_currency: string;
   payment_wallet?: string;
   payment_type: 'P2P' | 'CARD' | string;
@@ -172,4 +175,61 @@ export async function qpayCancelInvoice(
     const body = await res.text().catch(() => '');
     throw new Error(`QPay cancelInvoice failed: HTTP ${res.status} — ${body}`);
   }
+}
+
+/** Thrown by qpayRefundPayment when QPay rejects the refund (4xx/5xx). */
+export class QpayApiError extends Error {
+  constructor(
+    public readonly status: number,
+    /** QPay's machine-readable error key, e.g. 'PAYMENT_SETTLED'. */
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'QpayApiError';
+  }
+}
+
+/**
+ * DELETE /v2/payment/refund/{payment_id} — refund a paid CARD payment.
+ *
+ * Spec caveat (`payment_refund` sheet): refunds are only possible for CARD
+ * transactions. P2P (bank-app) payments — which is what most QR scans are —
+ * cannot be refunded through this API; those have to be reversed by a manual
+ * bank transfer. The caller is responsible for checking payment_type before
+ * calling this. On a QPay rejection we surface the error key (PAYMENT_SETTLED,
+ * PAYMENT_NOT_PAID, PAYMENT_ALREADY_CANCELED, …) via QpayApiError so the caller
+ * can act on it.
+ */
+export async function qpayRefundPayment(
+  baseUrl: string,
+  accessToken: string,
+  paymentId: string,
+  note?: string,
+): Promise<void> {
+  const res = await fetch(`${baseUrl}/v2/payment/refund/${paymentId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ note: note ?? 'refund' }),
+  });
+  if (res.ok) return;
+
+  // QPay returns { error, message } on failure — pull out the error key so the
+  // caller (and the admin UI) can show something actionable.
+  const raw = await res.text().catch(() => '');
+  let code = `HTTP_${res.status}`;
+  try {
+    const parsed = JSON.parse(raw) as { error?: string; message?: string };
+    if (parsed.error) code = parsed.error;
+  } catch {
+    // non-JSON body — keep the HTTP_<status> fallback code
+  }
+  throw new QpayApiError(
+    res.status,
+    code,
+    `QPay refundPayment failed: HTTP ${res.status} — ${raw}`,
+  );
 }

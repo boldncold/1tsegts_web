@@ -14,6 +14,7 @@ import ConfirmModal from './ConfirmModal';
 import { generateReferenceCode } from '../lib/referenceCode';
 import { BANK_DETAILS, PAYMENT_WINDOW_MINUTES } from '../lib/bankConfig';
 import { QPAY_ENABLED, QPAY_PAYMENT_WINDOW_MINUTES } from '../lib/qpayConfig';
+import { isMobileDevice } from '../lib/device';
 import QpayPaymentPanel from './QpayPaymentPanel';
 import type { PaymentMethod } from '../types';
 
@@ -171,7 +172,7 @@ function BankPaymentPanel({ order }: { order: any }) {
 }
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { cart, total, removeFromCart, updateQuantity, updatePackaging, clearCart, pendingOrderId, pendingOrderData, setPendingOrderId } = useCart();
+  const { cart, total, removeFromCart, updateQuantity, updatePackaging, clearCart, pendingOrderId, pendingOrderData, setPendingOrderId, pendingOrderExpired } = useCart();
   const { t, language } = useLanguage();
   const { storeOpen } = useStoreSettings();
   const { isAdmin } = useAuth();
@@ -201,6 +202,23 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   });
   const [showOtherPaymentMethods, setShowOtherPaymentMethods] = useState(false);
 
+  // Online (QPay / bank-transfer) order whose payment has been verified
+  // server-side — drives the "already paid" copy instead of pay-at-cashier.
+  const paidOnline =
+    !!pendingOrderData &&
+    (pendingOrderData.paymentMethod === 'qpay' ||
+      pendingOrderData.paymentMethod === 'bank_transfer') &&
+    pendingOrderData.paymentStatus === 'CONFIRMED';
+
+  // Sticky version of paidOnline: pendingOrderData clears once the kitchen
+  // advances the order, but the completion screen can still be on screen — it
+  // must not fall back to "pay at the cashier" copy for an order already paid.
+  const [completedWasPaid, setCompletedWasPaid] = useState(false);
+  React.useEffect(() => {
+    if (paidOnline) setCompletedWasPaid(true);
+  }, [paidOnline]);
+  const showPaidCopy = paidOnline || completedWasPaid;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -229,6 +247,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }
 
     setIsSubmitting(true);
+    setCompletedWasPaid(false);
     try {
       const generatedOrderNumber = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       
@@ -370,15 +389,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-gray-100"
+            className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-[var(--stone-950)] shadow-2xl flex flex-col border-l border-[rgba(212,175,55,0.15)]"
           >
             {/* Header */}
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <div className="p-6 border-b border-white/[0.06] flex justify-between items-center">
               <div className="flex items-center space-x-3">
                 <ShoppingBag className="text-[#D4AF37]" size={24} />
-                <h2 className="text-xl font-medium text-stone-900">{t('cart.title')}</h2>
+                <h2 className="text-xl font-medium text-white">{t('cart.title')}</h2>
               </div>
-              <button onClick={onClose} className="p-2 text-stone-400 hover:text-[#8B0000] transition-colors">
+              <button onClick={onClose} className="p-2 text-white/45 hover:text-[#D4AF37] transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -404,6 +423,21 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
               )}
 
+              {/* Cancel while awaiting payment — without this, an unpaid order
+                  reopened from the cart could only be abandoned by waiting out
+                  the payment window. */}
+              {pendingOrderId && pendingOrderData && !orderComplete &&
+                (pendingOrderData.paymentMethod === 'qpay' ||
+                 pendingOrderData.paymentMethod === 'bank_transfer') &&
+                pendingOrderData.paymentStatus === 'AWAITING_PAYMENT' && (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full mb-6 py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
+                >
+                  {language === 'en' ? 'Cancel Order' : 'Захиалга цуцлах'}
+                </button>
+              )}
+
               {/* Active-order panel: shown for cash orders and for non-cash orders
                   (QPay, bank-transfer) whose payment has already been confirmed. */}
               {pendingOrderId && pendingOrderData && !orderComplete &&
@@ -427,41 +461,83 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             ? (language === 'en' ? 'Preparing' : 'Бэлтгэж байна')
                             : (language === 'en' ? 'Ready!' : 'Бэлэн!')}
                         </span>
+                        {paidOnline && (
+                          <span className="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-widest bg-green-500/15 text-green-400 border border-green-500/30 whitespace-nowrap">
+                            ₮ {language === 'en' ? 'Paid' : 'Төлөгдсөн'}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setShowCancelConfirm(true)}
-                      className="p-2 text-stone-400 hover:text-red-400 transition-colors rounded-full hover:bg-stone-800"
-                      title={language === 'en' ? "Cancel Order" : "Захиалга цуцлах"}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {/* Self-serve cancel deletes the order doc — fine while no
+                        money has moved, but a paid order must be cancelled by
+                        the restaurant (refund needed), so hide it once paid. */}
+                    {!paidOnline && (
+                      <button
+                        onClick={() => setShowCancelConfirm(true)}
+                        className="p-2 text-stone-400 hover:text-red-400 transition-colors rounded-full hover:bg-stone-800"
+                        title={language === 'en' ? "Cancel Order" : "Захиалга цуцлах"}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Items + total + hint */}
-                  <div className="bg-gray-50 px-5 py-4 space-y-3">
+                  <div className="bg-[var(--espresso)] px-5 py-4 space-y-3">
                     <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                       {pendingOrderData.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex justify-between text-xs text-stone-500">
+                        <div key={idx} className="flex justify-between text-xs text-white/50">
                           <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/70"> ({item.selectedPortion.name})</span>}</span>
-                          <span className="tabular-nums text-stone-700 font-medium">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
+                          <span className="tabular-nums text-white/70 font-medium">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                      <span className="text-xs font-semibold text-stone-500 uppercase tracking-widest">{t('cart.total')}</span>
-                      <span className="text-xl font-bold text-[#8B0000] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                    <div className="pt-2 border-t border-white/[0.06] flex justify-between items-center">
+                      <span className="text-xs font-semibold text-white/45 uppercase tracking-widest">{t('cart.total')}</span>
+                      <span className="text-xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                     </div>
-                    <p className="text-sm font-bold text-[#8B0000] text-center pt-1 tracking-wide">
-                      {language === 'en'
-                        ? 'Go to the cashier and show your order number'
-                        : 'Кассанд очиж захиалгын дугаараа харуулна уу'}
+                    <p className="text-sm font-bold text-[#D4AF37] text-center pt-1 tracking-wide">
+                      {paidOnline
+                        ? (language === 'en'
+                            ? 'Paid — show your order number when collecting your food'
+                            : 'Төлбөр төлөгдсөн — хоолоо авахдаа захиалгын дугаараа харуулна уу')
+                        : (language === 'en'
+                            ? 'Go to the cashier and show your order number'
+                            : 'Кассанд очиж захиалгын дугаараа харуулна уу')}
                     </p>
                   </div>
                 </div>
               )}
 
-              {orderComplete ? (
+              {orderComplete && pendingOrderExpired && !pendingOrderData ? (
+                /* Payment window ran out before the customer paid — the order
+                   never reached the kitchen. Replace the stale success screen
+                   with an explicit expired state + a way to restart. */
+                <div className="flex flex-col items-center text-center space-y-5 py-4">
+                  <div className="w-20 h-20 bg-red-500/10 border-2 border-red-500/30 rounded-full flex items-center justify-center">
+                    <Clock size={44} className="text-red-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-serif font-bold text-2xl text-white">
+                      {language === 'en' ? 'Payment window expired' : 'Төлбөрийн хугацаа дууслаа'}
+                    </h3>
+                    <p className="text-white/45 text-sm leading-relaxed">
+                      {language === 'en'
+                        ? "We didn't receive your payment in time, so this order was not sent to the kitchen. Please place it again."
+                        : 'Төлбөр хугацаандаа хийгдээгүй тул захиалга гал тогоонд илгээгдээгүй. Дахин захиалга өгнө үү.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setOrderComplete(false);
+                      setIsCheckingOut(false);
+                    }}
+                    className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[#C5A028] transition-all"
+                  >
+                    {language === 'en' ? 'Order again' : 'Дахин захиалах'}
+                  </button>
+                </div>
+              ) : orderComplete ? (
                 <div className="flex flex-col items-center text-center space-y-5 py-4">
                   {/* Success icon */}
                   <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center">
@@ -469,21 +545,29 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="font-serif font-bold text-2xl text-stone-900">{t('cart.order_received')}</h3>
-                    <p className="text-stone-400 text-sm">
+                    <h3 className="font-serif font-bold text-2xl text-white">{t('cart.order_received')}</h3>
+                    <p className="text-white/45 text-sm">
                       {pendingOrderData?.paymentMethod === 'qpay' &&
                        pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT'
-                        ? (language === 'en'
-                            ? 'Scan the QR below to pay with any bank app'
-                            : 'Доорх QR-г аль ч банкны аппаар сканнэж төлнө үү')
+                        ? (isMobileDevice()
+                            ? (language === 'en'
+                                ? 'Tap below to pay in your bank app'
+                                : 'Доорх товчийг дарж банкны аппаараа төлнө үү')
+                            : (language === 'en'
+                                ? 'Scan the QR below to pay with any bank app'
+                                : 'Доорх QR-г аль ч банкны аппаар сканнэж төлнө үү'))
                         : pendingOrderData?.paymentMethod === 'bank_transfer' &&
                           pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT'
                           ? (language === 'en'
                               ? 'Complete the bank transfer below to confirm'
                               : 'Захиалгаа баталгаажуулахын тулд доорх дансаар шилжүүлнэ үү')
-                          : (language === 'en'
-                              ? 'Your order is being prepared'
-                              : 'Таны захиалга бэлтгэгдэж байна')}
+                          : showPaidCopy
+                            ? (language === 'en'
+                                ? 'Payment received — your order is being prepared'
+                                : 'Төлбөр баталгаажлаа — захиалга бэлтгэгдэж байна')
+                            : (language === 'en'
+                                ? 'Your order is being prepared'
+                                : 'Таны захиалга бэлтгэгдэж байна')}
                     </p>
                   </div>
 
@@ -515,9 +599,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
                       </h4>
                       <div className="space-y-3">
-                        {(language === 'en'
-                          ? ['Go to the cashier', 'Show your order number above', 'Pay and collect your food']
-                          : ['Кассанд очно уу', 'Захиалгын дугаараа харуулна уу', 'Төлж, хоолоо авна уу']
+                        {(showPaidCopy
+                          ? (language === 'en'
+                              ? ['Wait while we prepare your order', 'Show your order number at the counter', 'Collect your food — already paid']
+                              : ['Захиалга бэлтгэгдэхийг түр хүлээнэ үү', 'Кассанд захиалгын дугаараа харуулна уу', 'Хоолоо аваарай — төлбөр төлөгдсөн'])
+                          : (language === 'en'
+                              ? ['Go to the cashier', 'Show your order number above', 'Pay and collect your food']
+                              : ['Кассанд очно уу', 'Захиалгын дугаараа харуулна уу', 'Төлж, хоолоо авна уу'])
                         ).map((step, i) => (
                           <div key={i} className="flex items-center gap-3">
                             <span className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
@@ -527,7 +615,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </div>
                       <div className="pt-3 border-t border-amber-200 text-center space-y-1">
                         <p className="text-xs text-amber-600">{language === 'en' ? 'Or call us at' : 'Эсвэл утасдана уу'}</p>
-                        <a href="tel:99138866" className="text-xl font-bold text-[#8B0000] hover:underline">99138866</a>
+                        <a href="tel:99138866" className="text-xl font-bold text-[#D4AF37] hover:underline">99138866</a>
                       </div>
                     </div>
                   ) : (
@@ -536,9 +624,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
                       </h4>
                       <div className="space-y-3">
-                        {(language === 'en'
-                          ? ['Scan the QR code at your kiosk to pay', 'Or call us to confirm & pay', 'Collect your food when ready']
-                          : ['Киоскны QR кодыг сканнэж төлнө үү', 'Эсвэл утасдаж баталгаажуулаарай', 'Бэлэн болмогц хоолоо авна уу']
+                        {(showPaidCopy
+                          ? (language === 'en'
+                              ? ['Payment received — the kitchen is on it', 'Stay at your kiosk', 'Collect your food when ready']
+                              : ['Төлбөр баталгаажлаа — гал тогоо бэлтгэж байна', 'Киоскдээ хүлээнэ үү', 'Бэлэн болмогц хоолоо авна уу'])
+                          : (language === 'en'
+                              ? ['Scan the QR code at your kiosk to pay', 'Or call us to confirm & pay', 'Collect your food when ready']
+                              : ['Киоскны QR кодыг сканнэж төлнө үү', 'Эсвэл утасдаж баталгаажуулаарай', 'Бэлэн болмогц хоолоо авна уу'])
                         ).map((step, i) => (
                           <div key={i} className="flex items-center gap-3">
                             <span className="w-7 h-7 rounded-full bg-blue-200 text-blue-900 font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
@@ -548,7 +640,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </div>
                       <div className="pt-3 border-t border-blue-200 text-center space-y-1">
                         <p className="text-xs text-blue-600">{language === 'en' ? 'Call us at' : 'Утасны дугаар'}</p>
-                        <a href="tel:99138866" className="text-xl font-bold text-[#8B0000] hover:underline">99138866</a>
+                        <a href="tel:99138866" className="text-xl font-bold text-[#D4AF37] hover:underline">99138866</a>
                       </div>
                     </div>
                   ))}
@@ -595,12 +687,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         setIsCheckingOut(false);
                         onClose();
                       }}
-                      className="w-full py-3 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[#6b0000] transition-all"
+                      className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[#C5A028] transition-all"
                     >
                       {t('cart.back_to_menu')}
                     </button>
 
-                    {pendingOrderId && (
+                    {pendingOrderId && !paidOnline && (
                       <button
                         onClick={() => setShowCancelConfirm(true)}
                         className="w-full py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
@@ -612,11 +704,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
               ) : (cart.length === 0 && !pendingOrderId) ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <ShoppingBag className="text-gray-300" size={64} />
-                  <p className="text-stone-400 font-light italic">{t('cart.empty')}</p>
+                  <ShoppingBag className="text-[#D4AF37]/40" size={64} />
+                  <p className="text-white/45 font-light italic">{t('cart.empty')}</p>
                   <button
                     onClick={onClose}
-                    className="text-[#8B0000] font-semibold uppercase tracking-[0.15em] text-xs hover:underline"
+                    className="text-[#D4AF37] font-semibold uppercase tracking-[0.15em] text-xs hover:underline"
                   >
                     {t('cart.start_adding')}
                   </button>
@@ -624,18 +716,18 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               ) : isCheckingOut ? (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-stone-900">{t('cart.checkout_details')}</h3>
+                    <h3 className="text-lg font-medium text-white">{t('cart.checkout_details')}</h3>
                     
                     {/* Order Type Toggle */}
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.order_option')}</label>
-                      <div className="flex p-1 bg-gray-50 border border-gray-200 rounded-full">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.order_option')}</label>
+                      <div className="flex p-1 bg-white/[0.04] border border-white/15 rounded-full">
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, orderType: 'pickup' })}
                           className={cn(
                             "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
-                            formData.orderType === 'pickup' ? "bg-[#8B0000] text-white" : "text-stone-500"
+                            formData.orderType === 'pickup' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
                           )}
                         >
                           {t('cart.pickup')}
@@ -645,7 +737,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           onClick={() => setFormData({ ...formData, orderType: 'kiosk' })}
                           className={cn(
                             "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
-                            formData.orderType === 'kiosk' ? "bg-[#8B0000] text-white" : "text-stone-500"
+                            formData.orderType === 'kiosk' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
                           )}
                         >
                           {t('cart.at_mall')}
@@ -658,35 +750,35 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {formData.orderType === 'kiosk' && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.phone')}</label>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.phone')}</label>
                           <input
                             required
                             type="text"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-full px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
                             placeholder="+976 ..."
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.kiosk_number')}</label>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.kiosk_number')}</label>
                           <input
                             required
                             type="text"
                             value={formData.kioskNumber}
                             onChange={(e) => setFormData({ ...formData, kioskNumber: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-full px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
                             placeholder="e.g., Kiosk #12"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">{t('cart.special_notes')}</label>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.special_notes')}</label>
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-stone-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-2xl px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
                             placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
                           />
                         </div>
@@ -697,7 +789,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[10px] uppercase tracking-[0.2em] text-amber-800 font-semibold text-center">
                           {t('cart.admin.test_mode_hint')}
                         </div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">
                           {t('cart.admin.discount_label')}
                         </label>
                         <input
@@ -707,7 +799,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           step={100}
                           value={adminDiscount}
                           onChange={(e) => setAdminDiscount(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
-                          className="w-full bg-white border border-amber-300 rounded-full px-5 py-3 text-stone-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all tabular-nums"
+                          className="w-full bg-white/[0.04] border border-amber-300/50 rounded-full px-5 py-3 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all tabular-nums"
                           placeholder="0"
                         />
                         {chargedTotal === 0 && clampedDiscount > 0 && (
@@ -721,7 +813,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {/* Payment method picker — QPay is primary, cash + bank
                         transfer collapse into an "other methods" section. */}
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-stone-400 font-semibold">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">
                         {t('cart.payment_method')}
                       </label>
 
@@ -733,15 +825,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           className={cn(
                             "w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 relative",
                             formData.paymentMethod === 'qpay'
-                              ? "bg-[#8B0000] text-white border-[#8B0000] shadow-lg shadow-red-900/20"
-                              : "bg-white text-stone-700 border-[#D4AF37]/40 hover:border-[#D4AF37]"
+                              ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37] shadow-[var(--shadow-btn-gold)]"
+                              : "bg-white/[0.04] text-white border-[#D4AF37]/40 hover:border-[#D4AF37]"
                           )}
                         >
                           <span className={cn(
                             "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                            formData.paymentMethod === 'qpay' ? "bg-white/15" : "bg-[#D4AF37]/15"
+                            formData.paymentMethod === 'qpay' ? "bg-[#080606]/15" : "bg-[#D4AF37]/15"
                           )}>
-                            <QrCode size={22} className={formData.paymentMethod === 'qpay' ? 'text-white' : 'text-[#D4AF37]'} />
+                            <QrCode size={22} className={formData.paymentMethod === 'qpay' ? 'text-[#080606]' : 'text-[#D4AF37]'} />
                           </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -749,7 +841,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                               <span className={cn(
                                 "text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full",
                                 formData.paymentMethod === 'qpay'
-                                  ? "bg-white/20 text-white"
+                                  ? "bg-[#080606]/15 text-[#080606]"
                                   : "bg-[#D4AF37] text-stone-900"
                               )}>
                                 {language === 'en' ? 'Recommended' : 'Санал болгож буй'}
@@ -757,14 +849,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             </div>
                             <p className={cn(
                               "text-xs mt-0.5",
-                              formData.paymentMethod === 'qpay' ? "text-white/80" : "text-stone-500"
+                              formData.paymentMethod === 'qpay' ? "text-[#080606]/70" : "text-white/45"
                             )}>
                               {language === 'en'
                                 ? 'One-tap pay from any bank app'
                                 : 'Аль ч банкны аппаас нэг товшилтоор'}
                             </p>
                           </div>
-                          {formData.paymentMethod === 'qpay' && <CheckCircle size={18} className="text-white shrink-0" />}
+                          {formData.paymentMethod === 'qpay' && <CheckCircle size={18} className="text-[#080606] shrink-0" />}
                         </button>
                       )}
 
@@ -772,7 +864,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <button
                         type="button"
                         onClick={() => setShowOtherPaymentMethods((v) => !v)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold hover:text-stone-900 transition-colors"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-white/45 font-semibold hover:text-[#D4AF37] transition-colors"
                       >
                         <span>
                           {language === 'en' ? 'Other payment methods' : 'Бусад төлбөрийн арга'}
@@ -788,8 +880,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             className={cn(
                               "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'cash'
-                                ? "bg-[#8B0000] text-white border-[#8B0000]"
-                                : "bg-white text-stone-500 border-gray-200 hover:border-stone-300"
+                                ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
+                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
                             )}
                           >
                             <Banknote size={16} />
@@ -801,8 +893,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             className={cn(
                               "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'bank_transfer'
-                                ? "bg-[#8B0000] text-white border-[#8B0000]"
-                                : "bg-white text-stone-500 border-gray-200 hover:border-stone-300"
+                                ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
+                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
                             )}
                           >
                             <Building2 size={16} />
@@ -824,7 +916,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <button
                     type="button"
                     onClick={() => setIsCheckingOut(false)}
-                    className="w-full py-3 text-stone-400 font-semibold uppercase tracking-[0.15em] text-xs hover:text-stone-600 transition-colors"
+                    className="w-full py-3 text-white/45 font-semibold uppercase tracking-[0.15em] text-xs hover:text-[#D4AF37] transition-colors"
                   >
                     {t('cart.back_to_cart')}
                   </button>
@@ -833,57 +925,59 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <div className="space-y-6">
                   {cart.map((item) => (
                     <div key={item.cartItemId} className="flex space-x-4 group">
-                      <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm">
-                        <img
-                          src={item.image || `https://picsum.photos/seed/${item.name}/200/200`}
-                          alt={item.name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                        />
+                      <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-white/[0.06] shadow-sm bg-[var(--dish-fallback-bg)]">
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
                       </div>
                       <div className="flex-1 space-y-2">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h4 className="text-stone-900 font-medium text-sm">{item.name}</h4>
+                            <h4 className="text-white font-medium text-sm">{item.name}</h4>
                             {item.selectedPortion && (
                               <p className="text-xs text-[#D4AF37] font-semibold tracking-wide">{item.selectedPortion.name}</p>
                             )}
                           </div>
                           <button
                             onClick={() => removeFromCart(item.cartItemId)}
-                            className="p-1.5 text-stone-400 hover:text-red-500 transition-colors bg-gray-50 rounded-full"
+                            className="p-1.5 text-white/40 hover:text-red-500 transition-colors bg-white/[0.04] rounded-full"
                           >
                             <Trash2 size={14} />
                           </button>
                         </div>
-                        <p className="text-xs text-stone-500 font-light line-clamp-1">{item.category}</p>
-                        
-                        <div className="pt-2 mt-2 border-t border-gray-100">
+                        <p className="text-xs text-white/45 font-light line-clamp-1">{item.category}</p>
+
+                        <div className="pt-2 mt-2 border-t border-white/[0.06]">
                           <button
                             onClick={() => updatePackaging(item.cartItemId, !item.packaging)}
                             className={cn(
                               "flex items-center justify-between w-full px-3 py-2 rounded-xl border transition-all active:scale-[0.98]",
-                              item.packaging 
-                                ? "bg-[#D4AF37]/10 border-[#D4AF37]/50" 
-                                : "bg-gray-50 border-gray-200 hover:border-gray-300"
+                              item.packaging
+                                ? "bg-[#D4AF37]/10 border-[#D4AF37]/50"
+                                : "bg-white/[0.04] border-white/15 hover:border-white/30"
                             )}
                           >
                             <div className="flex items-center space-x-2">
                               {item.packaging ? (
                                 <CheckCircle size={16} className="text-[#D4AF37]" />
                               ) : (
-                                <div className="w-4 h-4 rounded-full border border-gray-300" />
+                                <div className="w-4 h-4 rounded-full border border-white/20" />
                               )}
                               <span className={cn(
                                 "text-xs font-medium",
-                                item.packaging ? "text-[#D4AF37]" : "text-stone-500"
+                                item.packaging ? "text-[#D4AF37]" : "text-white/50"
                               )}>
                                 {t('cart.packaging')}
                               </span>
                             </div>
                             <span className={cn(
                               "text-xs font-semibold tabular-nums",
-                              item.packaging ? "text-[#D4AF37]" : "text-stone-400"
+                              item.packaging ? "text-[#D4AF37]" : "text-white/40"
                             )}>
                               +₮{(item.packagingPrice !== undefined ? item.packagingPrice : 0).toLocaleString()}
                             </span>
@@ -891,22 +985,22 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
 
                         <div className="flex justify-between items-center pt-2">
-                          <div className="flex items-center space-x-3 bg-gray-50 rounded-full px-2 py-1 border border-gray-200">
+                          <div className="flex items-center space-x-3 bg-[var(--espresso)] rounded-full px-2 py-1 border border-white/15">
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-white/50 hover:text-[#D4AF37] transition-colors"
                             >
                               <Minus size={14} />
                             </button>
-                            <span className="text-sm font-semibold text-stone-700 min-w-[20px] text-center tabular-nums">{item.quantity}</span>
+                            <span className="text-sm font-semibold text-white min-w-[20px] text-center tabular-nums">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="p-1 text-stone-500 hover:text-[#8B0000] transition-colors"
+                              className="p-1 text-white/50 hover:text-[#D4AF37] transition-colors"
                             >
                               <Plus size={14} />
                             </button>
                           </div>
-                          <span className="text-sm font-semibold tabular-nums text-[#8B0000]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
+                          <span className="text-sm font-semibold tabular-nums text-[#D4AF37]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -917,14 +1011,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
             {/* Footer */}
             {!orderComplete && cart.length > 0 && (
-              <div className="p-6 border-t border-gray-100 bg-gray-50 space-y-4">
+              <div className="p-6 border-t border-white/[0.06] bg-[var(--espresso)] space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-stone-500 uppercase tracking-[0.2em] text-xs font-semibold">{t('cart.subtotal')}</span>
+                  <span className="text-white/45 uppercase tracking-[0.2em] text-xs font-semibold">{t('cart.subtotal')}</span>
                   <span className={cn(
                     "tabular-nums",
                     isAdmin && clampedDiscount > 0
-                      ? "text-base font-medium text-stone-500 line-through"
-                      : "text-2xl font-medium text-stone-900"
+                      ? "text-base font-medium text-white/45 line-through"
+                      : "text-2xl font-medium text-white"
                   )}>₮{Math.round(total).toLocaleString()}</span>
                 </div>
                 {isAdmin && clampedDiscount > 0 && (
@@ -938,10 +1032,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-stone-900 uppercase tracking-[0.2em] text-xs font-bold">
+                      <span className="text-white uppercase tracking-[0.2em] text-xs font-bold">
                         {language === 'en' ? 'Charged' : 'Төлбөр'}
                       </span>
-                      <span className="text-2xl font-bold tabular-nums text-stone-900">
+                      <span className="text-2xl font-bold tabular-nums text-[#D4AF37]">
                         ₮{Math.round(chargedTotal).toLocaleString()}
                       </span>
                     </div>
@@ -957,7 +1051,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-widest">
                       {language === 'en' ? 'Pending order must finish first' : 'Захиалга дуусахыг хүлээнэ үү'}
                     </p>
-                    <p className="text-[10px] text-stone-500 font-light italic">
+                    <p className="text-[10px] text-white/45 font-light italic">
                       {language === 'en' ? 'You can cancel your current order above to place a new one.' : 'Та шинээр захиалга өгөхийн тулд дээрх захиалгыг цуцалж болно.'}
                     </p>
                   </div>
@@ -967,7 +1061,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={handleSubmit}
                     disabled={isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
-                      "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95",
+                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 hover:bg-[#C5A028]",
                       (isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -985,8 +1079,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={() => setIsCheckingOut(true)}
                     disabled={!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)}
                     className={cn(
-                      "w-full py-4 bg-[#8B0000] text-white font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-lg shadow-red-900/20",
-                      (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#6b0000]"
+                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]",
+                      (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#C5A028]"
                     )}
                   >
                     <span>{!effectiveStoreOpen ? t('cart.closed') : t('cart.proceed')}</span>
@@ -1010,6 +1104,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         onClose={() => setShowCancelConfirm(false)}
         onConfirm={async () => {
           if (pendingOrderId) {
+            // Hard guard (the buttons are already hidden): never delete an
+            // online-paid order client-side — the payment record would vanish
+            // with no refund. Those cancellations go through the restaurant.
+            if (paidOnline) {
+              toast.error(language === 'en'
+                ? 'This order is already paid — call us at 99138866 to cancel and refund.'
+                : 'Төлбөр төлөгдсөн захиалгыг цуцлахын тулд 99138866 дугаарт залгана уу.');
+              return;
+            }
             try {
               const strikes = parseInt(localStorage.getItem('grand_strikes') || '0') + 1;
               localStorage.setItem('grand_strikes', strikes.toString());

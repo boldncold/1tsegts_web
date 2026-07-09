@@ -6,20 +6,36 @@
   --font-serif: "Playfair Display", serif;
 }
 
-/* ─── Brand tokens ─────────────────────────────────────────── */
 :root {
-  --gold:           #D4AF37;
-  --gold-hover:     #C5A028;
-  --gold-soft-10:   rgba(212,175,55,0.10);
-  --gold-soft-20:   rgba(212,175,55,0.20);
-  --gold-soft-30:   rgba(212,175,55,0.30);
-  --gold-soft-40:   rgba(212,175,55,0.40);
+  /* Gold */
+  --gold: #D4AF37;
+  --gold-hover: #C5A028;
+  --gold-soft-10: rgba(212, 175, 55, 0.10);
+  --gold-soft-15: rgba(212, 175, 55, 0.15);
+  --gold-soft-20: rgba(212, 175, 55, 0.20);
+  --gold-soft-25: rgba(212, 175, 55, 0.25);
+  --gold-soft-30: rgba(212, 175, 55, 0.30);
+  --gold-soft-35: rgba(212, 175, 55, 0.35);
+  --gold-soft-40: rgba(212, 175, 55, 0.40);
 
-  --red-deep:       #8B0000;
+  /* Reserved red: spicy, destructive, wordmark only. */
+  --red-deep: #8B0000;
   --red-deep-hover: #6B0000;
-  --red-soft-10:    rgba(139,0,0,0.10);
+  --red-soft-10: rgba(139, 0, 0, 0.10);
 
-  --stone-50:  #fafaf9;
+  --gold-pale: #E6D5A0;
+  --warm: #B24A2F;
+  --warm-deep: #6E2B15;
+  --warm-soft-15: rgba(178, 74, 47, 0.15);
+  --warm-soft-25: rgba(178, 74, 47, 0.25);
+  --surface-warm: #2c1810;
+
+  --espresso: #15100a;
+  --espresso-2: #2c1810;
+  --espresso-3: #4a1a0a;
+  --espresso-border: #3a3025;
+
+  --stone-50: #fafaf9;
   --stone-100: #f5f5f4;
   --stone-200: #e7e5e4;
   --stone-300: #d6d3d1;
@@ -28,74 +44,201 @@
   --stone-600: #57534e;
   --stone-700: #44403c;
   --stone-800: #292524;
-  --stone-900: #1c1917;
-  --stone-950: #0c0a09;
+  --stone-900: #171412;
+  --stone-950: #080606;
 
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
 
-  --bg-page-alt: #fafaf9;
+  --white: #ffffff;
+  --white-72: rgba(255, 255, 255, 0.72);
+  --white-70: rgba(255, 255, 255, 0.70);
+  --white-50: rgba(255, 255, 255, 0.50);
+  --white-45: rgba(255, 255, 255, 0.45);
+  --white-40: rgba(255, 255, 255, 0.40);
+  --white-15: rgba(255, 255, 255, 0.15);
+  --white-06: rgba(255, 255, 255, 0.06);
+  --white-04: rgba(255, 255, 255, 0.04);
 
-  /* Shadows */
-  --shadow-glow-gold: 0 0 20px rgba(212,175,55,0.40);
-  --shadow-glow-red:  0 0 15px rgba(212,175,55,0.30);
+  --surface-page: var(--stone-950);
+  --surface-espresso: var(--espresso);
+  --surface-card: var(--stone-900);
+  --surface-light: #ffffff;
+  --surface-light-alt: var(--stone-50);
 
-  /* Motion */
+  --text-primary: #ffffff;
+  --text-secondary: var(--white-72);
+  --text-muted: var(--white-45);
+  --text-on-gold: var(--stone-950);
+  --text-on-red: #ffffff;
+
+  --border-subtle: var(--white-06);
+  --border-gold: var(--gold-soft-15);
+  --border-gold-strong: var(--gold-soft-35);
+
+  --accent: var(--gold);
+  --accent-cta: var(--gold);
+
+  --scrim: rgba(0, 0, 0, 0.55);
+  --scrim-heavy: rgba(12, 10, 9, 0.80);
+
+  --gradient-hero: linear-gradient(180deg, #060504 0%, #0e0b07 60%, #16110b 100%);
+  --glow-hero:
+    radial-gradient(ellipse 90% 55% at 50% 8%, rgba(212, 175, 55, 0.14), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(212, 175, 55, 0.05), transparent 70%);
+  --dish-fallback-bg:
+    radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232, 200, 90, 0.28), transparent 70%),
+    radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212, 175, 55, 0.22), transparent 65%),
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212, 175, 55, 0.10), transparent 70%),
+    linear-gradient(180deg, #17120a 0%, #0a0806 100%);
+
+  --text-h1-size: 44px;
+  --text-h1-weight: 500;
+  --text-h1-leading: 1.05;
+  --text-h1-tracking: -0.025em;
+  --text-h2-size: 32px;
+  --text-h2-weight: 700;
+  --text-h2-leading: 1.1;
+  --text-h2-tracking: -0.025em;
+  --text-h3-size: 22px;
+  --text-h3-weight: 700;
+  --text-h3-leading: 1.2;
+  --text-body-size: 15px;
+  --text-body-leading: 1.5;
+  --text-body-lg-size: 18px;
+  --text-body-lg-weight: 300;
+  --text-body-lg-leading: 1.625;
+  --text-small-size: 13px;
+  --text-small-leading: 1.55;
+  --text-eyebrow-size: 12px;
+  --text-eyebrow-weight: 600;
+  --text-eyebrow-tracking: 0.3em;
+  --text-micro-size: 10px;
+  --text-micro-weight: 700;
+  --text-micro-tracking: 0.3em;
+  --text-badge-size: 9px;
+  --text-badge-weight: 700;
+  --text-badge-tracking: 0.18em;
+  --text-btn-size: 12px;
+  --text-btn-weight: 700;
+  --text-btn-tracking: 0.18em;
+
+  --radius-pill: 9999px;
+  --radius-card: 24px;
+  --radius-belt: 18px;
+  --radius-stack: 22px;
+  --radius-sheet: 24px;
+  --radius-panel: 16px;
+  --radius-chip: 14px;
+  --radius-field: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  --pad-btn: 14px 28px;
+  --pad-btn-hero: 14px 28px;
+  --pad-chip: 10px 20px;
+  --pad-badge: 5px 10px;
+  --pad-card-body: 18px 20px 20px;
+
+  --container-max: 1280px;
+  --nav-height: 56px;
+  --drawer-width: 280px;
+  --cart-max-width: 448px;
+  --sheet-max-width: 480px;
+
+  --shadow-glow-gold: 0 0 20px rgba(212, 175, 55, 0.40);
+  --shadow-glow-red: 0 0 15px rgba(212, 175, 55, 0.30);
+  --shadow-btn-red: 0 8px 16px rgba(139, 0, 0, 0.2);
+  --shadow-btn-gold: 0 10px 20px rgba(212, 175, 55, 0.25);
+  --shadow-cta-hero: 0 0 0 1px rgba(212, 175, 55, 0.4), 0 12px 32px -8px rgba(212, 175, 55, 0.35);
+  --shadow-card-hover: 0 12px 28px -10px rgba(0, 0, 0, 0.12);
+  --shadow-belt-card: 0 14px 32px -14px rgba(0, 0, 0, 0.35);
+  --shadow-stack-top: 0 28px 60px -20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 55, 0.18);
+  --shadow-sheet: 0 -24px 48px -12px rgba(0, 0, 0, 0.4);
+
+  --blur-nav: 12px;
+  --blur-scrim: 4px;
+  --blur-glass: 10px;
+
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-card: cubic-bezier(0.22, 0.95, 0.36, 1);
+  --duration-fast: 250ms;
+  --duration-med: 300ms;
+  --duration-drawer: 280ms;
+  --duration-sheet: 320ms;
+  --duration-img-zoom: 700ms;
 }
 
-/* ─── Base element defaults ────────────────────────────────── */
 @layer base {
-  html, body {
+  html,
+  body {
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: var(--text-body-size);
     font-weight: 400;
-    line-height: 1.5;
-    color: var(--stone-900);
-    background: #ffffff;
+    line-height: var(--text-body-leading);
+    color: var(--text-primary);
+    background: var(--surface-page);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Display type scale — Playfair Display */
   h1 {
-    font-family: "Playfair Display", serif;
-    font-weight: 500;
-    font-size: 44px;
-    line-height: 1.05;
-    letter-spacing: -0.025em;
-    color: var(--stone-900);
+    font-family: var(--font-serif);
+    font-weight: var(--text-h1-weight);
+    font-size: var(--text-h1-size);
+    line-height: var(--text-h1-leading);
+    letter-spacing: var(--text-h1-tracking);
+    color: var(--text-primary);
   }
 
   h2 {
-    font-family: "Playfair Display", serif;
-    font-weight: 700;
-    font-size: 32px;
-    line-height: 1.1;
-    letter-spacing: -0.025em;
-    color: var(--stone-900);
+    font-family: var(--font-serif);
+    font-weight: var(--text-h2-weight);
+    font-size: var(--text-h2-size);
+    line-height: var(--text-h2-leading);
+    letter-spacing: var(--text-h2-tracking);
+    color: var(--text-primary);
   }
 
   h3 {
-    font-family: "Playfair Display", serif;
-    font-weight: 700;
-    font-size: 22px;
-    line-height: 1.2;
-    color: var(--stone-900);
+    font-family: var(--font-serif);
+    font-weight: var(--text-h3-weight);
+    font-size: var(--text-h3-size);
+    line-height: var(--text-h3-leading);
+    color: var(--text-primary);
   }
 
   p {
     font-family: var(--font-sans);
     font-weight: 400;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--stone-600);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--text-secondary);
   }
 
-  /* Gold italic — used on display headings for the accent word */
   em {
     font-style: italic;
     color: var(--gold);
+  }
+
+  a {
+    color: var(--gold);
+    text-decoration: none;
+    transition: color 300ms;
+  }
+
+  a:hover {
+    color: var(--gold-hover);
   }
 
   ::selection {
@@ -104,68 +247,71 @@
   }
 }
 
-/* ─── Semantic type utilities ──────────────────────────────── */
 @layer utilities {
-  /* Eyebrow: "OUR SELECTION", section labels */
   .eyebrow {
     font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--text-eyebrow-size);
+    font-weight: var(--text-eyebrow-weight);
     text-transform: uppercase;
-    letter-spacing: 0.3em;
+    letter-spacing: var(--text-eyebrow-tracking);
     color: var(--gold);
     line-height: 1;
   }
 
-  /* Micro: "QUICK LINKS", badges, nav chips */
   .micro-label {
     font-family: var(--font-sans);
-    font-size: 10px;
-    font-weight: 700;
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
     text-transform: uppercase;
-    letter-spacing: 0.3em;
-    color: var(--stone-900);
+    letter-spacing: var(--text-micro-tracking);
+    color: var(--text-muted);
     line-height: 1;
   }
 
-  /* Body LG: hero subtitle, section intros */
   .body-lg {
     font-family: var(--font-sans);
-    font-size: 18px;
-    font-weight: 300;
-    line-height: 1.625;
-    color: var(--stone-600);
+    font-size: var(--text-body-lg-size);
+    font-weight: var(--text-body-lg-weight);
+    line-height: var(--text-body-lg-leading);
+    color: var(--text-secondary);
   }
 
-  /* Wordmark: <span class="one">1</span><span class="word">ЦЭГЦ</span> */
   .brand-wordmark {
-    font-family: "Playfair Display", serif;
+    font-family: var(--font-serif);
     font-weight: 700;
     letter-spacing: -0.05em;
     display: inline-flex;
     align-items: baseline;
     line-height: 1;
   }
-  .brand-wordmark .one  { color: var(--gold);    }
-  .brand-wordmark .word { color: var(--red-deep); }
 
-  /* Gold glow used on hover of primary CTAs */
+  .brand-wordmark .one {
+    color: var(--gold);
+    font-size: 2em;
+    margin-right: 0.05em;
+  }
+
+  .brand-wordmark .word {
+    color: var(--red-deep);
+    font-size: 1em;
+  }
+
   .hover-glow-gold:hover {
     box-shadow: var(--shadow-glow-gold);
   }
 
-  /* ─── Button system ─────────────────────────────────────────── */
   .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 14px 28px;
-    border-radius: 9999px;
+    padding: var(--pad-btn);
+    border-radius: var(--radius-pill);
     font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--text-btn-size);
+    font-weight: var(--text-btn-weight);
     text-transform: uppercase;
-    letter-spacing: 0.18em;
+    letter-spacing: var(--text-btn-tracking);
     border: none;
     cursor: pointer;
     transition: all 300ms;
@@ -173,34 +319,38 @@
     text-decoration: none;
   }
 
-  /* Red primary — main CTAs */
-  .btn-primary {
-    background: var(--red-deep);
-    color: #ffffff;
-    box-shadow: 0 8px 16px rgba(139,0,0,0.2);
-  }
-  .btn-primary:hover {
-    background: var(--red-deep-hover);
-    box-shadow: var(--shadow-glow-gold);
-  }
-
-  /* Gold accent — secondary CTAs */
+  .btn-primary,
   .btn-gold {
     background: var(--gold);
     color: var(--stone-950);
-    box-shadow: 0 10px 20px rgba(212,175,55,0.25);
-  }
-  .btn-gold:hover {
-    background: var(--gold-hover);
+    box-shadow: var(--shadow-btn-gold);
   }
 
-  /* Ghost — tertiary / outline */
+  .btn-primary:hover,
+  .btn-gold:hover {
+    background: var(--gold-hover);
+    color: var(--stone-950);
+    box-shadow: var(--shadow-glow-gold);
+  }
+
+  .btn-red {
+    background: var(--red-deep);
+    color: #ffffff;
+    box-shadow: var(--shadow-btn-red);
+  }
+
+  .btn-red:hover {
+    background: var(--red-deep-hover);
+  }
+
   .btn-ghost {
     background: transparent;
-    color: var(--stone-700);
-    border: 1px solid var(--gray-200);
+    color: var(--gold);
+    border: 1px solid var(--gold-soft-40);
   }
+
   .btn-ghost:hover {
+    background: var(--white-04);
     border-color: var(--gold);
     color: var(--gold);
   }

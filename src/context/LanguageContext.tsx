@@ -193,6 +193,13 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.orders.payment.ref': 'Жишиг',
     'admin.orders.action.mark_paid': 'Төлбөр баталгаажуулах',
     'admin.orders.confirm_paid': 'Та энэ захиалгыг төлсөн гэж тэмдэглэхдээ итгэлтэй байна уу? Khan Bank-аас гүйлгээ ирсэнг шалгасан уу?',
+    'admin.orders.payment.refunded': 'Буцаагдсан',
+    'admin.orders.payment.review': 'Шалгах шаардлагатай',
+    'admin.orders.action.refund': 'Буцаалт хийх',
+    'admin.orders.confirm_refund': 'Энэ QPay төлбөрийг буцаахдаа итгэлтэй байна уу?',
+    'admin.orders.refund.success': 'Төлбөр амжилттай буцаагдлаа',
+    'admin.orders.refund.p2p': 'QPay зөвхөн картын гүйлгээг автоматаар буцаадаг. Энэ дансны (P2P) төлбөрийг гар аргаар шилжүүлж буцаана уу.',
+    'admin.orders.refund.failed': 'Буцаалт амжилтгүй боллоо',
 
     // Bank History tab
     'admin.nav.bank_history': 'Гүйлгээний түүх',
@@ -454,6 +461,13 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.orders.payment.ref': 'Ref',
     'admin.orders.action.mark_paid': 'Mark Paid',
     'admin.orders.confirm_paid': 'Are you sure you want to mark this order as paid? Have you verified the transfer in your Khan Bank app?',
+    'admin.orders.payment.refunded': 'Refunded',
+    'admin.orders.payment.review': 'Needs review',
+    'admin.orders.action.refund': 'Refund',
+    'admin.orders.confirm_refund': 'Refund this QPay payment?',
+    'admin.orders.refund.success': 'Payment refunded',
+    'admin.orders.refund.p2p': 'QPay only auto-refunds card payments. Refund this bank (P2P) payment with a manual transfer.',
+    'admin.orders.refund.failed': 'Refund failed',
 
     // Bank History tab
     'admin.nav.bank_history': 'Bank History',
