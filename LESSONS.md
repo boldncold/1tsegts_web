@@ -6,6 +6,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **For mobile payment redirects, centralize the launch URL and guard auto-open per invoice.**
+  *Why:* QPay mobile routing was tied to the fresh invoice creation path and a manually built QR URL, so cached invoices or provider short URLs could miss the qpay.mn deeplink behavior or bounce users repeatedly after returning from payment.
+
 - **Every terminal branch of a payment webhook must end in exactly one of: confirmed, flagged-for-human, or retryable error — "log + ack 200" is a silent money drop.**
   *Why:* qpayWebhook acked exact-amount payments that landed on EXPIRED orders with just a log line and HTTP 200; the customer's money was taken with no order and nothing for an admin to act on.
 

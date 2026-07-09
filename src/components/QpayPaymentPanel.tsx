@@ -23,10 +23,10 @@ import type { QpayBankDeeplink } from '../types';
 
 interface QpayInvoiceResponse {
   invoice_id: string;
-  qr_text: string;
-  qr_image: string;
-  qPay_shortUrl: string;
-  qPay_deeplink: QpayBankDeeplink[];
+  qr_text?: string | null;
+  qr_image?: string | null;
+  qPay_shortUrl?: string | null;
+  qPay_deeplink?: QpayBankDeeplink[];
 }
 
 const MONOGRAM_COLORS = [
@@ -37,6 +37,14 @@ const MONOGRAM_COLORS = [
   'bg-violet-600',
   'bg-cyan-700',
 ];
+
+function getQpayLaunchUrl(invoice: QpayInvoiceResponse): string | null {
+  const shortUrl = invoice.qPay_shortUrl?.trim();
+  if (shortUrl) return shortUrl;
+
+  const qrText = invoice.qr_text?.trim();
+  return qrText ? buildQpayUniversalLink(qrText) : null;
+}
 
 /**
  * Bank logo that never renders blank. QPay's deeplink logo URLs are flaky
@@ -140,6 +148,28 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
   // Guards the mobile auto-launch below so it can only fire once per mount.
   const autoLaunched = React.useRef(false);
 
+  const qpayLaunchUrl = React.useMemo(
+    () => (invoice ? getQpayLaunchUrl(invoice) : null),
+    [invoice],
+  );
+
+  // On mobile, opening the hosted QPay deeplink is the payment action. Guard by
+  // invoice id so returning from a bank app doesn't immediately bounce back.
+  useEffect(() => {
+    if (!isMobile || !invoice || !qpayLaunchUrl || autoLaunched.current) return;
+
+    const launchKey = `qpay_auto_launch_${invoice.invoice_id}`;
+    try {
+      if (sessionStorage.getItem(launchKey) === '1') return;
+      sessionStorage.setItem(launchKey, '1');
+    } catch {
+      // Private browsing can block storage; the ref still protects this mount.
+    }
+
+    autoLaunched.current = true;
+    window.location.href = qpayLaunchUrl;
+  }, [invoice, isMobile, qpayLaunchUrl]);
+
   // Fetch the QR + deeplinks on mount unless already cached on the order doc.
   useEffect(() => {
     if (invoice) return;
@@ -162,18 +192,6 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
         const res = await fn({ orderId: order.id });
         if (!cancelled) {
           setInvoice(res.data);
-          // Mobile auto-enter: a freshly minted invoice means the customer
-          // JUST checked out — send them straight into payment via the
-          // universal qpay.mn link, no tap needed. Deliberately only on this
-          // path: when the invoice is hydrated from the order doc (drawer
-          // reopened, page refreshed) we must not yank them away — they may
-          // be here to check status or cancel. https navigation is allowed
-          // without a user gesture; custom bank schemes are not, which is why
-          // the auto path uses qpay.mn rather than the per-bank deeplinks.
-          if (isMobile && res.data?.qr_text && !autoLaunched.current) {
-            autoLaunched.current = true;
-            window.location.href = buildQpayUniversalLink(res.data.qr_text);
-          }
         }
       } catch (e: any) {
         if (!cancelled) {
@@ -186,7 +204,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     return () => {
       cancelled = true;
     };
-  }, [order.id, invoice, isMobile]);
+  }, [order.id, invoice]);
 
   const minutesLeft = order.paymentExpiresAt
     ? Math.max(
@@ -359,12 +377,11 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
           </div>
         )}
 
-        {/* Fallback: universal QPay link. Kept last on purpose — it detours
-            through qpay.mn in the browser before reaching an app, so it's the
-            slow path; useful when the customer's bank isn't in the list. */}
-        {isMobile && invoice.qr_text && (
+        {/* Fallback: hosted QPay link. Kept last on purpose: direct bank-app
+            links are faster when the customer's bank is listed. */}
+        {isMobile && qpayLaunchUrl && (
           <a
-            href={buildQpayUniversalLink(invoice.qr_text)}
+            href={qpayLaunchUrl}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 text-xs font-semibold uppercase tracking-[0.15em] hover:bg-stone-50 transition-all active:scale-95"
           >
             <Smartphone size={14} />
