@@ -38,24 +38,31 @@ export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
       where('featured', '==', true),
       limit(10)
     );
+    // Track the fallback listener too — it used to leak (subscribed inside
+    // the callback, never unsubscribed), leaving a zombie menu listener
+    // billing reads after unmount.
+    let fallbackUnsubscribe: (() => void) | null = null;
     const unsubscribe = onSnapshot(featuredQuery, (snapshot) => {
       if (!snapshot.empty) {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
         setDishes(items);
-      } else {
+      } else if (!fallbackUnsubscribe) {
         const fallback = query(
           collection(db, 'menu'),
           where('available', '==', true),
           orderBy('orderCount', 'desc'),
           limit(10)
         );
-        onSnapshot(fallback, (snap) => {
+        fallbackUnsubscribe = onSnapshot(fallback, (snap) => {
           const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
           setDishes(items);
         });
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      fallbackUnsubscribe?.();
+    };
   }, []);
 
   const list = useMemo(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { QrCode, Clock, Copy, CheckCircle, ExternalLink, AlertCircle, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
+import { QrCode, Clock, Copy, CheckCircle, AlertCircle, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 import { functions, httpsCallable } from '../firebase';
 import { useLanguage } from '../context/LanguageContext';
 import { cn } from '../lib/utils';
@@ -119,26 +119,6 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
   const isMobile = React.useMemo(() => isMobileDevice(), []);
   const [showQr, setShowQr] = useState(false);
 
-  // Remember which bank the customer paid with so their next order is a
-  // single one-tap button. The per-bank deeplinks are direct app schemes
-  // (khanbank://…) — instant, unlike the universal https://qpay.mn link,
-  // which hops through the browser first.
-  const [preferredBankName, setPreferredBankName] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('qpay_preferred_bank');
-    } catch {
-      return null;
-    }
-  });
-  const rememberBank = (name: string) => {
-    try {
-      localStorage.setItem('qpay_preferred_bank', name);
-    } catch {
-      // private mode — preference just won't persist
-    }
-    setPreferredBankName(name);
-  };
-
   // Re-render the countdown every 30s.
   useEffect(() => {
     const id = setInterval(() => forceTick((n) => n + 1), 30_000);
@@ -185,11 +165,15 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     let cancelled = false;
     (async () => {
       try {
-        const fn = httpsCallable<{ orderId: string }, QpayInvoiceResponse>(
-          functions,
-          'createQpayInvoice',
-        );
-        const res = await fn({ orderId: order.id });
+        const fn = httpsCallable<
+          { orderId: string; skipQrImage?: boolean },
+          QpayInvoiceResponse
+        >(functions, 'createQpayInvoice');
+        // Mobile is pay-by-app first: skip the ~30-60KB base64 QR image in
+        // the response to get to the payment button/redirect sooner. The
+        // image still lands on the order doc, and the QR toggle falls back
+        // to it (order.qpayQrImage) once the snapshot syncs.
+        const res = await fn({ orderId: order.id, skipQrImage: isMobile });
         if (!cancelled) {
           setInvoice(res.data);
         }
@@ -237,13 +221,6 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
       return a.name.localeCompare(b.name);
     });
   }, [invoice]);
-
-  const preferredBank =
-    sortedBanks.find((b) => b.name === preferredBankName) ?? null;
-  // Grid hides the bank already promoted to the primary button.
-  const otherBanks = preferredBank
-    ? sortedBanks.filter((b) => b.name !== preferredBank.name)
-    : sortedBanks;
 
   // Window lapsed client-side: stop offering the QR/deeplinks so the customer
   // can't pay into an order the server is about to expire. The 30s tick above
@@ -319,52 +296,33 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
 
       {/* QR image */}
       <div className="bg-white px-5 py-5 space-y-4">
-        {/* Mobile primary action: the customer's remembered bank as one big
-            one-tap button. Bank deeplinks are direct app schemes — instant,
-            unlike the universal qpay.mn link which hops through the browser. */}
-        {isMobile && preferredBank && (
+        {/* Mobile primary action: open QPay directly (app / bank chooser).
+            qpayLaunchUrl prefers the hosted short URL, falling back to the
+            universal qpay.mn deeplink. This is also the target of the
+            auto-launch on a freshly created invoice. */}
+        {isMobile && qpayLaunchUrl && (
           <a
-            href={preferredBank.link}
-            onClick={() => rememberBank(preferredBank.name)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[#8B0000] text-white hover:bg-[#6b0000] transition-all active:scale-95 shadow-lg shadow-red-900/20"
+            href={qpayLaunchUrl}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#8B0000] text-white font-bold uppercase tracking-[0.15em] text-sm hover:bg-[#6b0000] transition-all active:scale-95 shadow-lg shadow-red-900/20"
           >
-            <BankIcon
-              name={preferredBank.name}
-              logo={preferredBank.logo}
-              className="w-11 h-11"
-            />
-            <span className="flex-1 text-left">
-              <span className="block font-bold text-sm uppercase tracking-[0.12em]">
-                {language === 'en'
-                  ? `Pay with ${preferredBank.name}`
-                  : `${preferredBank.description || preferredBank.name} аппаар төлөх`}
-              </span>
-              <span className="block text-[11px] text-white/70">
-                {language === 'en' ? 'Opens the app directly' : 'Апп шууд нээгдэнэ'}
-              </span>
-            </span>
-            <ExternalLink size={16} className="text-white/70 shrink-0" />
+            <Smartphone size={18} />
+            {language === 'en' ? 'Pay in QPay app' : 'QPay аппаар төлөх'}
           </a>
         )}
 
-        {/* Bank chooser — mobile only; custom URL schemes like khanbank://
-            do nothing in a desktop browser. Tapping remembers the bank so the
-            next order starts with the one-tap button above. */}
-        {isMobile && otherBanks.length > 0 && (
+        {/* Direct bank deeplinks — mobile only; custom URL schemes like
+            khanbank:// do nothing in a desktop browser. Faster than the hosted
+            link when the customer's bank is in the list. */}
+        {isMobile && sortedBanks.length > 0 && (
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-2">
-              {preferredBank
-                ? (language === 'en' ? 'Or another bank' : 'Эсвэл өөр банк')
-                : (language === 'en'
-                    ? 'Choose your bank — opens the app directly'
-                    : 'Банкаа сонгоно уу — апп шууд нээгдэнэ')}
+              {language === 'en' ? 'Or open your bank' : 'Эсвэл банкаа сонгоно уу'}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              {otherBanks.map((bank) => (
+              {sortedBanks.map((bank) => (
                 <a
                   key={bank.name}
                   href={bank.link}
-                  onClick={() => rememberBank(bank.name)}
                   className="flex flex-col items-center gap-1 p-2 rounded-xl border border-stone-200 hover:border-stone-900 hover:bg-stone-50 transition-all active:scale-95"
                 >
                   <BankIcon name={bank.name} logo={bank.logo} />
@@ -375,18 +333,6 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
               ))}
             </div>
           </div>
-        )}
-
-        {/* Fallback: hosted QPay link. Kept last on purpose: direct bank-app
-            links are faster when the customer's bank is listed. */}
-        {isMobile && qpayLaunchUrl && (
-          <a
-            href={qpayLaunchUrl}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 text-xs font-semibold uppercase tracking-[0.15em] hover:bg-stone-50 transition-all active:scale-95"
-          >
-            <Smartphone size={14} />
-            {language === 'en' ? "Bank not listed? Open via QPay" : 'Банк жагсаалтад алга уу? QPay-ээр нээх'}
-          </a>
         )}
 
         {/* On mobile the QR is opt-in (pay from a second device); on desktop
@@ -407,9 +353,11 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
 
         {(!isMobile || showQr || !invoice.qr_text) && (
         <div className="flex flex-col items-center gap-3">
-          {invoice.qr_image ? (
+          {/* Mobile responses omit qr_image (skipQrImage) — fall back to the
+              copy stored on the order doc, synced via the snapshot listener. */}
+          {(invoice.qr_image || order.qpayQrImage) ? (
             <img
-              src={`data:image/png;base64,${invoice.qr_image}`}
+              src={`data:image/png;base64,${invoice.qr_image || order.qpayQrImage}`}
               alt="QPay QR"
               className="w-56 h-56 rounded-xl border border-stone-200"
             />

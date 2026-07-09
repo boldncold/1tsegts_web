@@ -75,13 +75,45 @@ export const createQpayInvoice = onCall(
     ],
   },
   async (req) => {
-    const { orderId } = (req.data ?? {}) as { orderId?: string };
+    const { orderId, warmup, skipQrImage } = (req.data ?? {}) as {
+      orderId?: string;
+      warmup?: boolean;
+      // Mobile is pay-by-app first and rarely renders the QR — the base64
+      // PNG is ~30-60KB of the response. When set we omit it from the reply;
+      // it is still stored on the order doc for the QR toggle / desktop.
+      skipQrImage?: boolean;
+    };
+
+    // Warm-up ping — fired by the client when the checkout form opens, so the
+    // real call at "Confirm order" hits a hot instance with a fresh QPay
+    // token instead of paying a cold start + re-auth while the customer
+    // stares at a spinner. Touches no order and moves no money.
+    if (warmup) {
+      try {
+        await getAccessToken(readConfigFromEnv());
+      } catch {
+        // Best-effort: any real config/auth problem will surface on the
+        // actual invoice call with a proper error message.
+      }
+      return { warmed: true };
+    }
+
     if (!orderId) {
       throw new HttpsError('invalid-argument', 'orderId is required');
     }
 
     const db = getDb();
     const ref = db.doc(`orders/${orderId}`);
+
+    // Start the token fetch alongside the order read — independent I/O, and a
+    // token re-auth costs a full QPay round-trip we'd otherwise pay serially.
+    // Errors surface where it's awaited inside the try block below.
+    const tokenPromise = (async () => getAccessToken(readConfigFromEnv()))();
+    // The idempotent cached-invoice path returns without awaiting the token;
+    // attach a no-op handler so that early return can't crash the process
+    // with an unhandled rejection.
+    tokenPromise.catch(() => {});
+
     const snap = await ref.get();
     if (!snap.exists) {
       throw new HttpsError('not-found', `order ${orderId} not found`);
@@ -106,7 +138,7 @@ export const createQpayInvoice = onCall(
       return {
         invoice_id: order.qpayInvoiceId,
         qr_text: order.qpayQrText,
-        qr_image: order.qpayQrImage,
+        qr_image: skipQrImage ? null : order.qpayQrImage,
         qPay_shortUrl: order.qpayShortUrl,
         qPay_deeplink: order.qpayDeeplinks ?? [],
       };
@@ -117,7 +149,7 @@ export const createQpayInvoice = onCall(
     try {
       const config = readConfigFromEnv();
       const webhookBase = normalizeWebhookBase(process.env.QPAY_WEBHOOK_URL);
-      const accessToken = await getAccessToken(config);
+      const accessToken = await tokenPromise;
       // Register a clean path-based callback: <webhook>/<token>/<orderId>.
       // qpayWebhook parses both path segments and ?query (fallback). Token comes
       // first so leaking an orderId alone doesn't expose the callback secret.
@@ -156,7 +188,11 @@ export const createQpayInvoice = onCall(
 
       // Return the same normalized shape so the client never renders an
       // undefined deeplink list.
-      return { ...qpayResponse, qPay_deeplink: deeplinks };
+      return {
+        ...qpayResponse,
+        qr_image: skipQrImage ? null : (qpayResponse.qr_image ?? null),
+        qPay_deeplink: deeplinks,
+      };
     } catch (err) {
       // Re-throw HttpsErrors as-is.
       if (err instanceof HttpsError) throw err;

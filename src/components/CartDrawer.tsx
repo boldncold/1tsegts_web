@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc } from '../firebase';
+import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc, functions, httpsCallable } from '../firebase';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
@@ -209,6 +209,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     (pendingOrderData.paymentMethod === 'qpay' ||
       pendingOrderData.paymentMethod === 'bank_transfer') &&
     pendingOrderData.paymentStatus === 'CONFIRMED';
+
+  // Pre-warm the QPay invoice function while the customer fills the checkout
+  // form: absorbs the Cloud Function cold start and any QPay token re-auth,
+  // so the real call at "Confirm order" only pays for the invoice itself.
+  // Best-effort and fire-once — a failed warmup just means a cold start.
+  const qpayWarmupFired = React.useRef(false);
+  React.useEffect(() => {
+    if (!isCheckingOut || !QPAY_ENABLED || qpayWarmupFired.current) return;
+    qpayWarmupFired.current = true;
+    httpsCallable(functions, 'createQpayInvoice')({ warmup: true }).catch(() => {});
+  }, [isCheckingOut]);
 
   // Online order whose money hasn't landed yet. The completion screen must NOT
   // claim "Order received" here — nothing is confirmed until the webhook flips

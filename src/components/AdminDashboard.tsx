@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   auth, db, googleProvider, signInWithPopup, signOut,
-  collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, doc, getDoc, setDoc,
+  collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, doc, getDoc, getDocs, setDoc,
   functions, httpsCallable
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
@@ -363,55 +363,68 @@ export default function AdminDashboard() {
       }));
     });
 
-    const ordersUnsubscribe = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (snapshot) => {
-      const allOrders = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const { id, ...rest } = data;
-        return { id: doc.id, ...rest };
-      }) as Order[];
-      
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const oneDayAgo = new Date();
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-      
-      const validOrders = allOrders.filter(order => {
-        const orderDate = new Date(order.timestamp);
-        if (orderDate < sevenDaysAgo) {
-          deleteDoc(doc(db, 'orders', order.id)).catch(console.error);
-          return false;
-        }
-        
-        // Delete cancelled orders after 24 hours
-        if (order.status === 'cancelled' && orderDate < oneDayAgo) {
-          deleteDoc(doc(db, 'orders', order.id)).catch(console.error);
-          return false;
-        }
-        return true;
-      });
-      
-      setOrders(validOrders);
-    });
+    // Orders: only stream the last 7 days. `where` + `orderBy` on the same
+    // field needs no composite index, and it stops the dashboard from
+    // re-reading the whole collection (weeks of history) on every mount —
+    // that was the main Firestore read burner.
+    const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+    const ordersUnsubscribe = onSnapshot(
+      query(
+        collection(db, 'orders'),
+        where('timestamp', '>=', sevenDaysAgoIso),
+        orderBy('timestamp', 'desc'),
+      ),
+      (snapshot) => {
+        const allOrders = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const { id, ...rest } = data;
+          return { id: doc.id, ...rest };
+        }) as Order[];
+
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+        const validOrders = allOrders.filter(order => {
+          // Delete cancelled orders after 24 hours
+          if (order.status === 'cancelled' && new Date(order.timestamp) < oneDayAgo) {
+            deleteDoc(doc(db, 'orders', order.id)).catch(console.error);
+            return false;
+          }
+          return true;
+        });
+
+        setOrders(validOrders);
+      },
+    );
+
+    // Janitor: orders older than 7 days fall outside the capped listener, so
+    // clean them up with a one-shot query per dashboard mount instead of
+    // streaming them forever just to delete them.
+    getDocs(query(collection(db, 'orders'), where('timestamp', '<', sevenDaysAgoIso)))
+      .then((old) => {
+        old.docs.forEach((d) => deleteDoc(d.ref).catch(console.error));
+      })
+      .catch(console.error);
 
     const staffUnsubscribe = onSnapshot(collection(db, 'admin_emails'), (snapshot) => {
       setAdminEmails(snapshot.docs.map(doc => ({ id: doc.id })));
     });
 
-    // Bank transactions: stream from /bank_transactions, filter to last 7 days client-side.
-    // (We use a client filter rather than a Firestore where() so we don't need a composite index;
-    //  volume is low — a few credits per day at most.)
+    // Bank transactions: last 7 days, filtered server-side. Same-field
+    // where + orderBy needs no composite index, and it avoids re-reading the
+    // full history on every dashboard mount.
     const bankTxUnsubscribe = onSnapshot(
-      query(collection(db, 'bank_transactions'), orderBy('postedAt', 'desc')),
+      query(
+        collection(db, 'bank_transactions'),
+        where('postedAt', '>=', new Date(Date.now() - 7 * 24 * 3600_000).toISOString()),
+        orderBy('postedAt', 'desc'),
+      ),
       (snapshot) => {
-        const sevenDaysAgo = Date.now() - 7 * 24 * 3600_000;
-        const txs = snapshot.docs
-          .map((d) => {
-            const data = d.data();
-            const { id, ...rest } = data;
-            return { id: d.id, ...rest } as BankTransaction;
-          })
-          .filter((tx) => new Date(tx.postedAt).getTime() >= sevenDaysAgo);
+        const txs = snapshot.docs.map((d) => {
+          const data = d.data();
+          const { id, ...rest } = data;
+          return { id: d.id, ...rest } as BankTransaction;
+        });
         setBankTransactions(txs);
       },
       (err) => console.error('bank_transactions listener error', err)
