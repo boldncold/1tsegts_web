@@ -14,6 +14,8 @@ import {
   functions, httpsCallable
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
+import PaymentBadge from './admin/PaymentBadge';
+import { getUBDateString, orderMatchesFilter } from './admin/orderUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS } from '../lib/utils';
 import { MIN_BANK_TRANSFER_AMOUNT } from '../lib/bankConfig';
@@ -275,9 +277,10 @@ function ConfirmationModal({
 }
 
 export default function AdminDashboard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { currentUser: user, isAdmin, isAdminLoading: loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'bank_history' | 'staff' | 'settings'>('menu');
+  // Orders is the default on purpose: during service hours that's the job.
+  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'bank_history' | 'staff' | 'settings'>('orders');
   
   // Search States
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
@@ -310,14 +313,7 @@ export default function AdminDashboard() {
     kioskNumber: ''
   });
 
-  const getUBDateString = (date: Date) => {
-    return new Intl.DateTimeFormat('en-CA', { 
-      timeZone: 'Asia/Ulaanbaatar', 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    }).format(date);
-  };
+  // getUBDateString now lives in ./admin/orderUtils (shared with the filter).
 
   const [selectedDate, setSelectedDate] = useState<string>(() => getUBDateString(new Date()));
 
@@ -1244,7 +1240,7 @@ export default function AdminDashboard() {
                     <div className="relative flex-1 md:w-64">
                       <input
                         type="text"
-                        placeholder="Search orders..."
+                        placeholder={t('admin.orders.search_placeholder')}
                         value={orderSearchQuery}
                         onChange={(e) => setOrderSearchQuery(e.target.value)}
                         className="w-full bg-stone-900 border border-stone-800 rounded-full px-10 py-2.5 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
@@ -1256,7 +1252,7 @@ export default function AdminDashboard() {
                       className="flex items-center space-x-2 px-5 py-2.5 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95 shrink-0"
                     >
                       <Plus size={18} />
-                      <span className="hidden sm:inline">New Order</span>
+                      <span className="hidden sm:inline">{t('admin.orders.new_order')}</span>
                     </button>
                   </div>
                 </div>
@@ -1264,7 +1260,11 @@ export default function AdminDashboard() {
                 <div className="flex overflow-x-auto pb-2 gap-2 hide-scrollbar">
                   {last7Days.map(date => {
                     const d = new Date(date);
-                    const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    // Mongolian-first labels; today gets an explicit name so the
+                    // most-used chip doesn't require date math in your head.
+                    const label = date === last7Days[0]
+                      ? t('admin.orders.today')
+                      : d.toLocaleDateString(language === 'en' ? 'en-US' : 'mn-MN', { weekday: 'short', month: 'short', day: 'numeric' });
                     return (
                       <button
                         key={date}
@@ -1283,16 +1283,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="space-y-8">
-                  {orders.filter(o => {
-                    const matchesDate = getUBDateString(new Date(o.timestamp)) === selectedDate;
-                    const matchesSearch = 
-                      (o.customerName || '').toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                      o.id.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                      (o.phone || '').toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                      (o.orderNumber && o.orderNumber.toString().includes(orderSearchQuery)) ||
-                      (o.kioskNumber && o.kioskNumber.toString().includes(orderSearchQuery));
-                    return matchesDate && matchesSearch && o.status !== 'cancelled';
-                  }).length === 0 ? (
+                  {orders.filter(o => orderMatchesFilter(o, selectedDate, orderSearchQuery)).length === 0 ? (
                     <div className="bg-stone-900 border border-stone-800 rounded-3xl p-20 text-center">
                       <ShoppingBag className="mx-auto text-stone-800 mb-4" size={64} />
                       <p className="text-stone-500 italic">{t('admin.orders.empty')}</p>
@@ -1300,16 +1291,9 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                       {['pickup', 'kiosk'].map((type) => {
-                        const typeOrders = orders.filter(o => {
-                          const matchesDate = getUBDateString(new Date(o.timestamp)) === selectedDate;
-                          const matchesSearch = 
-                            (o.customerName || '').toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                            o.id.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                            (o.phone || '').toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-                            (o.orderNumber && o.orderNumber.toString().includes(orderSearchQuery)) ||
-                            (o.kioskNumber && o.kioskNumber.toString().includes(orderSearchQuery));
-                          return matchesDate && matchesSearch && o.status !== 'cancelled' && o.orderType === type;
-                        });
+                        const typeOrders = orders.filter(o =>
+                          orderMatchesFilter(o, selectedDate, orderSearchQuery) && o.orderType === type,
+                        );
                         if (typeOrders.length === 0) return null;
                         
                         return (
@@ -1360,33 +1344,7 @@ export default function AdminDashboard() {
                                         )}>
                                           {t(`admin.orders.status.${order.status}`)}
                                         </span>
-                                        {/* Payment badge — only shown for bank-transfer orders.
-                                            Cash orders don't get a badge to keep the existing flow uncluttered. */}
-                                        {((order as any).paymentMethod === 'bank_transfer' ||
-                                          (order as any).paymentMethod === 'qpay') && (
-                                          <span className={cn(
-                                            "text-[9px] uppercase font-bold tracking-[0.18em] px-2.5 py-0.5 rounded-full border whitespace-nowrap",
-                                            (order as any).paymentStatus === 'CONFIRMED'
-                                              ? "bg-green-500/10 text-green-400 border-green-500/30"
-                                              : (order as any).paymentStatus === 'REFUNDED'
-                                              ? "bg-purple-500/10 text-purple-300 border-purple-500/30"
-                                              : (order as any).paymentStatus === 'MANUAL_REVIEW'
-                                              ? "bg-red-500/15 text-red-300 border-red-500/40 animate-pulse"
-                                              : (order as any).paymentStatus === 'EXPIRED'
-                                              ? "bg-stone-800 text-stone-500 border-stone-700"
-                                              : "bg-yellow-500/15 text-yellow-400 border-yellow-500/40 animate-pulse"
-                                          )}>
-                                            {(order as any).paymentStatus === 'CONFIRMED'
-                                              ? `₮ ${t('admin.orders.payment.confirmed')}`
-                                              : (order as any).paymentStatus === 'REFUNDED'
-                                              ? `₮ ${t('admin.orders.payment.refunded')}`
-                                              : (order as any).paymentStatus === 'MANUAL_REVIEW'
-                                              ? `₮ ${t('admin.orders.payment.review')}`
-                                              : (order as any).paymentStatus === 'EXPIRED'
-                                              ? `₮ ${t('admin.orders.payment.expired')}`
-                                              : `₮ ${t('admin.orders.payment.awaiting')}`}
-                                          </span>
-                                        )}
+                                        <PaymentBadge order={order} />
                                       </div>
                                     </div>
                                     <div>
