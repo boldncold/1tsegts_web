@@ -69,6 +69,10 @@ export interface Order {
     name: string;
     price: number;
     quantity: number;
+    // Written by CartDrawer at checkout; older orders may lack them.
+    packaging?: boolean;        // customer chose takeaway packaging
+    packagingPrice?: number;    // ₮ per unit when packed to go
+    selectedPortion?: Portion;  // portion variant, when the item has portions
   }[];
   total: number;
   customerName?: string;

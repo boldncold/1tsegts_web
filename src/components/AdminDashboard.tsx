@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import {
@@ -15,7 +15,8 @@ import {
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
 import PaymentBadge from './admin/PaymentBadge';
-import { getUBDateString, orderMatchesFilter } from './admin/orderUtils';
+import OrdersTab from './admin/OrdersTab';
+import { getUBDateString } from './admin/orderUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS } from '../lib/utils';
 import { MIN_BANK_TRANSFER_AMOUNT } from '../lib/bankConfig';
@@ -276,6 +277,34 @@ function ConfirmationModal({
   );
 }
 
+/**
+ * Two-tone kitchen chime + background-tab title alert for incoming orders.
+ * WebAudio needs no sound asset; browsers may keep the context suspended
+ * until the admin has interacted with the page once — then it's silent, and
+ * the title flash still works.
+ */
+function notifyNewOrder(pendingCount: number) {
+  try {
+    const ctx = new AudioContext();
+    void ctx.resume?.();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    osc.frequency.setValueAtTime(1175, ctx.currentTime + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch {
+    // no audio available — title flash below still fires
+  }
+  if (document.hidden) {
+    document.title = `(${pendingCount}) Шинэ захиалга!`;
+  }
+}
+
 export default function AdminDashboard() {
   const { t, language } = useLanguage();
   const { currentUser: user, isAdmin, isAdminLoading: loading } = useAuth();
@@ -316,6 +345,18 @@ export default function AdminDashboard() {
   // getUBDateString now lives in ./admin/orderUtils (shared with the filter).
 
   const [selectedDate, setSelectedDate] = useState<string>(() => getUBDateString(new Date()));
+
+  // Baseline for the new-order alert (null until the first orders snapshot).
+  const prevPendingIdsRef = useRef<Set<string> | null>(null);
+
+  // Restore the tab title once the admin looks at the dashboard again.
+  useEffect(() => {
+    const restore = () => {
+      if (!document.hidden) document.title = '1ЦЭГЦ';
+    };
+    document.addEventListener('visibilitychange', restore);
+    return () => document.removeEventListener('visibilitychange', restore);
+  }, []);
 
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
@@ -390,6 +431,18 @@ export default function AdminDashboard() {
         });
 
         setOrders(validOrders);
+
+        // New-order alert: chime + tab-title flash when a pending order
+        // appears that wasn't in the previous snapshot. The first snapshot
+        // (initial load) only seeds the baseline — no alert.
+        const pendingIds = new Set(
+          validOrders.filter((o) => o.status === 'pending').map((o) => o.id),
+        );
+        const prev = prevPendingIdsRef.current;
+        if (prev && [...pendingIds].some((id) => !prev.has(id))) {
+          notifyNewOrder(pendingIds.size);
+        }
+        prevPendingIdsRef.current = pendingIds;
       },
     );
 
@@ -1229,288 +1282,21 @@ export default function AdminDashboard() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
               >
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold">{t('admin.orders.title')}</h2>
-                    <p className="text-stone-500 text-sm">{t('admin.orders.subtitle')}</p>
-                  </div>
-                  <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                      <input
-                        type="text"
-                        placeholder={t('admin.orders.search_placeholder')}
-                        value={orderSearchQuery}
-                        onChange={(e) => setOrderSearchQuery(e.target.value)}
-                        className="w-full bg-stone-900 border border-stone-800 rounded-full px-10 py-2.5 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
-                      />
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
-                    </div>
-                    <button
-                      onClick={() => setIsAddingOrder(true)}
-                      className="flex items-center space-x-2 px-5 py-2.5 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95 shrink-0"
-                    >
-                      <Plus size={18} />
-                      <span className="hidden sm:inline">{t('admin.orders.new_order')}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex overflow-x-auto pb-2 gap-2 hide-scrollbar">
-                  {last7Days.map(date => {
-                    const d = new Date(date);
-                    // Mongolian-first labels; today gets an explicit name so the
-                    // most-used chip doesn't require date math in your head.
-                    const label = date === last7Days[0]
-                      ? t('admin.orders.today')
-                      : d.toLocaleDateString(language === 'en' ? 'en-US' : 'mn-MN', { weekday: 'short', month: 'short', day: 'numeric' });
-                    return (
-                      <button
-                        key={date}
-                        onClick={() => setSelectedDate(date)}
-                        className={cn(
-                          "px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all",
-                          selectedDate === date
-                            ? "bg-amber-500 text-stone-900"
-                            : "bg-stone-900 text-stone-400 hover:bg-stone-800 border border-stone-800"
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="space-y-8">
-                  {orders.filter(o => orderMatchesFilter(o, selectedDate, orderSearchQuery)).length === 0 ? (
-                    <div className="bg-stone-900 border border-stone-800 rounded-3xl p-20 text-center">
-                      <ShoppingBag className="mx-auto text-stone-800 mb-4" size={64} />
-                      <p className="text-stone-500 italic">{t('admin.orders.empty')}</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-                      {['pickup', 'kiosk'].map((type) => {
-                        const typeOrders = orders.filter(o =>
-                          orderMatchesFilter(o, selectedDate, orderSearchQuery) && o.orderType === type,
-                        );
-                        if (typeOrders.length === 0) return null;
-                        
-                        return (
-                          <div key={type} className="space-y-4">
-                            <h3 className="text-lg font-bold text-stone-300 flex items-center gap-2">
-                              {type === 'pickup' ? <Package size={20} className="text-stone-500" /> : <ShoppingBag size={20} className="text-amber-500" />}
-                              {type === 'pickup' ? t('admin.orders.type.pickup') : t('admin.orders.type.kiosk')}
-                              <span className="text-xs bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full">{typeOrders.length}</span>
-                            </h3>
-                            <div className="grid grid-cols-1 gap-6">
-                              {typeOrders.map((order) => (
-                                <div key={order.id} className="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-xl flex flex-col md:flex-row">
-                                  <div className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-stone-800 md:w-72 space-y-3">
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold">{t('admin.orders.id')}: {order.id.slice(-6)}</span>
-                                        {order.orderNumber && (
-                                          <span className="text-lg font-medium text-amber-500">#{order.orderNumber}</span>
-                                        )}
-                                        <div className="flex items-center gap-2">
-                                          <span className={cn(
-                                            "text-[10px] uppercase font-semibold tracking-[0.2em] px-2 py-0.5 rounded-md border",
-                                            order.orderType === 'pickup' 
-                                              ? "bg-stone-800 text-stone-400 border-stone-700" 
-                                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                          )}>
-                                            {order.orderType === 'pickup' ? t('admin.orders.type.pickup') : t('admin.orders.type.kiosk')}
-                                          </span>
-                                          {order.orderType === 'kiosk' && order.kioskNumber && (
-                                            <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-md border border-amber-500/10">
-                                              #{order.kioskNumber}
-                                            </span>
-                                          )}
-                                          {(order as any).isTest && (
-                                            <span className="text-[10px] uppercase font-bold tracking-[0.2em] px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 border border-amber-300">
-                                              {t('admin.orders.test_badge')}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex flex-col items-end gap-1.5">
-                                        <span className={cn(
-                                          "text-[10px] uppercase font-semibold tracking-[0.2em] px-3 py-1 rounded-full",
-                                          order.status === 'pending' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-                                          order.status === 'preparing' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
-                                          order.status === 'ready' ? "bg-green-500/10 text-green-500 border border-green-500/20" :
-                                          "bg-stone-800 text-stone-500"
-                                        )}>
-                                          {t(`admin.orders.status.${order.status}`)}
-                                        </span>
-                                        <PaymentBadge order={order} />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <h4 className="text-lg font-medium text-stone-200">{order.customerName || 'Walk-in Customer'}</h4>
-                                      {order.phone && <p className="text-sm text-stone-400">{order.phone}</p>}
-                                    </div>
-                                    {/* Bank-transfer payment details — shown to admin so they know
-                                        what to look for in their Khan Bank app. */}
-                                    {(order as any).paymentMethod === 'bank_transfer' &&
-                                     (order as any).referenceCode && (
-                                      <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl space-y-1.5">
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/70 font-semibold">
-                                            {t('admin.orders.payment.ref')}
-                                          </span>
-                                          <span className="text-sm font-bold text-yellow-300 tabular-nums">
-                                            {(order as any).referenceCode}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/70 font-semibold">
-                                            ₮ {t('admin.orders.total')}
-                                          </span>
-                                          <span className="text-sm font-bold text-yellow-300 tabular-nums">
-                                            ₮{(order as any).amountMnt?.toLocaleString() ?? Math.round(order.total).toLocaleString()}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {(order as any).adminDiscountMnt > 0 && (
-                                      <div className="flex justify-between items-center text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/15">
-                                        <span className="uppercase tracking-[0.2em] text-amber-400/80 font-semibold">
-                                          {t('cart.admin.discount_label')}
-                                        </span>
-                                        <span className="font-bold text-amber-300 tabular-nums">
-                                          –₮{(order as any).adminDiscountMnt.toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="flex items-center text-xs text-stone-500">
-                                      <Clock size={14} className="mr-2" />
-                                      {new Date(order.timestamp).toLocaleString()}
-                                    </div>
-                                    {order.notes && (
-                                      <div className="p-3 bg-stone-950 rounded-xl border border-stone-800">
-                                        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-600 font-semibold mb-1">{t('admin.orders.notes')}</p>
-                                        <p className="text-xs text-stone-400 italic">"{order.notes}"</p>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex-1 p-4 md:p-6 flex flex-col">
-                                    <div className="flex-1 space-y-4">
-                                      <h5 className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold">{t('admin.orders.items')}</h5>
-                                      <div className="space-y-4">
-                                        {order.items.map((item, idx) => (
-                                          <div key={idx} className="flex justify-between text-sm">
-                                            <div className="flex flex-col">
-                                              <span className="text-stone-300 font-medium">
-                                                <span className="font-semibold tabular-nums text-amber-500 mr-1">{item.quantity}x</span> {item.name}
-                                              </span>
-                                              {item.selectedPortion && (
-                                                <span className="text-xs text-stone-500 ml-6 tracking-wide">Portion: {item.selectedPortion.name}</span>
-                                              )}
-                                              {item.packaging && (
-                                                <span className="text-xs text-stone-500 ml-6 tracking-wide">Packaging (+₮<span className="tabular-nums">{(item.packagingPrice !== undefined ? item.packagingPrice : 0).toLocaleString()}</span>)</span>
-                                              )}
-                                            </div>
-                                            <span className="text-stone-500 font-semibold tabular-nums">₮{((Math.round(item.price) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) : 0)) * item.quantity).toLocaleString()}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t border-stone-800 flex flex-col sm:flex-row justify-between items-center gap-3">
-                                      <div className="text-xl font-medium tabular-nums shrink-0">
-                                        <span className="text-stone-500 text-xs font-sans font-semibold uppercase tracking-[0.2em] mr-2">{t('admin.orders.total')}</span>
-                                        ₮{Math.round(order.total).toLocaleString()}
-                                      </div>
-                                      <div className="flex flex-wrap items-center justify-end gap-2">
-                                        {/* Mark Paid: only for bank-transfer orders awaiting payment.
-                                            Admin must verify the transfer in Khan Bank app first. */}
-                                        {(order as any).paymentMethod === 'bank_transfer' &&
-                                         (order as any).paymentStatus === 'AWAITING_PAYMENT' && (
-                                          <button
-                                            onClick={() => markOrderPaid(order.id)}
-                                            className="px-4 py-2 bg-yellow-500 text-stone-900 text-xs font-bold uppercase tracking-[0.15em] rounded-full hover:bg-yellow-400 transition-all"
-                                            title={t('admin.orders.confirm_paid')}
-                                          >
-                                            ₮ {t('admin.orders.action.mark_paid')}
-                                          </button>
-                                        )}
-                                        {/* Refund: QPay orders whose payment is confirmed. Card payments
-                                            refund through QPay; P2P payments report back as not auto-refundable. */}
-                                        {(order as any).paymentMethod === 'qpay' &&
-                                         (order as any).paymentStatus === 'CONFIRMED' && (
-                                          <button
-                                            onClick={() => refundQpayOrder(order.id)}
-                                            disabled={refundingId === order.id}
-                                            className={cn(
-                                              "px-4 py-2 bg-purple-600 text-white text-xs font-bold uppercase tracking-[0.15em] rounded-full hover:bg-purple-500 transition-all",
-                                              refundingId === order.id && "opacity-50 cursor-not-allowed"
-                                            )}
-                                            title={t('admin.orders.confirm_refund')}
-                                          >
-                                            {refundingId === order.id ? '…' : t('admin.orders.action.refund')}
-                                          </button>
-                                        )}
-                                        {/* Start Preparing: non-cash orders must be CONFIRMED before the
-                                            kitchen starts. Allowlist on purpose — any other payment state
-                                            (awaiting, review, EXPIRED, REFUNDED, future ones) is blocked
-                                            by default. */}
-                                        {order.status === 'pending' &&
-                                         (((order as any).paymentMethod !== 'bank_transfer' &&
-                                           (order as any).paymentMethod !== 'qpay') ||
-                                          (order as any).paymentStatus === 'CONFIRMED') && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'preparing')}
-                                            className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-blue-400 transition-all"
-                                          >
-                                            {t('admin.orders.action.start')}
-                                          </button>
-                                        )}
-                                        {order.status === 'preparing' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'ready')}
-                                            className="px-4 py-2 bg-green-500 text-white text-xs font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-green-400 transition-all"
-                                          >
-                                            {t('admin.orders.action.ready')}
-                                          </button>
-                                        )}
-                                        {order.status === 'ready' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'completed')}
-                                            className="px-4 py-2 bg-stone-100 text-stone-900 text-xs font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-white transition-all"
-                                          >
-                                            {t('admin.orders.action.complete')}
-                                          </button>
-                                        )}
-                                        {order.status !== 'completed' && order.status !== 'cancelled' && (
-                                          <button
-                                            onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                                            className="p-2 text-stone-500 hover:text-amber-500 transition-colors"
-                                            title="Cancel Order"
-                                          >
-                                            <XCircle size={20} />
-                                          </button>
-                                        )}
-                                        <button
-                                          onClick={() => handleDeleteOrder(order.id)}
-                                          className="p-2 text-stone-500 hover:text-red-500 transition-colors"
-                                          title="Delete Order"
-                                        >
-                                          <Trash2 size={20} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <OrdersTab
+                  orders={orders}
+                  selectedDate={selectedDate}
+                  setSelectedDate={setSelectedDate}
+                  last7Days={last7Days}
+                  searchQuery={orderSearchQuery}
+                  setSearchQuery={setOrderSearchQuery}
+                  onNewOrder={() => setIsAddingOrder(true)}
+                  onMarkPaid={(id) => markOrderPaid(id)}
+                  onRefund={refundQpayOrder}
+                  refundingId={refundingId}
+                  onUpdateStatus={updateOrderStatus}
+                  onDelete={handleDeleteOrder}
+                />
               </motion.div>
             ) : activeTab === 'bank_history' ? (
               <motion.div
