@@ -13,6 +13,7 @@ import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandle
 import ConfirmModal from './ConfirmModal';
 import { generateReferenceCode } from '../lib/referenceCode';
 import { BANK_DETAILS, PAYMENT_WINDOW_MINUTES } from '../lib/bankConfig';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { QPAY_ENABLED, QPAY_PAYMENT_WINDOW_MINUTES } from '../lib/qpayConfig';
 import { isMobileDevice } from '../lib/device';
 import QpayPaymentPanel from './QpayPaymentPanel';
@@ -201,6 +202,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     paymentMethod: (QPAY_ENABLED ? 'qpay' : 'cash') as PaymentMethod
   });
   const [showOtherPaymentMethods, setShowOtherPaymentMethods] = useState(false);
+
+  // Stop the page behind the drawer from scrolling along on mobile.
+  useBodyScrollLock(isOpen);
 
   // Online (QPay / bank-transfer) order whose payment has been verified
   // server-side — drives the "already paid" copy instead of pay-at-cashier.
@@ -412,7 +416,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm touch-none"
           />
 
           {/* Drawer */}
@@ -435,7 +439,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-6">
               {/* QPay order awaiting payment: show QR + bank deeplinks. */}
               {pendingOrderId && pendingOrderData && !orderComplete &&
                 pendingOrderData.paymentMethod === 'qpay' &&

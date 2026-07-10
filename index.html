@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>1ЦЭГЦ</title>
+    <!-- Pre-resolve DNS + TLS for QPay hosts so tapping a payment link
+         (pay-by-app button, share link, QR fallback) skips the connection
+         setup — worth a few hundred ms on mobile networks. -->
+    <link rel="preconnect" href="https://qpay.mn" />
+    <link rel="preconnect" href="https://s.qpay.mn" />
     <script>
       // Prevent libraries from trying to polyfill fetch if it already exists
       // This fixes "Uncaught TypeError: Cannot set property fetch of #<Window> which has only a getter"

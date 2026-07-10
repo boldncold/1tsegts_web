@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { db, doc, deleteDoc } from '../firebase';
 import { toast } from 'sonner';
 import ConfirmModal from './ConfirmModal';
@@ -18,6 +19,9 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const location = useLocation();
+
+  // Stop the page behind the sidebar from scrolling along on mobile.
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -48,7 +52,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm cursor-pointer"
+            className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm cursor-pointer touch-none"
             onClick={() => setIsOpen(false)}
           />
           <motion.aside
@@ -74,7 +78,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             </div>
 
             {/* Nav links */}
-            <nav className="flex-1 px-6 pt-2 overflow-y-auto">
+            <nav className="flex-1 px-6 pt-2 overflow-y-auto overscroll-contain">
               {fullLinks.map((link) => (
                 <Link
                   key={link.path}

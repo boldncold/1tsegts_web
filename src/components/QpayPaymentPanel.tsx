@@ -199,8 +199,29 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
 
   const copyShortUrl = async () => {
     if (!invoice?.qPay_shortUrl) return;
+    const url = invoice.qPay_shortUrl;
+
+    // Mobile: open the native share sheet — one tap into Messenger/SMS beats
+    // copy → switch app → paste. Clipboard stays as the desktop/fallback path.
+    if (isMobile && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: '1ЦЭГЦ — QPay',
+          text: language === 'en'
+            ? 'Pay this 1TSEGTS order via QPay'
+            : 'Энэ 1ЦЭГЦ захиалгыг QPay-ээр төлнө үү',
+          url,
+        });
+        return;
+      } catch (e) {
+        // AbortError = user dismissed the sheet — done. Anything else
+        // (unsupported payload, etc.) falls through to clipboard.
+        if ((e as Error)?.name === 'AbortError') return;
+      }
+    }
+
     try {
-      await navigator.clipboard.writeText(invoice.qPay_shortUrl);
+      await navigator.clipboard.writeText(url);
       setCopiedShortUrl(true);
       toast.success(language === 'en' ? 'Link copied' : 'Холбоос хуулагдлаа');
       setTimeout(() => setCopiedShortUrl(false), 1500);
@@ -378,8 +399,9 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
         </div>
         )}
 
-        {/* Short URL copy */}
-        {invoice.qPay_shortUrl && (
+        {/* Short URL share/copy — a "pay from another device" option, so on
+            mobile it hides behind the same QR toggle; desktop always shows it. */}
+        {(!isMobile || showQr || !invoice.qr_text) && invoice.qPay_shortUrl && (
           <button
             type="button"
             onClick={copyShortUrl}
