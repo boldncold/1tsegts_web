@@ -60,15 +60,41 @@ service cloud.firestore {
          request.resource.data.orderCount > resource.data.orderCount);
     }
 
+    // Payment fields a client may NOT set at create time. Only Cloud
+    // Functions (Admin SDK bypasses rules) confirm payments — a customer
+    // creating an order pre-marked CONFIRMED would walk past every payment
+    // gate in the app. Admins are exempt (zero-charge test orders set
+    // CONFIRMED client-side).
+    function hasNoForgedPayment(data) {
+      return (!('paymentStatus' in data) || data.paymentStatus == 'AWAITING_PAYMENT') &&
+             !('paidAt' in data) &&
+             !('paidVia' in data) &&
+             !('qpayPaymentId' in data) &&
+             !('matchedTxId' in data);
+    }
+
     // Orders
     match /orders/{orderId} {
-      allow create: if isValidOrder(request.resource.data);
+      allow create: if isValidOrder(request.resource.data) &&
+        (hasNoForgedPayment(request.resource.data) || isAdmin());
       allow read: if true; // Allow customers to track their order
-      allow update: if isAdmin() || 
+      allow update: if isAdmin() ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
          request.resource.data.status == 'cancelled' &&
          resource.data.status == 'pending');
-      allow delete: if isAdmin() || resource.data.status == 'pending';
+      // Customers may abandon their own unpaid order, but a CONFIRMED
+      // payment is a money record — only admins can remove those.
+      allow delete: if isAdmin() ||
+        (resource.data.status == 'pending' &&
+         (!('paymentStatus' in resource.data) || resource.data.paymentStatus != 'CONFIRMED'));
+    }
+
+    // Store settings (open/close hours) — read by every visitor's
+    // StoreSettingsContext; without this rule the default deny made the
+    // store-hours feature invisible to customers.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Stats (for order numbers)
