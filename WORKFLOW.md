@@ -30,7 +30,9 @@ No automated test runner yet — verification is manual:
 1. `npm run lint` (typecheck) must pass.
 2. Exercise the changed flow in `npm run dev` (against the emulators, above).
 3. Payment changes: test the full order → invoice → webhook → status flow against QPay sandbox before production; verify idempotency (replay the webhook).
-4. Firestore rules changes: verify both the allowed and the denied path.
+4. Firestore rules changes: `npm run test:rules` (emulator-backed unit tests in
+   `scripts/test-rules.mjs`) — add an allowed and a denied assertion for every
+   rule you touch. Needs JDK 21+.
 
 ## Reviews
 
