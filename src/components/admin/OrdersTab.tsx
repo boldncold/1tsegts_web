@@ -94,6 +94,23 @@ export default function OrdersTab({
   );
 
   const filtered = orders.filter((o) => orderMatchesFilter(o, selectedDate, searchQuery));
+
+  // Day summary for the selected date — computed from orders already in
+  // memory, zero extra Firestore reads. "Confirmed revenue" counts cash
+  // orders (money changes hands at the counter) plus online orders whose
+  // payment the server verified; awaiting/expired/refunded are excluded,
+  // as are admin test orders.
+  const dayOrders = orders.filter(
+    (o) => orderMatchesFilter(o, selectedDate, '') && !(o as any).isTest,
+  );
+  const confirmedOrders = dayOrders.filter((o) => {
+    const method = (o as any).paymentMethod;
+    if (method !== 'qpay' && method !== 'bank_transfer') return true;
+    return (o as any).paymentStatus === 'CONFIRMED';
+  });
+  const revenue = confirmedOrders.reduce((sum, o) => sum + Math.round(o.total), 0);
+  const avgTicket = confirmedOrders.length > 0 ? Math.round(revenue / confirmedOrders.length) : 0;
+
   const active: Record<'pending' | 'preparing' | 'ready', Order[]> = {
     pending: filtered.filter((o) => o.status === 'pending'),
     preparing: filtered.filter((o) => o.status === 'preparing'),
@@ -386,6 +403,28 @@ export default function OrdersTab({
             </button>
           );
         })}
+      </div>
+
+      {/* Day summary: what the owner glances at between rushes. */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
+            {t('admin.orders.stats.orders')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums mt-1">{dayOrders.length}</p>
+        </div>
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
+            {t('admin.orders.stats.revenue')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums mt-1 text-amber-500">₮{revenue.toLocaleString()}</p>
+        </div>
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
+            {t('admin.orders.stats.avg')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums mt-1">₮{avgTicket.toLocaleString()}</p>
+        </div>
       </div>
 
       {/* Status sections: the kitchen pipeline, in work order. */}
