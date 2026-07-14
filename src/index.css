@@ -354,4 +354,86 @@
     border-color: var(--gold);
     color: var(--gold);
   }
+
+  .admin-shell {
+    --admin-ok: #71b58b;
+    --admin-ok-soft: rgba(113, 181, 139, 0.12);
+    --admin-danger: #cf735f;
+    --admin-danger-soft: rgba(207, 115, 95, 0.12);
+    --admin-sidebar: var(--espresso);
+    --admin-card-pad: 20px;
+    --admin-row-pad-y: 12px;
+    --admin-row-pad-x: 16px;
+    --admin-gap: 16px;
+    --admin-control-height: 36px;
+  }
+
+  .admin-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+  }
+
+  .admin-control {
+    min-height: var(--admin-control-height);
+    border: 1px solid var(--white-15);
+    border-radius: 10px;
+    background: var(--stone-950);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--duration-fast), background-color var(--duration-fast);
+  }
+
+  .admin-control:focus {
+    border-color: var(--gold-soft-40);
+  }
+
+  .admin-control::placeholder {
+    color: var(--white-40);
+  }
+
+  .admin-pane {
+    animation: admin-pane-in 260ms var(--ease-card) both;
+  }
+
+  .admin-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .admin-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-pill);
+    background: var(--white-15);
+  }
+
+  .admin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes admin-pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ambient hero-glow pulse used by the mobile food carousel. */
+@keyframes glow-breathe {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-pane {
+    animation: none;
+  }
 }

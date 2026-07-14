@@ -5,6 +5,7 @@ import { db, collection, onSnapshot, query, where, orderBy, limit } from '../fir
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import FoodCarousel from './FoodCarousel';
 
 type Variant = 'stack' | 'marquee';
 
@@ -81,6 +82,10 @@ export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
   }, [addToCart]);
 
   if (list.length === 0) return null;
+
+  // Mobile gets the coverflow "Хоолны аялал" carousel (Food Carousel design
+  // mock); desktop keeps the marquee below.
+  if (isMobile) return <FoodCarousel dishes={list.slice(0, 6)} />;
 
   return (
     <section style={{
