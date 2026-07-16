@@ -127,7 +127,7 @@ export default function OrdersTab({
   const renderCard = (order: Order) => {
     const o = order as any;
     return (
-      <div key={order.id} className="bg-stone-900 border border-stone-800 rounded-2xl shadow-xl p-4 md:p-5 flex flex-col gap-3">
+      <div key={order.id} className="admin-card flex flex-col gap-3 p-4">
         {/* Identity row: the order number is what the customer answers to. */}
         <div className="flex justify-between items-start gap-2">
           <div className="flex items-baseline gap-2 min-w-0">
@@ -296,12 +296,12 @@ export default function OrdersTab({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header: title + search + new order */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold">{t('admin.orders.title')}</h2>
-          <p className="text-stone-500 text-sm">{t('admin.orders.subtitle')}</p>
+          <h2 className="font-serif text-2xl font-semibold tracking-normal">{t('admin.orders.title')}</h2>
+          <p className="mt-1 text-sm text-[var(--white-45)]">{t('admin.orders.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
@@ -310,13 +310,13 @@ export default function OrdersTab({
               placeholder={t('admin.orders.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-stone-900 border border-stone-800 rounded-full px-10 py-2.5 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
+              className="admin-control w-full rounded-[10px] px-10 py-2 text-sm"
             />
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
           </div>
           <button
             onClick={onNewOrder}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95 shrink-0"
+            className="flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-[var(--gold)] px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
           >
             <Plus size={18} />
             <span className="hidden sm:inline">{t('admin.orders.new_order')}</span>
@@ -326,7 +326,7 @@ export default function OrdersTab({
 
       {/* Needs attention — pinned above everything, ignores the date filter. */}
       {reviewOrders.length > 0 && (
-        <div className="bg-red-500/5 border-2 border-red-500/40 rounded-2xl p-4 md:p-5 space-y-3">
+        <div className="space-y-3 rounded-[14px] border border-[var(--admin-danger)] bg-[var(--admin-danger-soft)] p-4">
           <div className="flex items-center gap-2 text-red-400">
             <AlertTriangle size={18} />
             <h3 className="font-bold text-sm uppercase tracking-[0.15em]">
@@ -407,19 +407,19 @@ export default function OrdersTab({
 
       {/* Day summary: what the owner glances at between rushes. */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+        <div className="admin-card p-4">
           <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
             {t('admin.orders.stats.orders')}
           </p>
           <p className="text-2xl font-bold tabular-nums mt-1">{dayOrders.length}</p>
         </div>
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+        <div className="admin-card p-4">
           <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
             {t('admin.orders.stats.revenue')}
           </p>
           <p className="text-2xl font-bold tabular-nums mt-1 text-amber-500">₮{revenue.toLocaleString()}</p>
         </div>
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+        <div className="admin-card p-4">
           <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
             {t('admin.orders.stats.avg')}
           </p>
@@ -429,7 +429,7 @@ export default function OrdersTab({
 
       {/* Status sections: the kitchen pipeline, in work order. */}
       {filtered.length === 0 ? (
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-20 text-center">
+        <div className="admin-card p-20 text-center">
           <ShoppingBag className="mx-auto text-stone-800 mb-4" size={64} />
           <p className="text-stone-500 italic">{t('admin.orders.empty')}</p>
         </div>
@@ -447,7 +447,7 @@ export default function OrdersTab({
                     {group.length}
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
                   {group.map(renderCard)}
                 </div>
               </section>
@@ -468,7 +468,7 @@ export default function OrdersTab({
                 {showCompleted ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
               {showCompleted && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-start opacity-70">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start opacity-70">
                   {completed.map(renderCard)}
                 </div>
               )}

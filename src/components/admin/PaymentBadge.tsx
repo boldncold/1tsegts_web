@@ -18,14 +18,14 @@ export default function PaymentBadge({ order }: { order: any }) {
   const status: string = order.paymentStatus;
   const style =
     status === 'CONFIRMED'
-      ? 'bg-green-500/10 text-green-400 border-green-500/30'
+      ? 'bg-[var(--admin-ok-soft)] text-[var(--admin-ok)] border-transparent'
       : status === 'REFUNDED'
       ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
       : status === 'MANUAL_REVIEW'
-      ? 'bg-red-500/15 text-red-300 border-red-500/40 animate-pulse'
+      ? 'bg-[var(--admin-danger-soft)] text-[var(--admin-danger)] border-transparent animate-pulse'
       : status === 'EXPIRED'
-      ? 'bg-stone-800 text-stone-500 border-stone-700'
-      : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40 animate-pulse';
+      ? 'bg-[var(--white-06)] text-[var(--white-40)] border-transparent'
+      : 'bg-[var(--gold-soft-15)] text-[var(--gold)] border-transparent animate-pulse';
   const label =
     status === 'CONFIRMED'
       ? t('admin.orders.payment.confirmed')

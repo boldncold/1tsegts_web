@@ -202,8 +202,8 @@ export default function About() {
             {/* Map placeholder */}
             <div className="aspect-[4/3] md:aspect-auto bg-stone-100 relative overflow-hidden">
               <img
-                src="https://picsum.photos/seed/shangri-la-map/800/600"
-                alt="Shangri-La Mall"
+                src="https://picsum.photos/seed/dunjingarav-mall-map/800/600"
+                alt="Dunjingarav Mall Food Court"
                 className="w-full h-full object-cover opacity-80"
                 referrerPolicy="no-referrer"
               />
@@ -214,7 +214,7 @@ export default function About() {
             <div className="p-10 flex flex-col justify-center space-y-6 bg-[var(--espresso)]">
               <div className="space-y-2">
                 <span className="eyebrow">{t('about.location_label')}</span>
-                <h3 className="text-2xl font-serif font-bold text-white">Shangri-La Mall</h3>
+                <h3 className="text-2xl font-serif font-bold text-white">Dunjingarav Mall, Food Court</h3>
                 <p className="text-white/50 text-sm leading-relaxed">{t('footer.location_detail')}</p>
               </div>
 
@@ -240,10 +240,10 @@ export default function About() {
                   📞 99138866
                 </a>
                 <a
-                  href="mailto:1tsegts@gmail.com"
+                  href="mailto:boldsaihan666@gmail.com"
                   className="flex items-center gap-2 text-white/60 hover:text-[#D4AF37] transition-colors text-sm font-medium"
                 >
-                  ✉ 1tsegts@gmail.com
+                  ✉ boldsaihan666@gmail.com
                 </a>
               </div>
             </div>

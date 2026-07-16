@@ -432,6 +432,34 @@
   }
 }
 
+/* Food-carousel intro sequence (from the Food Carousel design mock). */
+@keyframes carousel-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes carousel-line-grow {
+  from {
+    width: 0;
+  }
+  to {
+    width: 32px;
+  }
+}
+@keyframes carousel-load-bar {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-pane {
     animation: none;

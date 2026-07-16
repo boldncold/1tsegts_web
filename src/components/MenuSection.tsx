@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingCart, Star, Filter, Search, Flame, Users, Gem, Clock } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Star, Filter, Search, Flame, Users, Gem, Clock, ShieldCheck } from 'lucide-react';
 import { db, collection, onSnapshot, query, where, orderBy } from '../firebase';
 import { MenuItem, Category, Portion } from '../types';
 import { useCart } from '../context/CartContext';
@@ -25,6 +25,7 @@ export default function MenuSection() {
   const { storeOpen } = useStoreSettings();
   const { isAdmin } = useAuth();
   const location = useLocation();
+  const effectiveStoreOpen = storeOpen || isAdmin;
 
   // Filter out 'Draft' items (unpublished) — pool=specials and regular categories are visible.
   // Admins (test mode) see items even if sold out / out of schedule, so the visibility
@@ -201,6 +202,12 @@ export default function MenuSection() {
             className="space-y-4"
           >
             <span className="eyebrow">{t('menu.selection')}</span>
+            {isAdmin && (
+              <span className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full border border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--gold)]">
+                <ShieldCheck size={13} />
+                {t('cart.admin.test_mode_hint')}
+              </span>
+            )}
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-white">{t('menu.title')}</h2>
             <div className="w-16 h-px bg-[#D4AF37] mx-auto mt-2 opacity-60"></div>
           </motion.div>
@@ -252,6 +259,7 @@ export default function MenuSection() {
                 const displayPrice = currentPortion ? currentPortion.price : item.price;
                 const hasManyPortions = item.portions && item.portions.length >= 2;
                 const { isAvailable } = getDynamicStatus(item);
+                const canOrder = isAdmin || (isAvailable && effectiveStoreOpen);
 
                 const isDrink = item.category === 'Drinks';
                 const isPopular = !isDrink && popularThreshold !== Infinity && item.orderCount !== undefined && item.orderCount > 0 && item.orderCount >= popularThreshold;
@@ -392,7 +400,7 @@ export default function MenuSection() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Qty stepper — only for single-portion items */}
-                          {(!item.portions || item.portions.length === 0) && isAvailable && storeOpen && (
+                          {(!item.portions || item.portions.length === 0) && canOrder && (
                             <div className="inline-flex items-center gap-1 bg-[#1a1510] rounded-full p-1">
                               <button
                                 onClick={() => handleQuantityChange(item.id, -1)}
@@ -416,16 +424,22 @@ export default function MenuSection() {
                               addToCart(item, currentPortion, quantities[item.id] || 1);
                               setQuantities(prev => ({ ...prev, [item.id]: 1 }));
                             }}
-                            disabled={!isAvailable || !storeOpen}
+                            disabled={!canOrder}
                             className={cn(
                               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
-                              isAvailable && storeOpen
+                              canOrder
                                 ? "bg-[#D4AF37] text-[#080606] hover:bg-[#C5A028] shadow-sm"
                                 : "bg-white/[0.06] text-white/40 cursor-not-allowed"
                             )}
                           >
                             <Plus size={12} />
-                            {!storeOpen ? t('menu.closed') : isAvailable ? t('menu.add_to_cart') : t('menu.sold_out')}
+                            {isAdmin
+                              ? t('menu.add_to_cart')
+                              : !effectiveStoreOpen
+                                ? t('menu.closed')
+                                : isAvailable
+                                  ? t('menu.add_to_cart')
+                                  : t('menu.sold_out')}
                           </button>
                         </div>
                       </div>

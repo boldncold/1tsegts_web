@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, List, Settings,
   ChevronRight, AlertCircle, Save, Image as ImageIcon,
   Clock, CheckCircle2, XCircle, Package, Star, Users,
-  Search, Minus, Filter, Banknote, Inbox, Link2, Home
+  Search, Minus, Filter, Banknote, Inbox, Link2, ExternalLink
 } from 'lucide-react';
 import {
   auth, db, googleProvider, signInWithPopup, signOut,
@@ -15,10 +15,12 @@ import {
 } from '../firebase';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
 import PaymentBadge from './admin/PaymentBadge';
+import MenuItemRow from './admin/MenuItemRow';
+import OverviewTab from './admin/OverviewTab';
 import OrdersTab from './admin/OrdersTab';
 import { getUBDateString } from './admin/orderUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
-import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS } from '../lib/utils';
+import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS, isStoreOpen } from '../lib/utils';
 import { MIN_BANK_TRANSFER_AMOUNT } from '../lib/bankConfig';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -308,8 +310,7 @@ function notifyNewOrder(pendingCount: number) {
 export default function AdminDashboard() {
   const { t, language } = useLanguage();
   const { currentUser: user, isAdmin, isAdminLoading: loading } = useAuth();
-  // Orders is the default on purpose: during service hours that's the job.
-  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'bank_history' | 'staff' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'orders' | 'bank_history' | 'settings'>('overview');
   
   // Search States
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
@@ -777,6 +778,19 @@ export default function AdminDashboard() {
 
   // Order Actions
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    const order = orders.find((candidate) => candidate.id === orderId);
+    if (!order) {
+      toast.error('Order not found');
+      return;
+    }
+    if (
+      status === 'preparing' &&
+      (order.paymentMethod === 'qpay' || order.paymentMethod === 'bank_transfer') &&
+      order.paymentStatus !== 'CONFIRMED'
+    ) {
+      toast.error(t('admin.orders.payment.awaiting'));
+      return;
+    }
     try {
       await updateDoc(doc(db, 'orders', orderId), { status });
       toast.success(`Order status updated to ${status}`);
@@ -1009,9 +1023,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const pendingOrderCount = orders.filter((order) => order.status === 'pending').length;
+  const matchedBankCount = bankTransactions.filter(
+    (transaction) => computeMatchStatus(transaction).status === 'matched',
+  ).length;
+  const storeOpen = isStoreOpen(storeSettings);
+  const adminNavigation = [
+    { id: 'overview' as const, label: language === 'en' ? 'Overview' : 'Тойм', icon: LayoutDashboard },
+    { id: 'menu' as const, label: t('admin.nav.menu'), icon: List },
+    { id: 'orders' as const, label: t('admin.nav.orders'), icon: ShoppingBag, badge: pendingOrderCount },
+    { id: 'bank_history' as const, label: t('admin.nav.bank_history'), icon: Banknote, badge: matchedBankCount },
+    { id: 'settings' as const, label: language === 'en' ? 'Store' : 'Тохиргоо', icon: Settings },
+  ];
+
   if (loading) return (
     <div className="min-h-screen bg-stone-950 flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="size-10 animate-spin rounded-full border-2 border-[var(--gold)] border-t-transparent"></div>
     </div>
   );
 
@@ -1020,16 +1047,19 @@ export default function AdminDashboard() {
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center space-y-6"
+        className="admin-shell admin-card w-full max-w-[400px] space-y-6 border-[var(--gold-soft-15)] p-8 text-center"
       >
-        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mx-auto">
-          <Settings size={40} />
+        <span className="brand-wordmark justify-center text-xl" aria-label="1ЦЭГЦ">
+          <span className="one">1</span><span className="word">ЦЭГЦ</span>
+        </span>
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[var(--gold-soft-10)] text-[var(--gold)]">
+          <Settings size={26} />
         </div>
-        <h2 className="text-2xl font-bold text-stone-100">{t('admin.login.title')}</h2>
-        <p className="text-stone-400 font-light">{t('admin.login.subtitle')}</p>
+        <h2 className="font-serif text-2xl font-semibold tracking-normal text-stone-100">{t('admin.login.title')}</h2>
+        <p className="font-light text-[var(--white-50)]">{t('admin.login.subtitle')}</p>
         <button
           onClick={handleLogin}
-          className="w-full py-4 bg-amber-500 text-stone-900 font-bold uppercase tracking-widest rounded-full hover:bg-amber-400 transition-all active:scale-95"
+          className="w-full rounded-full bg-[var(--gold)] py-3.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
         >
           {t('admin.login.button')}
         </button>
@@ -1038,150 +1068,147 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-stone-950 text-stone-100">
-      {/* Container */}
-      <div className="flex flex-col lg:flex-row h-[100dvh] overflow-hidden">
-        {/* Mobile top header */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-stone-900 border-b border-stone-800 shrink-0 z-20">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold text-sm shrink-0">EA</div>
-            <span className="font-bold text-base">{t('admin.title')}</span>
+    <div className="admin-shell min-h-[100dvh] bg-[var(--stone-950)] text-stone-100">
+      <div className="flex h-[100dvh] flex-col overflow-hidden lg:flex-row">
+        <header className="z-20 flex h-[54px] shrink-0 items-center justify-between border-b border-[var(--gold-soft-15)] bg-[rgba(21,16,10,0.92)] px-4 backdrop-blur-xl lg:hidden">
+          <div className="flex items-center gap-3">
+            <span className="brand-wordmark text-sm" aria-label="1ЦЭГЦ">
+              <span className="one">1</span><span className="word">ЦЭГЦ</span>
+            </span>
+            <span className="micro-label !text-[9px] !tracking-[0.22em] !text-[var(--gold)]">Admin</span>
           </div>
-          <div className="flex items-center space-x-2">
-            {orders.filter(o => o.status === 'pending').length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                {orders.filter(o => o.status === 'pending').length} new
-              </span>
-            )}
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em]',
+              storeOpen
+                ? 'bg-[var(--admin-ok-soft)] text-[var(--admin-ok)]'
+                : 'bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]',
+            )}>
+              <span className="size-1.5 rounded-full bg-current" />
+              {storeOpen ? (language === 'en' ? 'Open' : 'Нээлттэй') : (language === 'en' ? 'Closed' : 'Хаалттай')}
+            </span>
             <Link
-              to="/"
-              title="View site"
-              className="p-2 text-stone-400 hover:text-amber-500 transition-colors"
+              to="/menu"
+              title={language === 'en' ? 'View customer menu' : 'Үндсэн меню харах'}
+              aria-label={language === 'en' ? 'View customer menu' : 'Үндсэн меню харах'}
+              className="inline-flex size-8 items-center justify-center rounded-[10px] border border-[var(--gold-soft-25)] text-[var(--gold)] transition-colors hover:border-[var(--gold)] hover:bg-[var(--gold-soft-10)]"
             >
-              <Home size={18} />
+              <ExternalLink size={14} />
             </Link>
-            <img src={user?.photoURL} alt={user?.displayName || 'User'} className="w-8 h-8 rounded-full border border-stone-700" />
-            <button onClick={handleLogout} className="p-2 text-stone-500 hover:text-red-500 transition-colors">
-              <LogOut size={18} />
-            </button>
+            <img src={user?.photoURL} alt={user?.displayName || 'User'} className="size-8 rounded-full border border-[var(--gold-soft-30)] object-cover" />
           </div>
-        </div>
+        </header>
 
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:flex lg:w-64 bg-stone-900 border-r border-stone-800 flex-col shrink-0 z-20">
-          <div className="p-6 border-b border-stone-800 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-stone-900 font-bold shrink-0">EA</div>
-              <span className="font-bold text-lg">{t('admin.title')}</span>
+        <aside className="z-20 hidden h-[100dvh] w-[220px] shrink-0 flex-col border-r border-[var(--gold-soft-15)] bg-[var(--admin-sidebar)] lg:flex">
+          <div className="flex items-center justify-between border-b border-[var(--white-06)] px-5 py-[18px]">
+            <div className="flex flex-col gap-2">
+              <span className="brand-wordmark text-[17px]" aria-label="1ЦЭГЦ">
+                <span className="one">1</span><span className="word">ЦЭГЦ</span>
+              </span>
+              <span className="micro-label !text-[9px] !tracking-[0.22em] !text-[var(--gold)] opacity-75">Admin</span>
             </div>
             <Link
-              to="/"
-              title="View site"
-              className="p-2 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-stone-800 transition-colors"
+              to="/menu"
+              title={language === 'en' ? 'View customer menu' : 'Үндсэн меню харах'}
+              aria-label={language === 'en' ? 'View customer menu' : 'Үндсэн меню харах'}
+              className="inline-flex size-8 items-center justify-center rounded-[10px] border border-[var(--white-06)] text-[var(--white-45)] transition-colors hover:border-[var(--gold-soft-40)] hover:text-[var(--gold)]"
             >
-              <Home size={18} />
+              <ExternalLink size={15} />
             </Link>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2">
-            <button
-              onClick={() => setActiveTab('menu')}
-              className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
-                activeTab === 'menu' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
-              )}
-            >
-              <List size={20} />
-              <span className="text-base">{t('admin.nav.menu')}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
-                activeTab === 'orders' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
-              )}
-            >
-              <ShoppingBag size={20} />
-              <span className="text-base">{t('admin.nav.orders')}</span>
-              {orders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                  {orders.filter(o => o.status === 'pending').length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('bank_history')}
-              className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
-                activeTab === 'bank_history' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
-              )}
-            >
-              <Banknote size={20} />
-              <span className="text-base">{t('admin.nav.bank_history')}</span>
-              {bankTransactions.filter((tx) => computeMatchStatus(tx).status === 'matched').length > 0 && (
-                <span className="ml-auto bg-yellow-500 text-stone-900 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                  {bankTransactions.filter((tx) => computeMatchStatus(tx).status === 'matched').length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('staff')}
-              className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
-                activeTab === 'staff' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
-              )}
-            >
-              <Users size={20} />
-              <span className="text-base">{t('admin.nav.staff')}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={cn(
-                "w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
-                activeTab === 'settings' ? "bg-amber-500 text-stone-900 font-bold" : "text-stone-400 hover:bg-stone-800"
-              )}
-            >
-              <Settings size={20} />
-              <span className="text-base">Store Hours</span>
-            </button>
+          <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="Admin">
+            {adminNavigation.map(({ id, label, icon: NavIcon, badge }) => {
+              const isActive = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold tracking-[0.04em] transition-colors',
+                    isActive
+                      ? 'bg-[var(--gold)] text-[var(--stone-950)]'
+                      : 'text-[var(--white-45)] hover:bg-[var(--white-04)] hover:text-[var(--white-72)]',
+                  )}
+                >
+                  <NavIcon size={17} />
+                  <span className="truncate">{label}</span>
+                  {!!badge && (
+                    <span className={cn(
+                      'ml-auto inline-flex min-w-[17px] items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
+                      isActive ? 'bg-[var(--stone-950)] text-[var(--gold)]' : 'bg-[var(--gold)] text-[var(--stone-950)]',
+                    )}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
-          <div className="p-4 border-t border-stone-800">
-            <div className="flex items-center space-x-3 mb-4 px-2">
-              <img src={user?.photoURL} alt={user?.displayName} className="w-8 h-8 rounded-full border border-stone-700" />
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-bold truncate">{user?.displayName}</p>
-                <p className="text-[10px] text-stone-500 truncate">{user?.email}</p>
+          <div className="space-y-3 border-t border-[var(--white-06)] p-4">
+            <Link
+              to="/menu"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--gold)] py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
+            >
+              <ExternalLink size={13} />
+              <span>{language === 'en' ? 'View menu' : 'Үндсэн меню'}</span>
+            </Link>
+            <div className="flex items-center gap-2.5">
+              <img src={user?.photoURL} alt={user?.displayName || 'User'} className="size-8 rounded-full border border-[var(--gold-soft-30)] object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-white">{user?.displayName}</p>
+                <p className="truncate text-[10px] text-[var(--white-40)]">{user?.email}</p>
               </div>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-stone-500 hover:text-red-500 transition-colors text-xs font-bold uppercase tracking-widest"
+              className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--white-06)] py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--white-40)] transition-colors hover:border-[var(--admin-danger-soft)] hover:text-[var(--admin-danger)]"
             >
-              <LogOut size={16} />
+              <LogOut size={13} />
               <span>{t('admin.nav.logout')}</span>
             </button>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-10 pb-28 lg:pb-10 bg-stone-950">
+        <main className="admin-scrollbar flex-1 overflow-y-auto bg-[var(--stone-950)] p-4 pb-28 lg:p-7 lg:pb-10">
+          <div className="mx-auto w-full max-w-[1180px]">
           <AnimatePresence mode="wait">
-            {activeTab === 'menu' ? (
+            {activeTab === 'overview' ? (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="admin-pane"
+              >
+                <OverviewTab
+                  orders={orders}
+                  menuItems={menuItems}
+                  bankTransactions={bankTransactions}
+                  storeOpen={storeOpen}
+                  getBankMatchStatus={computeMatchStatus}
+                  onNavigate={setActiveTab}
+                  onUpdateStatus={updateOrderStatus}
+                />
+              </motion.div>
+            ) : activeTab === 'menu' ? (
               <motion.div
                 key="menu"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
+                className="space-y-4"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="min-w-0">
-                    <h2 className="text-3xl font-bold">{t('admin.menu.title')}</h2>
-                    <p className="text-stone-500 text-sm">{t('admin.menu.subtitle')}</p>
+                    <h2 className="font-serif text-2xl font-semibold tracking-normal">{t('admin.menu.title')}</h2>
+                    <p className="mt-1 text-sm text-[var(--white-45)]">{menuItems.length} {language === 'en' ? 'dishes' : 'хоол'} · {menuItems.filter((item) => item.status === 'sold_out_today').length} {language === 'en' ? 'sold out' : 'дууссан'}</p>
                   </div>
                   <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
-                    <div className="flex bg-stone-900 border border-stone-800 rounded-full p-1 overflow-x-auto custom-scrollbar min-w-0 max-w-full">
+                    <div className="admin-scrollbar flex max-w-full min-w-0 overflow-x-auto rounded-full border border-[var(--white-06)] bg-[var(--stone-950)] p-1">
                       {['All', 'Draft', 'Specials', 'European', 'Asian', 'Mongolian', 'Drinks'].map((cat) => (
                         <button
                           key={cat}
@@ -1203,7 +1230,7 @@ export default function AdminDashboard() {
                         placeholder="Search menu..."
                         value={menuSearchQuery}
                         onChange={(e) => setMenuSearchQuery(e.target.value)}
-                        className="w-full bg-stone-900 border border-stone-800 rounded-full px-10 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-500 transition-colors"
+                        className="admin-control w-full rounded-[10px] px-10 py-2 text-sm"
                       />
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
                     </div>
@@ -1242,7 +1269,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div className="admin-card overflow-hidden">
                   {menuItems
                     .filter(i => {
                       if (menuFilterCategory === 'All') return true;
@@ -1251,7 +1278,7 @@ export default function AdminDashboard() {
                     })
                     .filter(i => i.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) || i.description.toLowerCase().includes(menuSearchQuery.toLowerCase()))
                     .map(item => (
-                      <MenuItemCard 
+                      <MenuItemRow
                         key={item.id} 
                         item={item} 
                         onEdit={(item) => { setIsEditing(item.id); setEditForm(item.pool === 'specials' ? { ...item, category: 'Specials' as any } : item); }}
@@ -1268,7 +1295,7 @@ export default function AdminDashboard() {
                       if (menuFilterCategory === 'Specials') return i.pool === 'specials';
                       return i.category === menuFilterCategory && i.pool !== 'specials';
                     }).length === 0 && (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-stone-800 rounded-3xl text-stone-500">
+                    <div className="flex flex-col items-center justify-center py-20 text-[var(--white-40)]">
                       <Package size={48} className="mb-4 opacity-20" />
                       <p className="text-lg font-bold">No items found</p>
                       <p className="text-sm">Try adjusting your filters or add a new item.</p>
@@ -1304,16 +1331,16 @@ export default function AdminDashboard() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-6"
+                className="space-y-4"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-bold">{t('admin.bank.title')}</h2>
-                    <p className="text-stone-500 text-sm">{t('admin.bank.subtitle')}</p>
+                    <h2 className="font-serif text-2xl font-semibold tracking-normal">{t('admin.bank.title')}</h2>
+                    <p className="mt-1 text-sm text-[var(--white-45)]">{t('admin.bank.subtitle')}</p>
                   </div>
                   <button
                     onClick={() => setShowAddBankTx(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-stone-900 font-bold uppercase tracking-widest text-xs rounded-full hover:bg-amber-400 transition-all"
+                    className="flex min-h-9 items-center gap-2 rounded-full bg-[var(--gold)] px-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
                   >
                     <Plus size={16} />
                     {t('admin.bank.action.add_manual')}
@@ -1339,25 +1366,25 @@ export default function AdminDashboard() {
                   ).length;
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+                      <div className="admin-card p-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-1">
                           {t('admin.bank.stats.today')}
                         </p>
                         <p className="text-xl font-bold text-stone-100 tabular-nums">₮{todayTotal.toLocaleString()}</p>
                       </div>
-                      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+                      <div className="admin-card p-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-1">
                           {t('admin.bank.stats.week')}
                         </p>
                         <p className="text-xl font-bold text-stone-100 tabular-nums">₮{weekTotal.toLocaleString()}</p>
                       </div>
-                      <div className="bg-yellow-500/5 border border-yellow-500/30 rounded-2xl p-4">
+                      <div className="admin-card border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] p-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-yellow-500/80 font-semibold mb-1">
                           {t('admin.bank.stats.matched')}
                         </p>
                         <p className="text-xl font-bold text-yellow-400 tabular-nums">{matchedReadyCount}</p>
                       </div>
-                      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4">
+                      <div className="admin-card p-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-1">
                           {t('admin.bank.stats.unmatched')}
                         </p>
@@ -1368,7 +1395,7 @@ export default function AdminDashboard() {
                 })()}
 
                 {/* Filter pills */}
-                <div className="flex bg-stone-900 border border-stone-800 rounded-full p-1 w-fit">
+                <div className="flex w-fit rounded-full border border-[var(--white-06)] bg-[var(--stone-950)] p-1">
                   {(['all', 'unmatched', 'matched'] as const).map((f) => (
                     <button
                       key={f}
@@ -1396,7 +1423,7 @@ export default function AdminDashboard() {
 
                   if (filtered.length === 0) {
                     return (
-                      <div className="bg-stone-900 border border-dashed border-stone-700 rounded-2xl p-12 text-center">
+                      <div className="admin-card border-dashed p-12 text-center">
                         <Inbox className="mx-auto text-stone-600 mb-3" size={40} />
                         <p className="text-stone-500 italic">{t('admin.bank.empty')}</p>
                       </div>
@@ -1404,8 +1431,8 @@ export default function AdminDashboard() {
                   }
 
                   return (
-                    <div className="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden">
-                      <table className="w-full">
+                    <div className="admin-card admin-scrollbar overflow-x-auto">
+                      <table className="w-full min-w-[720px]">
                         <thead className="bg-stone-950 border-b border-stone-800">
                           <tr>
                             <th className="text-left text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold p-4">
@@ -1504,7 +1531,7 @@ export default function AdminDashboard() {
                 {/* Add-manual modal */}
                 {showAddBankTx && (
                   <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-stone-900 border border-stone-700 rounded-3xl p-6 max-w-md w-full space-y-4">
+                    <div className="admin-card w-full max-w-md space-y-4 border-[var(--gold-soft-15)] p-5">
                       <div className="flex justify-between items-start">
                         <h3 className="text-xl font-bold text-stone-100">{t('admin.bank.modal.title')}</h3>
                         <button
@@ -1523,7 +1550,7 @@ export default function AdminDashboard() {
                             type="number"
                             value={bankTxForm.amountMnt}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, amountMnt: e.target.value })}
-                            className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-100 focus:border-amber-500 outline-none mt-1 tabular-nums"
+                            className="admin-control mt-1 w-full px-3 py-2.5 tabular-nums"
                             placeholder="50000"
                           />
                         </div>
@@ -1535,7 +1562,7 @@ export default function AdminDashboard() {
                             type="text"
                             value={bankTxForm.description}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, description: e.target.value })}
-                            className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-100 focus:border-amber-500 outline-none mt-1 font-mono text-sm"
+                            className="admin-control mt-1 w-full px-3 py-2.5 font-mono text-sm"
                             placeholder="GR-K7P3M9"
                           />
                           <p className="text-[10px] text-stone-500 mt-1">
@@ -1550,7 +1577,7 @@ export default function AdminDashboard() {
                             type="text"
                             value={bankTxForm.senderName}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, senderName: e.target.value })}
-                            className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-100 focus:border-amber-500 outline-none mt-1 text-sm"
+                            className="admin-control mt-1 w-full px-3 py-2.5 text-sm"
                             placeholder="Optional"
                           />
                         </div>
@@ -1562,7 +1589,7 @@ export default function AdminDashboard() {
                             type="datetime-local"
                             value={bankTxForm.postedAt}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, postedAt: e.target.value })}
-                            className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-100 focus:border-amber-500 outline-none mt-1 [color-scheme:dark]"
+                            className="admin-control mt-1 w-full px-3 py-2.5 [color-scheme:dark]"
                           />
                         </div>
                       </div>
@@ -1576,82 +1603,22 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </motion.div>
-            ) : activeTab === 'staff' ? (
-              <motion.div
-                key="staff"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
-                <div>
-                  <h2 className="text-3xl font-bold">{t('admin.staff.title')}</h2>
-                  <p className="text-stone-500 text-sm">{t('admin.staff.subtitle')}</p>
-                </div>
-
-                <div className="max-w-xl">
-                  <form onSubmit={handleAddAdmin} className="flex gap-4 mb-8">
-                    <input
-                      required
-                      type="email"
-                      value={newAdminEmail}
-                      onChange={(e) => setNewAdminEmail(e.target.value)}
-                      placeholder={t('admin.staff.form.placeholder')}
-                      className="flex-1 bg-stone-900 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors"
-                    />
-                    <button
-                      type="submit"
-                      className="px-6 py-3 bg-amber-500 text-stone-900 font-bold uppercase tracking-widest rounded-xl hover:bg-amber-400 transition-all active:scale-95"
-                    >
-                      {t('admin.staff.form.button')}
-                    </button>
-                  </form>
-
-                  <div className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-xl">
-                    <div className="p-6 border-b border-stone-800">
-                      <h4 className="text-xs uppercase tracking-widest text-stone-500 font-bold">{t('admin.staff.list.title')}</h4>
-                    </div>
-                    <div className="divide-y divide-stone-800">
-                      <div className="px-6 py-4 flex justify-between items-center bg-stone-800/20">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500">
-                            <Star size={14} fill="currentColor" />
-                          </div>
-                          <span className="text-sm font-bold">boldsaihanlolor@gmail.com</span>
-                        </div>
-                        <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold">{t('admin.staff.primary')}</span>
-                      </div>
-                      {adminEmails.map((admin) => (
-                        <div key={admin.id} className="px-6 py-4 flex justify-between items-center hover:bg-stone-800/30 transition-colors">
-                          <span className="text-sm text-stone-300">{admin.id}</span>
-                          <button
-                            onClick={() => handleDeleteAdmin(admin.id)}
-                            className="p-2 text-stone-600 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
             ) : (
               <motion.div
                 key="settings"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
+                className="space-y-4"
               >
                 <div>
-                  <h2 className="text-3xl font-bold">Store Hours</h2>
-                  <p className="text-stone-500 text-sm">Manage operating hours and temporary closures</p>
+                  <h2 className="font-serif text-2xl font-semibold tracking-normal">{language === 'en' ? 'Store' : 'Тохиргоо'}</h2>
+                  <p className="mt-1 text-sm text-[var(--white-45)]">{language === 'en' ? 'Hours, temporary closures, and staff access' : 'Цагийн хуваарь, түр хаалт, ажилтны эрх'}</p>
                 </div>
 
-                <div className="max-w-xl space-y-6">
+                <div className="max-w-3xl space-y-4">
                   {/* Operating Hours card */}
-                  <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-5">
+                  <div className="admin-card space-y-5 p-5">
                     <h4 className="text-xs uppercase tracking-widest text-stone-500 font-bold">Operating Hours</h4>
 
                     <div className="flex items-end gap-4">
@@ -1660,7 +1627,7 @@ export default function AdminDashboard() {
                         <select
                           value={storeSettings.openHour}
                           onChange={(e) => handleUpdateStoreSetting({ openHour: Number(e.target.value) })}
-                          className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm"
+                          className="admin-control w-full px-3 py-2 text-sm"
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -1673,7 +1640,7 @@ export default function AdminDashboard() {
                         <select
                           value={storeSettings.closeHour}
                           onChange={(e) => handleUpdateStoreSetting({ closeHour: Number(e.target.value) })}
-                          className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm"
+                          className="admin-control w-full px-3 py-2 text-sm"
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -1713,7 +1680,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Temporary Overrides card */}
-                  <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-6">
+                  <div className="admin-card space-y-6 p-5">
                     <h4 className="text-xs uppercase tracking-widest text-stone-500 font-bold">Temporary Overrides</h4>
 
                     {/* Closed Until */}
@@ -1725,7 +1692,7 @@ export default function AdminDashboard() {
                           type="date"
                           value={storeSettings.closedUntil || ''}
                           onChange={(e) => handleUpdateStoreSetting({ closedUntil: e.target.value || null })}
-                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm [color-scheme:dark]"
+                          className="admin-control flex-1 px-3 py-2 text-sm [color-scheme:dark]"
                         />
                         {storeSettings.closedUntil && (
                           <button
@@ -1753,7 +1720,7 @@ export default function AdminDashboard() {
                           type="date"
                           value={storeSettings.noClosedDayUntil || ''}
                           onChange={(e) => handleUpdateStoreSetting({ noClosedDayUntil: e.target.value || null })}
-                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 focus:border-amber-500 outline-none text-sm [color-scheme:dark]"
+                          className="admin-control flex-1 px-3 py-2 text-sm [color-scheme:dark]"
                         />
                         {storeSettings.noClosedDayUntil && (
                           <button
@@ -1772,78 +1739,81 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
+
+                  <section className="admin-card overflow-hidden">
+                    <div className="border-b border-[var(--white-06)] p-5">
+                      <h3 className="font-serif text-lg font-semibold tracking-normal text-white">{t('admin.staff.title')}</h3>
+                      <p className="mt-1 text-xs text-[var(--white-45)]">{t('admin.staff.subtitle')}</p>
+                      <form onSubmit={handleAddAdmin} className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        <input
+                          required
+                          type="email"
+                          value={newAdminEmail}
+                          onChange={(event) => setNewAdminEmail(event.target.value)}
+                          placeholder={t('admin.staff.form.placeholder')}
+                          className="admin-control flex-1 px-3 text-sm"
+                        />
+                        <button
+                          type="submit"
+                          className="min-h-9 rounded-full bg-[var(--gold)] px-5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
+                        >
+                          {t('admin.staff.form.button')}
+                        </button>
+                      </form>
+                    </div>
+                    <div className="divide-y divide-[var(--white-06)]">
+                      <div className="flex items-center justify-between gap-3 px-5 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--gold-soft-15)] text-[var(--gold)]">
+                            <Star size={13} fill="currentColor" />
+                          </span>
+                          <span className="truncate text-xs font-semibold text-white">boldsaihanlolor@gmail.com</span>
+                        </div>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--gold)]">{t('admin.staff.primary')}</span>
+                      </div>
+                      {adminEmails.map((admin) => (
+                        <div key={admin.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                          <span className="truncate text-xs text-[var(--white-72)]">{admin.id}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAdmin(admin.id)}
+                            title={language === 'en' ? 'Remove admin' : 'Админ хасах'}
+                            aria-label={language === 'en' ? 'Remove admin' : 'Админ хасах'}
+                            className="inline-flex size-8 items-center justify-center rounded-[10px] border border-[var(--white-06)] text-[var(--white-40)] transition-colors hover:border-[var(--admin-danger-soft)] hover:text-[var(--admin-danger)]"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
         </main>
 
-        {/* Mobile bottom tab bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-stone-900/95 backdrop-blur-md border-t border-stone-800 flex items-stretch">
-          <button
-            onClick={() => setActiveTab('menu')}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
-              activeTab === 'menu' ? "text-amber-500" : "text-stone-500"
-            )}
-          >
-            <List size={22} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.menu')}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
-              activeTab === 'orders' ? "text-amber-500" : "text-stone-500"
-            )}
-          >
-            <div className="relative">
-              <ShoppingBag size={22} />
-              {orders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
-                  {orders.filter(o => o.status === 'pending').length}
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--gold-soft-15)] bg-[rgba(21,16,10,0.94)] px-1 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl lg:hidden" aria-label="Admin">
+          {adminNavigation.map(({ id, label, icon: NavIcon, badge }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                'relative flex min-w-0 flex-col items-center gap-1 px-0 py-1.5 text-[var(--white-40)] transition-colors',
+                activeTab === id && 'text-[var(--gold)]',
+              )}
+            >
+              <NavIcon size={19} />
+              <span className="w-full truncate text-[8px] font-bold uppercase tracking-[0.08em]">{label}</span>
+              {!!badge && (
+                <span className="absolute left-1/2 top-0 ml-1.5 inline-flex min-w-3.5 items-center justify-center rounded-full bg-[var(--gold)] px-1 py-0.5 text-[8px] font-bold text-[var(--stone-950)] tabular-nums">
+                  {badge}
                 </span>
               )}
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.orders')}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('bank_history')}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
-              activeTab === 'bank_history' ? "text-amber-500" : "text-stone-500"
-            )}
-          >
-            <div className="relative">
-              <Banknote size={22} />
-              {bankTransactions.filter((tx) => computeMatchStatus(tx).status === 'matched').length > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-yellow-500 text-stone-900 text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
-                  {bankTransactions.filter((tx) => computeMatchStatus(tx).status === 'matched').length}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-wider">{t('admin.nav.bank_history')}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('staff')}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
-              activeTab === 'staff' ? "text-amber-500" : "text-stone-500"
-            )}
-          >
-            <Users size={22} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin.nav.staff')}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors",
-              activeTab === 'settings' ? "text-amber-500" : "text-stone-500"
-            )}
-          >
-            <Settings size={22} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Hours</span>
-          </button>
+            </button>
+          ))}
         </nav>
       </div>
 

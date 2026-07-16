@@ -2,13 +2,19 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, Star, Clock, MapPin, Phone } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { MenuItem } from '../types';
+import FoodCarousel from './FoodCarousel';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
 };
 
-export default function Hero() {
+interface HeroProps {
+  dishes: MenuItem[];
+}
+
+export default function Hero({ dishes }: HeroProps) {
   const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const motionTransition = reduceMotion
@@ -87,7 +93,7 @@ export default function Hero() {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.45 }}
-          className="flex gap-3 justify-center flex-wrap mb-12"
+          className="flex gap-3 justify-center flex-wrap mb-7 md:mb-12"
         >
           <Link
             to="/menu"
@@ -107,7 +113,7 @@ export default function Hero() {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.54 }}
-          className="grid grid-cols-3 gap-2.5 w-full max-w-[480px]"
+          className="hidden md:grid grid-cols-3 gap-2.5 w-full max-w-[480px]"
         >
           {[
             { icon: Clock, top: t('hero.hours'), bot: t('hero.hours_detail') },
@@ -123,6 +129,14 @@ export default function Hero() {
               <div className="text-[12px] text-white font-serif">{item.bot}</div>
             </div>
           ))}
+        </motion.div>
+
+        <motion.div
+          {...fadeUp}
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.54 }}
+          className="md:hidden w-full"
+        >
+          <FoodCarousel dishes={dishes} />
         </motion.div>
       </div>
 

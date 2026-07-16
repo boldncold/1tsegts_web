@@ -1,268 +1,185 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { MenuItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
-/**
- * Mobile featured-dishes coverflow ("Хоолны аялал") — implements the
- * "1TSEGTS Food Carousel" design mock against the real menu. Center card
- * full-size, neighbours peek at ±150px scaled to 0.76, autoplay every 3.2s
- * (reset by manual navigation), chevrons + counter, swipe to navigate.
- * The mock's intro loader is intentionally dropped — it's a splash screen
- * for the standalone artifact, not something to replay on every visit.
- */
-
-const AUTOPLAY_SECS = 3.2;
-
+const AUTOPLAY_MS = 3200;
 const DISH_FALLBACK_BG =
-  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
 
-/** Coverflow placement by position relative to the active card. */
-function cardStyle(rel: number): React.CSSProperties {
-  const base: React.CSSProperties = {
+function getRelativePosition(index: number, active: number, length: number) {
+  let relative = (index - active + length) % length;
+  if (relative > length / 2) relative -= length;
+  return relative;
+}
+
+function getCardStyle(relative: number): CSSProperties {
+  const base: CSSProperties = {
     position: 'absolute',
-    top: 15,
+    top: 0,
     left: '50%',
-    marginLeft: -118,
-    transition: 'transform 700ms var(--ease-card), opacity 700ms var(--ease-card)',
+    width: 226,
+    height: 142,
+    marginLeft: -113,
+    transition: 'transform 600ms var(--ease-card), opacity 600ms var(--ease-card)',
     willChange: 'transform',
   };
-  if (rel === 0) return { ...base, transform: 'translateX(0) scale(1)', opacity: 1, zIndex: 3 };
-  if (rel === 1) return { ...base, transform: 'translateX(150px) scale(0.76)', opacity: 0.38, zIndex: 2 };
-  if (rel === -1) return { ...base, transform: 'translateX(-150px) scale(0.76)', opacity: 0.38, zIndex: 2 };
-  const side = rel > 0 ? 1 : -1;
+
+  if (relative === 0) {
+    return { ...base, transform: 'translateX(0) scale(1)', opacity: 1, zIndex: 3 };
+  }
+  if (relative === 1 || relative === -1) {
+    return {
+      ...base,
+      transform: `translateX(${relative * 170}px) scale(0.82)`,
+      opacity: 0.42,
+      zIndex: 2,
+      pointerEvents: 'none',
+    };
+  }
+
   return {
     ...base,
-    transform: `translateX(${side * 280}px) scale(0.6)`,
+    transform: `translateX(${relative > 0 ? 310 : -310}px) scale(0.7)`,
     opacity: 0,
     zIndex: 1,
     pointerEvents: 'none',
   };
 }
 
-export default function FoodCarousel({ dishes }: { dishes: MenuItem[] }) {
-  const { language } = useLanguage();
-  const [active, setActive] = useState(0);
-  const tickRef = useRef<number | null>(null);
-  const touchStartX = useRef<number | null>(null);
-  const n = dishes.length;
+interface FoodCarouselProps {
+  dishes: MenuItem[];
+}
 
-  const schedule = useCallback(() => {
-    if (tickRef.current !== null) window.clearTimeout(tickRef.current);
-    tickRef.current = window.setTimeout(() => {
-      setActive((a) => (a + 1) % n);
-      schedule();
-    }, AUTOPLAY_SECS * 1000);
-  }, [n]);
+export default function FoodCarousel({ dishes }: FoodCarouselProps) {
+  const { language, t } = useLanguage();
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const count = dishes.length;
 
   useEffect(() => {
-    if (n < 2) return;
-    schedule();
-    return () => {
-      if (tickRef.current !== null) window.clearTimeout(tickRef.current);
-    };
-  }, [n, schedule]);
+    setActive((current) => (count === 0 ? 0 : Math.min(current, count - 1)));
+  }, [count]);
 
-  const go = (dir: number) => {
-    setActive((a) => (a + dir + n) % n);
-    if (n >= 2) schedule(); // manual nav resets the autoplay timer
+  useEffect(() => {
+    if (reduceMotion || count < 2) return;
+    const timer = window.setTimeout(() => {
+      setActive((current) => (current + 1) % count);
+    }, AUTOPLAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [active, count, reduceMotion]);
+
+  const go = (direction: number) => {
+    if (count < 2) return;
+    setActive((current) => (current + direction + count) % count);
   };
 
-  if (n === 0) return null;
+  if (count === 0) {
+    return (
+      <div className="h-[176px] w-full" aria-hidden="true">
+        <div className="mx-auto h-[142px] w-[226px] animate-pulse rounded-[8px] border border-white/10 bg-white/5" />
+      </div>
+    );
+  }
 
   return (
-    <section
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        background: 'var(--gradient-hero)',
-        fontFamily: 'var(--font-sans)',
-        padding: '44px 0 40px',
-      }}
-    >
-      {/* ambient gold glow (breathing) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'var(--glow-hero)',
-          animation: 'glow-breathe 6s ease-in-out infinite alternate',
-          pointerEvents: 'none',
-        }}
-      />
-      {/* faint gold dot pattern */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: 'radial-gradient(rgba(212,175,55,0.12) 1px, transparent 1px)',
-          backgroundSize: '26px 26px',
-          opacity: 0.5,
-          pointerEvents: 'none',
-        }}
-      />
+    <section aria-label={t('featured.title')} className="relative w-full overflow-hidden">
+      <div className="mb-3 flex items-center justify-between px-1">
+        <span className="eyebrow !text-[9px]">{t('featured.title')}</span>
+        <span className="micro-label !text-white/45" aria-live="polite">
+          {String(active + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+        </span>
+      </div>
 
       <div
-        style={{
-          position: 'relative',
-          maxWidth: 450,
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 26,
+        className="relative h-[142px] touch-pan-y"
+        onTouchStart={(event) => {
+          touchStartX.current = event.touches[0].clientX;
+        }}
+        onTouchEnd={(event) => {
+          if (touchStartX.current === null) return;
+          const delta = event.changedTouches[0].clientX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(delta) > 40) go(delta < 0 ? 1 : -1);
         }}
       >
-        {/* heading */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', padding: '0 28px' }}>
-          <span className="eyebrow" style={{ fontSize: 11 }}>
-            {language === 'en' ? 'OUR SELECTION' : 'ОНЦЛОХ'}
-          </span>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, color: '#fff', fontSize: 34, lineHeight: 1.1, textWrap: 'balance' }}>
-            {language === 'en' ? (
-              <>Culinary <em>Journey</em></>
-            ) : (
-              <>Хоолны <em>аялал</em></>
-            )}
-          </h2>
-        </div>
+        {dishes.map((dish, index) => {
+          const relative = getRelativePosition(index, active, count);
+          const minPrice = Math.min(
+            dish.price,
+            ...(dish.portions?.map((portion) => portion.price) || [dish.price])
+          );
 
-        {/* carousel */}
-        <div
-          style={{ position: 'relative', width: '100%', height: 330 }}
-          onTouchStart={(e) => {
-            touchStartX.current = e.touches[0].clientX;
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartX.current === null) return;
-            const delta = e.changedTouches[0].clientX - touchStartX.current;
-            touchStartX.current = null;
-            if (Math.abs(delta) > 40) go(delta < 0 ? 1 : -1);
-          }}
-        >
-          {dishes.map((dish, i) => {
-            let rel = (i - active + n) % n;
-            if (rel > n / 2) rel -= n;
-            return (
-              <div key={dish.id} style={cardStyle(rel)}>
-                <div
-                  style={{
-                    position: 'relative',
-                    width: 236,
-                    height: 300,
-                    borderRadius: 24,
-                    overflow: 'hidden',
-                    border: '1px solid var(--gold-soft-25)',
-                    boxShadow: 'var(--shadow-stack-top)',
-                    background: '#0a0806',
-                  }}
-                >
-                  {dish.image ? (
-                    <img
-                      src={dish.image}
-                      alt={dish.name}
-                      referrerPolicy="no-referrer"
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div style={{ position: 'absolute', inset: 0, background: DISH_FALLBACK_BG }} />
-                  )}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(transparent 42%, rgba(0,0,0,0.85))',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'flex-end',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '16px 14px',
-                    }}
-                  >
-                    <span className="micro-label" style={{ fontSize: 8, letterSpacing: '0.24em', color: 'var(--gold)' }}>
-                      {(dish.category || '').toUpperCase()}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: 21, fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.15 }}>
-                      {dish.name}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
-                      ₮{Math.round(dish.price).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+          return (
+            <Link
+              key={dish.id}
+              to="/menu"
+              style={getCardStyle(relative)}
+              tabIndex={relative === 0 ? 0 : -1}
+              aria-hidden={relative !== 0}
+              className="overflow-hidden rounded-[8px] border border-[rgba(212,175,55,0.28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+            >
+              {dish.image ? (
+                <img
+                  src={dish.image}
+                  alt={dish.name}
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0" style={{ background: DISH_FALLBACK_BG }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
+              <div className="absolute inset-y-0 left-0 flex w-[72%] flex-col justify-end p-3.5">
+                <span className="micro-label mb-1 !text-[7px] !text-[#D4AF37]">
+                  {dish.category}
+                </span>
+                <h2 className="line-clamp-2 font-serif text-[17px] font-bold leading-[1.08] text-white">
+                  {dish.name}
+                </h2>
+                <span className="mt-1.5 font-serif text-[14px] font-bold text-[#D4AF37]">
+                  ₮{minPrice.toLocaleString()}
+                </span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* nav: chevrons + counter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-          <button
-            onClick={() => go(-1)}
-            aria-label={language === 'en' ? 'Previous' : 'Өмнөх'}
-            className="transition-all hover:border-[var(--gold)] hover:bg-[var(--white-04)] active:scale-95"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 38,
-              height: 38,
-              borderRadius: 999,
-              background: 'transparent',
-              border: '1px solid var(--gold-soft-40)',
-              color: 'var(--gold)',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="micro-label" style={{ fontSize: 10, letterSpacing: '0.3em', color: 'var(--white-45)', fontVariantNumeric: 'tabular-nums' }}>
-            {String(active + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
-          </span>
-          <button
-            onClick={() => go(1)}
-            aria-label={language === 'en' ? 'Next' : 'Дараах'}
-            className="transition-all hover:border-[var(--gold)] hover:bg-[var(--white-04)] active:scale-95"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 38,
-              height: 38,
-              borderRadius: 999,
-              background: 'transparent',
-              border: '1px solid var(--gold-soft-40)',
-              color: 'var(--gold)',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        {/* CTA */}
-        <Link
-          to="/menu"
-          className="transition-all hover:bg-[var(--red-deep-hover)] active:scale-95"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '13px 36px',
-            borderRadius: 999,
-            background: 'var(--red-deep)',
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-          }}
-        >
-          {language === 'en' ? 'View menu' : 'Цэс үзэх'}
-        </Link>
+            </Link>
+          );
+        })}
       </div>
+
+      {count > 1 && (
+        <div className="mt-2.5 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => go(-1)}
+            aria-label={language === 'en' ? 'Previous dish' : 'Өмнөх хоол'}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {dishes.map((dish, index) => (
+              <span
+                key={dish.id}
+                className={`block h-1 rounded-full transition-all ${
+                  index === active ? 'w-5 bg-[#D4AF37]' : 'w-1 bg-white/25'
+                }`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => go(1)}
+            aria-label={language === 'en' ? 'Next dish' : 'Дараах хоол'}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      )}
     </section>
   );
 }

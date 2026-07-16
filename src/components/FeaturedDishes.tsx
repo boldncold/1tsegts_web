@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Minus, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { db, collection, onSnapshot, query, where, orderBy, limit } from '../firebase';
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import FoodCarousel from './FoodCarousel';
 
 type Variant = 'stack' | 'marquee';
 
@@ -26,45 +24,15 @@ function useIsMobile(breakpoint = 640) {
   return isMobile;
 }
 
-export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
-  const [dishes, setDishes] = useState<MenuItem[]>([]);
+interface FeaturedDishesProps {
+  dishes: MenuItem[];
+  variant?: Variant;
+}
+
+export default function FeaturedDishes({ dishes, variant = 'marquee' }: FeaturedDishesProps) {
   const { addToCart } = useCart();
   const { language } = useLanguage();
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const featuredQuery = query(
-      collection(db, 'menu'),
-      where('available', '==', true),
-      where('featured', '==', true),
-      limit(10)
-    );
-    // Track the fallback listener too — it used to leak (subscribed inside
-    // the callback, never unsubscribed), leaving a zombie menu listener
-    // billing reads after unmount.
-    let fallbackUnsubscribe: (() => void) | null = null;
-    const unsubscribe = onSnapshot(featuredQuery, (snapshot) => {
-      if (!snapshot.empty) {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
-        setDishes(items);
-      } else if (!fallbackUnsubscribe) {
-        const fallback = query(
-          collection(db, 'menu'),
-          where('available', '==', true),
-          orderBy('orderCount', 'desc'),
-          limit(10)
-        );
-        fallbackUnsubscribe = onSnapshot(fallback, (snap) => {
-          const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
-          setDishes(items);
-        });
-      }
-    });
-    return () => {
-      unsubscribe();
-      fallbackUnsubscribe?.();
-    };
-  }, []);
 
   const list = useMemo(() => {
     const featured = dishes.filter(d => d.tags?.includes('chefsPick') || d.tags?.includes('popular') || d.featured);
@@ -83,9 +51,8 @@ export default function FeaturedDishes({ variant = 'marquee' as Variant }) {
 
   if (list.length === 0) return null;
 
-  // Mobile gets the coverflow "Хоолны аялал" carousel (Food Carousel design
-  // mock); desktop keeps the marquee below.
-  if (isMobile) return <FoodCarousel dishes={list.slice(0, 6)} />;
+  // The compact mobile carousel lives in the hero; this section remains the desktop strip.
+  if (isMobile) return null;
 
   return (
     <section style={{
