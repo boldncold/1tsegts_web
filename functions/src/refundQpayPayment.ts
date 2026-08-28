@@ -16,6 +16,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { logger } from 'firebase-functions';
 import { getDb } from './db.js';
+import { assertAdmin } from './assertAdmin.js';
 import { getAccessToken, readConfigFromEnv } from './qpayTokenCache.js';
 import { qpayRefundPayment, QpayApiError } from './qpayClient.js';
 
@@ -24,37 +25,6 @@ const QPAY_PASSWORD = defineSecret('QPAY_PASSWORD');
 const QPAY_INVOICE_CODE = defineSecret('QPAY_INVOICE_CODE');
 const QPAY_BASE_URL = defineSecret('QPAY_BASE_URL');
 const QPAY_CALLBACK_TOKEN = defineSecret('QPAY_CALLBACK_TOKEN');
-
-// Mirrors HARDCODED_OWNER_EMAIL in src/context/AuthContext.tsx.
-const HARDCODED_OWNER_EMAIL = 'boldsaihanlolor@gmail.com';
-
-/**
- * Server-side admin check. Mirrors resolveIsAdmin() in AuthContext.tsx so the
- * same people who see the admin dashboard can refund: hardcoded owner email,
- * users/{uid}.role === 'admin', or an admin_emails/{email} doc.
- */
-async function assertAdmin(
-  auth: { uid: string; token: { email?: string } } | undefined,
-): Promise<void> {
-  if (!auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required');
-  }
-  const email = (auth.token.email ?? '').toLowerCase();
-  if (email === HARDCODED_OWNER_EMAIL) return;
-
-  const db = getDb();
-  try {
-    const userSnap = await db.doc(`users/${auth.uid}`).get();
-    if (userSnap.exists && userSnap.data()?.role === 'admin') return;
-  } catch {
-    // fall through to admin_emails check
-  }
-  if (email) {
-    const adminSnap = await db.doc(`admin_emails/${email}`).get();
-    if (adminSnap.exists) return;
-  }
-  throw new HttpsError('permission-denied', 'Admins only');
-}
 
 export const refundQpayPayment = onCall(
   {

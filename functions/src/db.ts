@@ -14,11 +14,22 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 const FALLBACK_DATABASE_ID = 'ai-studio-c9d0a348-c974-424c-a7d7-b422ac0da613';
 
+/**
+ * Resolved at module load, which is DEPLOY time for trigger options.
+ *
+ * Firestore triggers (onDocumentCreated and friends) bind to a database when
+ * they are deployed, not when they run — omit it and the trigger targets
+ * `(default)`, which does not exist on this project, and the function silently
+ * fails to deploy while every other function succeeds.
+ */
+export const DATABASE_ID =
+  process.env.FIRESTORE_DATABASE_ID || FALLBACK_DATABASE_ID;
+
 let cached: Firestore | null = null;
 
 export function getDb(): Firestore {
   if (cached) return cached;
-  const databaseId = process.env.FIRESTORE_DATABASE_ID || FALLBACK_DATABASE_ID;
+  const databaseId = DATABASE_ID;
   cached = getFirestore(databaseId);
   // External payloads (QPay invoice/payment responses) routinely omit optional
   // fields. Without this, writing such a field as `undefined` throws "Cannot use

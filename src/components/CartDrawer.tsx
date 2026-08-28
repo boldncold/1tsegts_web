@@ -317,10 +317,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const skipPayment = isAdmin && chargedTotal === 0;
 
       if (skipPayment) {
-        order.paymentStatus = 'CONFIRMED';
-        order.paidVia = 'admin_manual';
+        // Created AWAITING_PAYMENT and confirmed immediately below via
+        // confirmOrderPayment. The client is not allowed to write CONFIRMED
+        // (see hasNoForgedPayment in firestore.rules), and routing the test
+        // order through the real confirmation path means a break in that path
+        // shows up here rather than in production.
+        order.paymentStatus = 'AWAITING_PAYMENT';
         order.amountMnt = 0;
-        order.paidAt = new Date().toISOString();
       } else if (formData.paymentMethod === 'bank_transfer') {
         // Bank-transfer-specific fields. For cash orders these stay absent so
         // the existing "go to cashier" flow runs unchanged.
@@ -342,7 +345,27 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       }
 
       const docRef = await addDoc(collection(db, 'orders'), order);
-      
+
+      // Zero-charge admin test order: confirm through the same cloud function
+      // the admin dashboard uses. Awaited before the completion screen renders
+      // so it never flashes the "waiting for payment" state.
+      if (skipPayment) {
+        try {
+          await httpsCallable<
+            { orderId: string; source?: 'admin_manual' | 'email_parse' },
+            { updated: boolean; reason?: string }
+          >(functions, 'confirmOrderPayment')({
+            orderId: docRef.id,
+            source: 'admin_manual',
+          });
+        } catch (err) {
+          console.error('Test order confirm failed:', err);
+          toast.error(language === 'en'
+            ? 'Test order created but could not be confirmed'
+            : 'Туршилтын захиалга үүссэн ч баталгаажаагүй байна');
+        }
+      }
+
       // Set pending order in context
       setPendingOrderId(docRef.id);
 

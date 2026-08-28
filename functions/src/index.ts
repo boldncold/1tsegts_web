@@ -19,3 +19,6 @@ export { createQpayInvoice } from './createQpayInvoice.js';
 export { qpayWebhook } from './qpayWebhook.js';
 export { expirePendingQpayInvoices } from './expirePendingQpayInvoices.js';
 export { refundQpayPayment } from './refundQpayPayment.js';
+export { confirmOrderPayment } from './confirmOrderPayment.js';
+export { reconcileBankTransaction } from './reconcileBankTransaction.js';
+export { sweepBankTransactions } from './sweepBankTransactions.js';
