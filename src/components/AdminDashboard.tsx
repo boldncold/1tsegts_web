@@ -21,7 +21,6 @@ import OrdersTab from './admin/OrdersTab';
 import { getUBDateString } from './admin/orderUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS, isStoreOpen } from '../lib/utils';
-import { MIN_BANK_TRANSFER_AMOUNT } from '../lib/bankConfig';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -799,38 +798,56 @@ export default function AdminDashboard() {
     }
   };
 
-  // Reconciliation: flips paymentStatus → CONFIRMED. Called from:
+  // Reconciliation: asks the confirmOrderPayment cloud function to flip
+  // paymentStatus → CONFIRMED. Called from:
   //   1. The admin "Mark Paid" button on an order card (silent=false, manual confirm)
   //   2. The "Confirm Order" button on a matched bank tx row (silent=false, manual confirm)
   //   3. The auto-confirm useEffect for email-ingested matched txs (silent=true)
   // The customer's screen reacts to the Firestore change via onSnapshot in CartContext.
+  //
+  // The function owns the state guard (only AWAITING_PAYMENT confirms), the
+  // idempotency, and the bank-tx reconcile write — all in one transaction. The
+  // client no longer writes paymentStatus itself.
   const markOrderPaid = async (
     orderId: string,
     matchedTxId?: string,
-    opts?: { silent?: boolean; via?: string }
+    opts?: { silent?: boolean; via?: 'admin_manual' | 'email_parse' }
   ) => {
     if (!opts?.silent && !window.confirm(t('admin.orders.confirm_paid'))) return;
     try {
-      const updates: any = {
-        paymentStatus: 'CONFIRMED',
-        paidAt: new Date().toISOString(),
-      };
-      if (matchedTxId) updates.matchedTxId = matchedTxId;
-      if (opts?.via) updates.paidVia = opts.via;
-      await updateDoc(doc(db, 'orders', orderId), updates);
+      const fn = httpsCallable<
+        { orderId: string; bankTxId?: string; source?: 'admin_manual' | 'email_parse' },
+        { updated: boolean; reason?: string }
+      >(functions, 'confirmOrderPayment');
 
-      // If we came from a bank tx, also mark the tx reconciled so it stops appearing
-      // as "ready to confirm" and gets a green check in the history.
-      if (matchedTxId) {
-        await updateDoc(doc(db, 'bank_transactions', matchedTxId), {
-          matchStatus: 'reconciled',
-          matchedOrderId: orderId,
-        });
+      const { data } = await fn({
+        orderId,
+        ...(matchedTxId ? { bankTxId: matchedTxId } : {}),
+        ...(opts?.via ? { source: opts.via } : {}),
+      });
+
+      if (data.updated) {
+        if (!opts?.silent) toast.success(t('admin.orders.confirm.success'));
+        return;
       }
-      if (!opts?.silent) toast.success('Payment confirmed');
+
+      // A refusal is never silent-by-default: an admin who believes money
+      // arrived for an order the system has written off must see that.
+      // 'already_confirmed' is the one benign case — the webhook won the race.
+      if (data.reason === 'already_confirmed') {
+        if (!opts?.silent) toast.info(t('admin.orders.confirm.already'));
+      } else if (data.reason?.startsWith('bad_state:')) {
+        const state = data.reason.slice('bad_state:'.length);
+        toast.error(`${t('admin.orders.confirm.bad_state')}: ${state}`);
+      } else if (data.reason === 'order_not_found') {
+        toast.error(t('admin.orders.confirm.not_found'));
+      } else {
+        toast.error(t('admin.orders.confirm.failed'));
+      }
+      console.warn('confirmOrderPayment refused:', { orderId, matchedTxId, reason: data.reason });
     } catch (error) {
       console.error('Mark paid error:', error);
-      if (!opts?.silent) toast.error('Failed to mark paid');
+      toast.error(t('admin.orders.confirm.failed'));
     }
   };
 
@@ -868,64 +885,26 @@ export default function AdminDashboard() {
   };
 
   /**
-   * Computes the live match status of a bank tx against the current orders list.
-   * Pure function — no side effects. The persistent `matchStatus` field on the
-   * tx doc is the source of truth once an admin confirms; before that we just
-   * recompute on every render.
+   * Reads the match the server computed. Matching moved to
+   * functions/src/bankMatching.ts — reconcileBankTransaction on ingest and
+   * sweepBankTransactions every 5 minutes — so there is one implementation
+   * instead of one per open dashboard.
+   *
+   * matchedOrderId now means "the order this currently matches", not "the order
+   * this was reconciled against"; check matchStatus === 'reconciled' for proof
+   * of payment.
    */
-  const computeMatchStatus = (
+  const readMatchStatus = (
     tx: BankTransaction,
-  ): { status: BankTxMatchStatus; orderId?: string } => {
-    if (tx.matchStatus === 'reconciled' && tx.matchedOrderId) {
-      return { status: 'reconciled', orderId: tx.matchedOrderId };
-    }
-    const refMatch = tx.description?.match(/GR-[A-Z2-9]{6}/i)?.[0]?.toUpperCase();
-    if (!refMatch) {
-      return { status: 'unmatched' };
-    }
-    const order = orders.find((o: any) => o.referenceCode === refMatch);
-    if (!order) {
-      return { status: 'unknown_ref' };
-    }
-    if ((order as any).amountMnt && (order as any).amountMnt !== tx.amountMnt) {
-      return { status: 'amount_mismatch', orderId: order.id };
-    }
-    return { status: 'matched', orderId: order.id };
-  };
+  ): { status: BankTxMatchStatus; orderId?: string } => ({
+    status: tx.matchStatus ?? 'unmatched',
+    orderId: tx.matchedOrderId,
+  });
 
-  // Auto-confirm: when an email-ingested transaction matches an AWAITING_PAYMENT
-  // order on BOTH reference code AND amount, flip the order to CONFIRMED automatically
-  // and mark the tx reconciled. Manual entries (source='manual') deliberately do
-  // NOT auto-confirm — they could have typos and need eyeball verification.
-  //
-  // Idempotency: in-flight Set prevents double-firing while the snapshot round-trip
-  // is in progress. Once the tx's matchStatus becomes 'reconciled', the matcher
-  // returns early and we never re-process it.
-  const inFlightRef = React.useRef<Set<string>>(new Set());
-  React.useEffect(() => {
-    if (!isAdmin) return;
-    for (const tx of bankTransactions) {
-      // Source guard: only auto-confirm bank-issued notifications, not manual entries
-      if (tx.source !== 'gmail_apps_script' && tx.source !== 'gmail_api') continue;
-      // Amount floor guard: tiny credits don't auto-confirm even if ref code matches
-      if (tx.amountMnt < MIN_BANK_TRANSFER_AMOUNT) continue;
-      if (inFlightRef.current.has(tx.id)) continue;
-
-      const m = computeMatchStatus(tx);
-      if (m.status === 'matched' && m.orderId) {
-        inFlightRef.current.add(tx.id);
-        markOrderPaid(m.orderId, tx.id, { silent: true, via: 'auto_email_match' })
-          .finally(() => {
-            // Leave in the set — once Firestore reflects the reconciled state, the
-            // matcher returns 'reconciled' and we skip it anyway. Clearing on success
-            // would just re-fire on the snapshot round trip.
-          });
-      }
-    }
-    // Re-run when either the tx list or the order list changes. The matcher needs
-    // both (it joins ref code → order); a new order could resolve a previously
-    // unknown_ref tx into a matched one.
-  }, [bankTransactions, orders, isAdmin]);
+  // Auto-confirm used to live here as a useEffect, which meant it only ran while
+  // an admin had this page open. It is now reconcileBankTransaction (on ingest)
+  // plus sweepBankTransactions (every 5 minutes) in functions/, so a customer's
+  // transfer confirms whether or not anyone is looking at the dashboard.
 
   // Manual add — used while the Apps Script ingestion isn't set up yet, and as a
   // permanent escape hatch for transfers that come in via SMS or other channels.
@@ -1025,7 +1004,7 @@ export default function AdminDashboard() {
 
   const pendingOrderCount = orders.filter((order) => order.status === 'pending').length;
   const matchedBankCount = bankTransactions.filter(
-    (transaction) => computeMatchStatus(transaction).status === 'matched',
+    (transaction) => readMatchStatus(transaction).status === 'matched',
   ).length;
   const storeOpen = isStoreOpen(storeSettings);
   const adminNavigation = [
@@ -1189,7 +1168,7 @@ export default function AdminDashboard() {
                   menuItems={menuItems}
                   bankTransactions={bankTransactions}
                   storeOpen={storeOpen}
-                  getBankMatchStatus={computeMatchStatus}
+                  getBankMatchStatus={readMatchStatus}
                   onNavigate={setActiveTab}
                   onUpdateStatus={updateOrderStatus}
                 />
@@ -1358,11 +1337,11 @@ export default function AdminDashboard() {
                     .filter((tx) => tx.direction === 'credit')
                     .reduce((sum, tx) => sum + tx.amountMnt, 0);
                   const unmatchedCount = bankTransactions.filter(
-                    (tx) => computeMatchStatus(tx).status === 'unmatched'
-                              || computeMatchStatus(tx).status === 'unknown_ref'
+                    (tx) => readMatchStatus(tx).status === 'unmatched'
+                              || readMatchStatus(tx).status === 'unknown_ref'
                   ).length;
                   const matchedReadyCount = bankTransactions.filter(
-                    (tx) => computeMatchStatus(tx).status === 'matched'
+                    (tx) => readMatchStatus(tx).status === 'matched'
                   ).length;
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1416,7 +1395,7 @@ export default function AdminDashboard() {
                 {(() => {
                   const filtered = bankTransactions.filter((tx) => {
                     if (bankFilter === 'all') return true;
-                    const m = computeMatchStatus(tx).status;
+                    const m = readMatchStatus(tx).status;
                     if (bankFilter === 'matched') return m === 'matched' || m === 'reconciled';
                     return m === 'unmatched' || m === 'unknown_ref' || m === 'amount_mismatch';
                   });
@@ -1454,7 +1433,7 @@ export default function AdminDashboard() {
                         </thead>
                         <tbody className="divide-y divide-stone-800">
                           {filtered.map((tx) => {
-                            const m = computeMatchStatus(tx);
+                            const m = readMatchStatus(tx);
                             const matchedOrder = m.orderId ? orders.find((o) => o.id === m.orderId) : undefined;
                             return (
                               <tr key={tx.id} className="hover:bg-stone-800/40 transition-colors">

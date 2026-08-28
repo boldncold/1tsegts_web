@@ -24,9 +24,11 @@ export const PAYMENT_WINDOW_MINUTES = 30;
  * Minimum order total (MNT) to allow paying by bank transfer.
  * Inter-bank transfers in MN cost the customer ~₮300–500 in fees, so very
  * small orders aren't worth paying this way — push customers to cash instead.
- * Also used as the floor for auto-confirming reconciled transactions: any
- * incoming credit below this threshold is treated as noise (e.g. a refund
- * fragment, a wrong-account transfer) and won't trigger auto-confirm even
- * if the description contains a valid reference code.
+ *
+ * NOTE: nothing enforces this at checkout yet — the bank-transfer option is
+ * offered regardless of total.
+ *
+ * The auto-confirm floor is a separate decision and lives server-side as
+ * MIN_AUTO_CONFIRM_AMOUNT_MNT in functions/src/bankMatching.ts.
  */
 export const MIN_BANK_TRANSFER_AMOUNT = 5000;

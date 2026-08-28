@@ -3,10 +3,15 @@
  *
  * Used by:
  *   - qpayWebhook (QPay callback path)
- *   - createBankTransferOrder admin "Mark Paid" path (future)
+ *   - confirmOrderPayment (admin "Mark Paid" / bank-tx confirm path)
  *   - monpayWebhook (planned, see MONPAY_DEEPLINK_DESIGN.md)
  *
  * Idempotent: re-running with the same order produces no extra writes.
+ *
+ * When meta.bankTxId is supplied, the bank_transactions doc is reconciled in the
+ * SAME transaction as the order. Splitting them would let a crash leave a
+ * CONFIRMED order against an unreconciled tx, which the matcher would then see
+ * as still-confirmable.
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
@@ -33,8 +38,14 @@ export async function markOrderPaid(
   const db = getDb();
   const ref = db.doc(`orders/${orderId}`);
 
+  const txRef = meta.bankTxId ? db.doc(`bank_transactions/${meta.bankTxId}`) : null;
+
   return db.runTransaction(async (t) => {
+    // Firestore requires every read before any write, so both docs are read up
+    // front even though the tx doc is only written on the success path.
     const snap = await t.get(ref);
+    const txSnap = txRef ? await t.get(txRef) : null;
+
     if (!snap.exists) return { updated: false, reason: 'order_not_found' };
     const order = snap.data()!;
 
@@ -57,6 +68,15 @@ export async function markOrderPaid(
       ...(meta.monpayTxnId ? { monpayTxnId: meta.monpayTxnId } : {}),
       ...(meta.bankTxId ? { matchedTxId: meta.bankTxId } : {}),
     });
+
+    // Reconcile the bank transaction alongside the order. Guarded on existence:
+    // a stale tx id shouldn't fail an otherwise valid confirmation.
+    if (txRef && txSnap?.exists) {
+      t.update(txRef, {
+        matchStatus: 'reconciled',
+        matchedOrderId: orderId,
+      });
+    }
 
     return { updated: true };
   });
