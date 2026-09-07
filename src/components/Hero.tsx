@@ -36,7 +36,9 @@ export default function Hero({ dishes }: HeroProps) {
       />
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
-      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] md:pt-10 pb-20 md:pb-6 text-center flex flex-col items-center">
+      {/* md:pt clears the fixed navbar (~57px) — anything less slides the
+          PREMIUM DINING badge underneath it. */}
+      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] md:pt-[78px] pb-20 md:pb-6 text-center flex flex-col items-center">
         <motion.div
           {...fadeUp}
           transition={motionTransition}
