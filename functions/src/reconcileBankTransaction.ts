@@ -1,9 +1,10 @@
 /**
  * Firestore trigger: reconcileBankTransaction
  *
- * Fires when a bank transaction is ingested (Gmail Apps Script, Gmail API, or an
- * admin's manual entry) and matches it against orders, auto-confirming when the
- * transaction clears every guard in isAutoConfirmable().
+ * Fires when an admin enters a bank transaction and matches it against orders,
+ * so the Bank History tab shows which transfer belongs to which order the moment
+ * it is saved. Confirming the payment is a separate, deliberate admin action
+ * (confirmOrderPayment) — nothing here moves money state.
  *
  * onDocumentCreated, deliberately not onDocumentWritten: processTransaction()
  * writes matchStatus back onto this same doc, which under onDocumentWritten

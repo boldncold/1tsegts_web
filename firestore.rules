@@ -119,10 +119,10 @@ service cloud.firestore {
     // rail. Had no rule at all until now, so every read and write from the admin
     // dashboard was hitting the default deny.
     //
-    // Ingested by the Gmail Apps Script and matched by reconcileBankTransaction
-    // / sweepBankTransactions, all of which use the Admin SDK and bypass these
-    // rules. From a client: admins read, and may add a manual entry, but may not
-    // write the match fields — the server owns those.
+    // Entries are typed by an admin and matched by reconcileBankTransaction /
+    // sweepBankTransactions, which use the Admin SDK and bypass these rules.
+    // From a client: admins read, and may add an entry, but may not write the
+    // match fields — the server owns those.
     match /bank_transactions/{txId} {
       allow read: if isAdmin();
       allow create: if isAdmin() &&

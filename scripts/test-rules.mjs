@@ -217,11 +217,11 @@ await check(
   assertSucceeds(setDoc(doc(admin, 'bank_transactions/man1'), manualTx)),
 );
 await check(
-  'admin entry claiming a bank source denied',
+  'admin entry claiming a non-manual source denied',
   assertFails(
     setDoc(doc(admin, 'bank_transactions/man2'), {
       ...manualTx,
-      source: 'gmail_api',
+      source: 'automated_import',
     }),
   ),
 );
