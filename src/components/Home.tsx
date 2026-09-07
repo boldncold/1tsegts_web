@@ -1,6 +1,7 @@
 import Hero from './Hero';
 import MenuSection from './MenuSection';
 import CategoryQuickNav from './CategoryQuickNav';
+import FeaturedDishes from './FeaturedDishes';
 import { motion } from 'motion/react';
 import { useFeaturedDishes } from '../lib/useFeaturedDishes';
 
@@ -13,9 +14,12 @@ export default function Home() {
       animate={{ opacity: 1 }}
       className="bg-[var(--surface-page)] min-h-screen"
     >
-      {/* The featured carousel lives inside the Hero — exactly one featured
-          section on the page (the old marquee section was its duplicate). */}
+      {/* Exactly one featured carousel per viewport: mobile has the compact
+          widget inside the Hero; desktop gets the Онцлох хоол marquee moved
+          up directly below it (the hero is height-trimmed on md+ so the
+          marquee sits high). FeaturedDishes renders null on mobile itself. */}
       <Hero dishes={featuredDishes.slice(0, 6)} />
+      <FeaturedDishes dishes={featuredDishes} />
       <CategoryQuickNav />
       <div id="menu">
         <MenuSection />

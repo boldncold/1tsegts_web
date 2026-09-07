@@ -23,7 +23,7 @@ export default function Hero({ dishes }: HeroProps) {
 
   return (
     <section
-      className="relative min-h-[92vh] text-white overflow-hidden"
+      className="relative min-h-[92vh] md:min-h-0 text-white overflow-hidden"
       style={{ background: 'var(--gradient-hero)' }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--glow-hero)' }} />
@@ -36,7 +36,7 @@ export default function Hero({ dishes }: HeroProps) {
       />
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
-      <div className="relative max-w-[720px] md:max-w-[880px] mx-auto px-6 pt-[80px] pb-20 text-center flex flex-col items-center">
+      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] md:pt-14 pb-20 md:pb-10 text-center flex flex-col items-center">
         <motion.div
           {...fadeUp}
           transition={motionTransition}
@@ -93,7 +93,7 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.45 }}
-          className="flex gap-3 justify-center flex-wrap mb-7 md:mb-12"
+          className="flex gap-3 justify-center flex-wrap mb-7 md:mb-8"
         >
           <Link
             to="/menu"
@@ -131,12 +131,12 @@ export default function Hero({ dishes }: HeroProps) {
           ))}
         </motion.div>
 
-        {/* Featured carousel lives in the hero on every viewport so the food
-            is on the first screen — on desktop it follows the info cards. */}
+        {/* Mobile-only compact carousel. Desktop's featured section is the
+            JourneyCarousel rendered by Home directly under this hero. */}
         <motion.div
           {...fadeUp}
-          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.63 }}
-          className="w-full max-w-[480px] md:max-w-[840px] md:mt-9"
+          transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.54 }}
+          className="md:hidden w-full"
         >
           <FoodCarousel dishes={dishes} />
         </motion.div>

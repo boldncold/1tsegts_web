@@ -57,7 +57,7 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
   return (
     <section style={{
       background: 'var(--stone-950, #080606)',
-      paddingTop: isMobile ? 44 : 72,
+      paddingTop: isMobile ? 44 : 40,
       paddingBottom: isMobile ? 36 : 48,
       position: 'relative',
       overflow: 'hidden',
