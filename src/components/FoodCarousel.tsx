@@ -16,14 +16,35 @@ function getRelativePosition(index: number, active: number, length: number) {
   return relative;
 }
 
-function getCardStyle(relative: number): CSSProperties {
+/**
+ * The compact 226×142 geometry is sized for a phone; rendered verbatim on a
+ * desktop hero it reads as a mobile widget lost in space. On md+ screens the
+ * whole coverflow scales up by this factor instead.
+ */
+function useDesktopScale(breakpoint = 768) {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined'
+      ? window.matchMedia(`(min-width: ${breakpoint}px)`).matches
+      : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`);
+    const handler = () => setIsDesktop(mq.matches);
+    handler();
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isDesktop ? 1.5 : 1;
+}
+
+function getCardStyle(relative: number, s: number): CSSProperties {
   const base: CSSProperties = {
     position: 'absolute',
     top: 0,
     left: '50%',
-    width: 226,
-    height: 142,
-    marginLeft: -113,
+    width: 226 * s,
+    height: 142 * s,
+    marginLeft: -113 * s,
     transition: 'transform 600ms var(--ease-card), opacity 600ms var(--ease-card)',
     willChange: 'transform',
   };
@@ -34,7 +55,7 @@ function getCardStyle(relative: number): CSSProperties {
   if (relative === 1 || relative === -1) {
     return {
       ...base,
-      transform: `translateX(${relative * 170}px) scale(0.82)`,
+      transform: `translateX(${relative * 170 * s}px) scale(0.82)`,
       opacity: 0.42,
       zIndex: 2,
       pointerEvents: 'none',
@@ -43,7 +64,7 @@ function getCardStyle(relative: number): CSSProperties {
 
   return {
     ...base,
-    transform: `translateX(${relative > 0 ? 310 : -310}px) scale(0.7)`,
+    transform: `translateX(${(relative > 0 ? 310 : -310) * s}px) scale(0.7)`,
     opacity: 0,
     zIndex: 1,
     pointerEvents: 'none',
@@ -60,6 +81,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
   const [active, setActive] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const count = dishes.length;
+  const s = useDesktopScale();
 
   useEffect(() => {
     setActive((current) => (count === 0 ? 0 : Math.min(current, count - 1)));
@@ -96,7 +118,8 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
       </div>
 
       <div
-        className="relative h-[142px] touch-pan-y"
+        className="relative touch-pan-y"
+        style={{ height: 142 * s }}
         onTouchStart={(event) => {
           touchStartX.current = event.touches[0].clientX;
         }}
@@ -118,7 +141,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             <Link
               key={dish.id}
               to="/menu"
-              style={getCardStyle(relative)}
+              style={getCardStyle(relative, s)}
               tabIndex={relative === 0 ? 0 : -1}
               aria-hidden={relative !== 0}
               className="overflow-hidden rounded-[8px] border border-[rgba(212,175,55,0.28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
@@ -134,14 +157,14 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
                 <div className="absolute inset-0" style={{ background: DISH_FALLBACK_BG }} />
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
-              <div className="absolute inset-y-0 left-0 flex w-[72%] flex-col justify-end p-3.5">
-                <span className="micro-label mb-1 !text-[7px] !text-[#D4AF37]">
+              <div className="absolute inset-y-0 left-0 flex w-[72%] flex-col justify-end p-3.5 md:p-5">
+                <span className="micro-label mb-1 !text-[7px] !text-[#D4AF37] md:!text-[9px]">
                   {dish.category}
                 </span>
-                <h2 className="line-clamp-2 font-serif text-[17px] font-bold leading-[1.08] text-white">
+                <h2 className="line-clamp-2 font-serif text-[17px] font-bold leading-[1.08] text-white md:text-[23px]">
                   {dish.name}
                 </h2>
-                <span className="mt-1.5 font-serif text-[14px] font-bold text-[#D4AF37]">
+                <span className="mt-1.5 font-serif text-[14px] font-bold text-[#D4AF37] md:text-[17px]">
                   ₮{minPrice.toLocaleString()}
                 </span>
               </div>

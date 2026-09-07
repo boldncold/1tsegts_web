@@ -36,7 +36,7 @@ export default function Hero({ dishes }: HeroProps) {
       />
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
-      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] pb-20 text-center flex flex-col items-center">
+      <div className="relative max-w-[720px] md:max-w-[880px] mx-auto px-6 pt-[80px] pb-20 text-center flex flex-col items-center">
         <motion.div
           {...fadeUp}
           transition={motionTransition}
@@ -136,7 +136,7 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.63 }}
-          className="w-full max-w-[480px] md:max-w-[600px] md:mt-9"
+          className="w-full max-w-[480px] md:max-w-[840px] md:mt-9"
         >
           <FoodCarousel dishes={dishes} />
         </motion.div>
