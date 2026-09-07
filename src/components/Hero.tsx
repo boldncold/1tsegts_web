@@ -136,7 +136,7 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.63 }}
-          className="w-full max-w-[480px] md:mt-9"
+          className="w-full max-w-[480px] md:max-w-[600px] md:mt-9"
         >
           <FoodCarousel dishes={dishes} />
         </motion.div>
