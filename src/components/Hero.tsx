@@ -36,11 +36,11 @@ export default function Hero({ dishes }: HeroProps) {
       />
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
-      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] md:pt-14 pb-20 md:pb-10 text-center flex flex-col items-center">
+      <div className="relative max-w-[720px] mx-auto px-6 pt-[80px] md:pt-10 pb-20 md:pb-6 text-center flex flex-col items-center">
         <motion.div
           {...fadeUp}
           transition={motionTransition}
-          className="inline-flex items-center gap-2 px-4 py-[7px] rounded-full border border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.06)] backdrop-blur-[10px] mb-8"
+          className="inline-flex items-center gap-2 px-4 py-[7px] rounded-full border border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.06)] backdrop-blur-[10px] mb-8 md:mb-5"
         >
           <span className="flex gap-0.5 text-[#D4AF37]">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -53,12 +53,12 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.09 }}
-          className="mb-5"
+          className="mb-5 md:mb-3"
           style={{ textShadow: '0 6px 40px rgba(212,175,55,0.25)' }}
         >
           <span className="font-serif font-bold tracking-tighter leading-none flex items-baseline justify-center">
-            <span className="text-[#D4AF37]" style={{ fontSize: 'clamp(72px, 18vw, 120px)' }}>1</span>
-            <span className="text-[#8B0000]" style={{ fontSize: 'clamp(36px, 9vw, 60px)' }}>ЦЭГЦ</span>
+            <span className="text-[#D4AF37]" style={{ fontSize: 'clamp(72px, 18vw, 92px)' }}>1</span>
+            <span className="text-[#8B0000]" style={{ fontSize: 'clamp(36px, 9vw, 46px)' }}>ЦЭГЦ</span>
           </span>
         </motion.div>
 
@@ -66,7 +66,7 @@ export default function Hero({ dishes }: HeroProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.18 }}
-          className="flex items-center gap-3 mb-7"
+          className="flex items-center gap-3 mb-7 md:mb-4"
         >
           <span className="block w-7 h-px bg-[rgba(212,175,55,0.4)]" />
           <span className="eyebrow !text-[10px]">{t('hero.tagline') || 'Three Worlds. One Table.'}</span>
@@ -76,8 +76,8 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.h1
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.27 }}
-          className="font-serif font-medium leading-[1.05] tracking-[-0.025em] mb-5 text-balance"
-          style={{ fontSize: 'clamp(28px, 6vw, 44px)' }}
+          className="font-serif font-medium leading-[1.05] tracking-[-0.025em] mb-5 md:mb-3 text-balance"
+          style={{ fontSize: 'clamp(28px, 6vw, 38px)' }}
         >
           {t('hero.title')}
         </motion.h1>
@@ -85,7 +85,7 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.p
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.36 }}
-          className="text-[15px] leading-[1.65] text-white/72 max-w-[520px] mb-9"
+          className="text-[15px] leading-[1.65] text-white/72 max-w-[520px] mb-9 md:mb-6"
         >
           {t('hero.subtitle')}
         </motion.p>
@@ -93,7 +93,7 @@ export default function Hero({ dishes }: HeroProps) {
         <motion.div
           {...fadeUp}
           transition={{ ...motionTransition, delay: reduceMotion ? 0 : 0.45 }}
-          className="flex gap-3 justify-center flex-wrap mb-7 md:mb-8"
+          className="flex gap-3 justify-center flex-wrap mb-7 md:mb-6"
         >
           <Link
             to="/menu"
@@ -122,11 +122,11 @@ export default function Hero({ dishes }: HeroProps) {
           ].map((item, i) => (
             <div
               key={i}
-              className="flex flex-col items-center text-center p-3.5 rounded-[14px] border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.10)]"
+              className="flex flex-col items-center text-center p-2.5 rounded-[14px] border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.10)]"
             >
-              <item.icon size={16} className="text-[#D4AF37] mb-1.5" />
-              <div className="micro-label !text-white/45 mb-1">{item.top}</div>
-              <div className="text-[12px] text-white font-serif">{item.bot}</div>
+              <item.icon size={14} className="text-[#D4AF37] mb-1" />
+              <div className="micro-label !text-white/45 mb-0.5">{item.top}</div>
+              <div className="text-[11px] text-white font-serif leading-tight">{item.bot}</div>
             </div>
           ))}
         </motion.div>
