@@ -811,12 +811,12 @@ export default function AdminDashboard() {
   const markOrderPaid = async (
     orderId: string,
     matchedTxId?: string,
-    opts?: { silent?: boolean; via?: 'admin_manual' | 'email_parse' }
+    opts?: { silent?: boolean; via?: 'admin_manual' }
   ) => {
     if (!opts?.silent && !window.confirm(t('admin.orders.confirm_paid'))) return;
     try {
       const fn = httpsCallable<
-        { orderId: string; bankTxId?: string; source?: 'admin_manual' | 'email_parse' },
+        { orderId: string; bankTxId?: string; source?: 'admin_manual' },
         { updated: boolean; reason?: string }
       >(functions, 'confirmOrderPayment');
 

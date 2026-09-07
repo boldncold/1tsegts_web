@@ -19,9 +19,9 @@ import { logger } from 'firebase-functions';
 import { assertAdmin } from './assertAdmin.js';
 import { markOrderPaid, type PaidSource } from './markOrderPaid.js';
 
-// The sources an admin-initiated confirmation may claim. 'qpay' / 'monpay' are
-// webhook-only and deliberately not reachable from here.
-const ALLOWED_SOURCES: PaidSource[] = ['admin_manual', 'email_parse'];
+// The only source an admin-initiated confirmation may claim. 'qpay' / 'monpay'
+// are webhook-only and deliberately not reachable from here.
+const ALLOWED_SOURCES: PaidSource[] = ['admin_manual'];
 
 export interface ConfirmOrderPaymentRequest {
   orderId: string;

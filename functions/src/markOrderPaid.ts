@@ -17,7 +17,10 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { getDb } from './db.js';
 
-export type PaidSource = 'qpay' | 'monpay' | 'admin_manual' | 'email_parse';
+// 'email_parse' was the Gmail-ingestion path and has been removed. Historical
+// order docs may still carry it (and the older 'auto_email_match'); nothing
+// reads paidVia, it is audit data.
+export type PaidSource = 'qpay' | 'monpay' | 'admin_manual';
 
 export interface PaidMeta {
   source: PaidSource;
