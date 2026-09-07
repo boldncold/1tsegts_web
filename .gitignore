@@ -10,6 +10,10 @@ coverage/
 # Firebase Emulator Suite — local seed data and debug artifacts
 emulator-data/
 firebase-export-*/
+
+# Agent tooling: third-party skills installed locally, not project code
+.claude/skills/
+skills-lock.json
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
