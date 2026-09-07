@@ -6,6 +6,12 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  /**
+   * Look up a key in a specific language, ignoring the active one. For the few
+   * places that show both languages at once (the About page) rather than
+   * switching between them.
+   */
+  tl: (lang: Language, key: string) => string;
 }
 
 const translations: Record<Language, Record<string, string>> = {
@@ -119,17 +125,20 @@ const translations: Record<Language, Record<string, string>> = {
 
     // About
     'about.eyebrow': 'Манай тухай',
-    'about.title': 'Манай түүх',
-    'about.subtitle': 'Гурван дэлхий. Нэг ширээ.',
-    'about.description': '1ЦЭГЦ нь Европын тансаг амт болон Азийн хурц амтлагчийн хооронд сонголт хийх хосгүй боломжийг олгодог. Монголын уламжлалт хоолоор баяжуулсан цэстэй Шангри-Ла молын зоогийн газрын хамгийн онцгой газар.',
+    'about.title': 'Гурван дэлхий. Нэг ширээ.',
+    'about.subtitle': 'Дүнжингаравт 2013 оноос хойш.',
+    'about.description': '1ЦЭГЦ нь Дүнжингарав худалдааны төвийн food court нээгдсэн 2013 оноос хойш тасралтгүй ажиллаж байна. Үүсгэн байгуулагч, ерөнхий тогооч О.Батцэцэг өмнө нь тус төвийн эзний хувийн тогоочоор ажиллаж байжээ. Бид Европ, Ази, Монгол гурван орны хоолыг нэг гал тогооноос бэлтгэхээс гадна түргэн хоол, танхим болон гадна талбайн хоолны үйлчилгээ үзүүлдэг.',
     'about.story_label': 'Манай түүх',
     'about.pillar1_title': 'Европ',
-    'about.pillar1_desc': 'Тив Европын сонгодог амтыг орчин үеийн нарийн боловсруулалттай хослуулав.',
+    'about.pillar1_desc': 'Европын сонгодог хоолнууд.',
     'about.pillar2_title': 'Ази',
-    'about.pillar2_desc': 'Азийн уламжлалт амтлагч, ногоо болон арга техникийг нэгтгэсэн.',
+    'about.pillar2_desc': 'Азийн амтлагчтай, халуун хоолнууд.',
     'about.pillar3_title': 'Монгол',
-    'about.pillar3_desc': 'Монгол уламжлалт хоолны өв уламжлал, газар нутгийн анхны амтыг хадгалсан.',
-    'about.location_label': 'Хаана байрладаг вэ',
+    'about.pillar3_desc': 'Монголын уламжлалт хоолнууд.',
+    'about.pillars_eyebrow': 'Бидний санал болгох',
+    'about.pillars_title': 'Гурван орны хоол. Нэг гал тогоо.',
+    'about.location_label': 'Бидний байршил',
+    'about.location_name': 'Дүнжингарав, Food Court',
     'about.hours_label': 'Цагийн хуваарь',
     'about.hours_value': 'Мягмар–Ням: 11:00–19:00',
     'about.closed_value': 'Даваа: Амарна',
@@ -400,17 +409,19 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.orders.test_badge': 'TEST',
 
     // About
-    'about.eyebrow': 'Our Story',
+    'about.eyebrow': 'About Us',
     'about.title': 'Three Worlds. One Table.',
-    'about.subtitle': 'Art of Cooking and Love',
-    'about.description': '1ЦЭГЦ was born from a simple idea: why choose? Located in the Food Court at Dunjingarav Mall, we bring together the refined flavors of Europe, the bold spices of Asia, and the honest tradition of Mongolian cuisine — under one roof, at one table.',
+    'about.subtitle': 'At Dunjingarav since 2013.',
+    'about.description': '1ЦЭГЦ has cooked at Dunjingarav since 2013 — since the day the food court first opened. Our founder and head chef, O. Battsetseg, previously worked as personal chef to the owner of the shopping centre. We cook European, Asian and Mongolian dishes in one kitchen, and also serve fast food and cater both indoors and outdoors.',
     'about.story_label': 'Our Story',
     'about.pillar1_title': 'European',
-    'about.pillar1_desc': 'Classic continental dishes crafted with modern precision and the finest imported ingredients.',
+    'about.pillar1_desc': 'Classic continental dishes.',
     'about.pillar2_title': 'Asian',
-    'about.pillar2_desc': 'Authentic eastern flavors — fragrant spices, fresh vegetables, and time-honored technique.',
+    'about.pillar2_desc': 'Eastern flavours, fragrant and served hot.',
     'about.pillar3_title': 'Mongolian',
-    'about.pillar3_desc': 'Traditional Mongolian heritage dishes, prepared with locally sourced ingredients and respect for roots.',
+    'about.pillar3_desc': 'Traditional Mongolian dishes.',
+    'about.pillars_eyebrow': 'What We Offer',
+    'about.pillars_title': 'Three Cuisines. One Kitchen.',
     'about.location_label': 'Find Us',
     'about.hours_label': 'Opening Hours',
     'about.hours_value': 'Tue – Sun: 11:00 – 19:00',
@@ -575,8 +586,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return translations[language][key] || key;
   };
 
+  const tl = (lang: Language, key: string) => {
+    return translations[lang][key] || key;
+  };
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, tl }}>
       {children}
     </LanguageContext.Provider>
   );
