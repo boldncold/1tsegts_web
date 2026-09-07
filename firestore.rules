@@ -78,7 +78,9 @@ service cloud.firestore {
              !('qpayPaymentType' in data) &&
              !('qpayPaymentWallet' in data) &&
              !('monpayTxnId' in data) &&
-             !('matchedTxId' in data);
+             !('matchedTxId' in data) &&
+             !('paidBy' in data) &&
+             !('paidByUid' in data);
     }
 
     // Payment fields no client may MODIFY. The server owns every one of these;
@@ -95,6 +97,8 @@ service cloud.firestore {
         'qpayPaymentWallet',
         'monpayTxnId',
         'matchedTxId',
+        'paidBy',
+        'paidByUid',
       ]);
     }
 

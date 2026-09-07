@@ -92,6 +92,11 @@ export interface Order {
   paymentExpiresAt?: string;     // ISO timestamp; client expires after this
   matchedTxId?: string;          // id of the matched bank_transactions doc
   paidAt?: string;               // ISO timestamp set when payment confirmed
+  // Which staff member confirmed the payment. Written server-side from the
+  // caller's verified auth token, so it is a real record of who took the money.
+  // Absent on webhook-confirmed orders (QPay confirms itself, no human).
+  paidBy?: string;               // email, shown on the order card
+  paidByUid?: string;
   // Mirrors PaidSource in functions/src/markOrderPaid.ts — the server is the only
   // writer. Historical docs may still carry 'email_parse' / 'auto_email_match'
   // from the removed Gmail path; nothing reads this field, it is audit data.

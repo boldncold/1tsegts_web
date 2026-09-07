@@ -32,6 +32,11 @@ export interface PaidMeta {
   qpayPaymentWallet?: string;
   monpayTxnId?: string;
   bankTxId?: string;
+  // Who confirmed, for admin-initiated confirmations. Taken from the caller's
+  // verified auth token — never from anything the browser sends — so the order
+  // carries a trustworthy record of which staff member took the money.
+  paidByUid?: string;
+  paidByEmail?: string;
 }
 
 export async function markOrderPaid(
@@ -56,8 +61,16 @@ export async function markOrderPaid(
     if (order.paymentStatus === 'CONFIRMED') {
       return { updated: false, reason: 'already_confirmed' };
     }
-    // Order moved past AWAITING_PAYMENT (expired, refunded, cancelled).
-    if (order.paymentStatus !== 'AWAITING_PAYMENT') {
+
+    // Cash orders carry no paymentStatus at all: the customer pays the cashier
+    // in person, so there is no invoice to await and nothing to expire. Those
+    // are confirmable straight from "no payment state" when a cashier marks
+    // them paid. Kept narrow deliberately — a cash order that has since been
+    // EXPIRED or REFUNDED still fails the check below.
+    const isUnpaidCashOrder =
+      order.paymentMethod === 'cash' && order.paymentStatus == null;
+
+    if (!isUnpaidCashOrder && order.paymentStatus !== 'AWAITING_PAYMENT') {
       return { updated: false, reason: `bad_state:${order.paymentStatus}` };
     }
 
@@ -70,6 +83,8 @@ export async function markOrderPaid(
       ...(meta.qpayPaymentWallet ? { qpayPaymentWallet: meta.qpayPaymentWallet } : {}),
       ...(meta.monpayTxnId ? { monpayTxnId: meta.monpayTxnId } : {}),
       ...(meta.bankTxId ? { matchedTxId: meta.bankTxId } : {}),
+      ...(meta.paidByUid ? { paidByUid: meta.paidByUid } : {}),
+      ...(meta.paidByEmail ? { paidBy: meta.paidByEmail } : {}),
     });
 
     // Reconcile the bank transaction alongside the order. Guarded on existence:

@@ -146,6 +146,28 @@ await check(
   assertFails(updateDoc(doc(admin, 'orders/upd1'), { matchedTxId: 'tx-123' })),
 );
 await check(
+  'admin forging paidBy attribution denied',
+  assertFails(
+    updateDoc(doc(admin, 'orders/upd1'), { paidBy: 'someone.else@example.com' }),
+  ),
+);
+await check(
+  'anon creating an order with paidBy denied',
+  assertFails(
+    setDoc(doc(anon, 'orders/forged3'), {
+      ...baseOrder,
+      paymentMethod: 'cash',
+      paidBy: 'owner@example.com',
+    }),
+  ),
+);
+await check(
+  'anon cash order with no payment fields still allowed',
+  assertSucceeds(
+    setDoc(doc(anon, 'orders/cash2'), { ...baseOrder, paymentMethod: 'cash' }),
+  ),
+);
+await check(
   'admin smuggling paymentStatus alongside status denied',
   assertFails(
     updateDoc(doc(admin, 'orders/upd1'), {
