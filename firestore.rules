@@ -60,25 +60,51 @@ service cloud.firestore {
          request.resource.data.orderCount > resource.data.orderCount);
     }
 
-    // Payment fields a client may NOT set at create time. Only Cloud
-    // Functions (Admin SDK bypasses rules) confirm payments — a customer
-    // creating an order pre-marked CONFIRMED would walk past every payment
-    // gate in the app. Admins are exempt (zero-charge test orders set
-    // CONFIRMED client-side).
+    // Payment fields no client may set at create time — not even an admin.
+    // Only Cloud Functions (Admin SDK bypasses rules) confirm payments: a
+    // customer creating an order pre-marked CONFIRMED would walk past every
+    // payment gate in the app, and an admin doing it bypasses the state guard
+    // in markOrderPaid. Zero-charge admin test orders are created
+    // AWAITING_PAYMENT and confirmed through confirmOrderPayment like any
+    // other order.
+    //
+    // amountMnt / paymentExpiresAt / referenceCode stay client-settable: they
+    // are set at order creation before any money moves.
     function hasNoForgedPayment(data) {
       return (!('paymentStatus' in data) || data.paymentStatus == 'AWAITING_PAYMENT') &&
              !('paidAt' in data) &&
              !('paidVia' in data) &&
              !('qpayPaymentId' in data) &&
+             !('qpayPaymentType' in data) &&
+             !('qpayPaymentWallet' in data) &&
+             !('monpayTxnId' in data) &&
              !('matchedTxId' in data);
+    }
+
+    // Payment fields no client may MODIFY. The server owns every one of these;
+    // confirmOrderPayment / qpayWebhook / refundQpayPayment / the expiry job
+    // write them with the Admin SDK, which is not subject to these rules.
+    // Admins keep full control of the kitchen `status` field.
+    function touchesPaymentFields(prev, next) {
+      return next.diff(prev).affectedKeys().hasAny([
+        'paymentStatus',
+        'paidAt',
+        'paidVia',
+        'qpayPaymentId',
+        'qpayPaymentType',
+        'qpayPaymentWallet',
+        'monpayTxnId',
+        'matchedTxId',
+      ]);
     }
 
     // Orders
     match /orders/{orderId} {
       allow create: if isValidOrder(request.resource.data) &&
-        (hasNoForgedPayment(request.resource.data) || isAdmin());
+        hasNoForgedPayment(request.resource.data);
       allow read: if true; // Allow customers to track their order
-      allow update: if isAdmin() ||
+      allow update: if (isAdmin() &&
+                        !touchesPaymentFields(resource.data, request.resource.data)) ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
          request.resource.data.status == 'cancelled' &&
          resource.data.status == 'pending');
@@ -87,6 +113,30 @@ service cloud.firestore {
       allow delete: if isAdmin() ||
         (resource.data.status == 'pending' &&
          (!('paymentStatus' in resource.data) || resource.data.paymentStatus != 'CONFIRMED'));
+    }
+
+    // Bank transactions — the reconciliation ledger behind the bank-transfer
+    // rail. Had no rule at all until now, so every read and write from the admin
+    // dashboard was hitting the default deny.
+    //
+    // Ingested by the Gmail Apps Script and matched by reconcileBankTransaction
+    // / sweepBankTransactions, all of which use the Admin SDK and bypass these
+    // rules. From a client: admins read, and may add a manual entry, but may not
+    // write the match fields — the server owns those.
+    match /bank_transactions/{txId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+        request.resource.data.source == 'manual' &&
+        request.resource.data.amountMnt is number &&
+        request.resource.data.amountMnt > 0 &&
+        request.resource.data.direction in ['credit', 'debit'] &&
+        request.resource.data.description is string &&
+        (!('matchStatus' in request.resource.data) ||
+         request.resource.data.matchStatus == 'unmatched') &&
+        !('matchedOrderId' in request.resource.data);
+      // matchStatus / matchedOrderId are server-computed; no client edits them.
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // Store settings (open/close hours) — read by every visitor's

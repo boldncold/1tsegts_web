@@ -17,3 +17,6 @@ skills-lock.json
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Firebase emulator exports (ad-hoc, timestamped)
+firebase-export-*/

@@ -2,7 +2,8 @@
  * Firestore rules tests — run under the emulator:
  *   firebase emulators:exec --only firestore --project demo-test "node scripts/test-rules.mjs"
  *
- * Covers the payment-forgery, paid-order-deletion, and settings rules.
+ * Covers the payment-forgery, payment-field-update, paid-order-deletion, and
+ * settings rules.
  * Exits non-zero on the first failing assertion.
  */
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-test',
@@ -79,8 +80,8 @@ await check(
   ),
 );
 await check(
-  'admin zero-charge test order CONFIRMED allowed',
-  assertSucceeds(
+  'admin order pre-marked CONFIRMED denied (no client writes CONFIRMED)',
+  assertFails(
     setDoc(doc(admin, 'orders/admin1'), {
       ...baseOrder,
       isTest: true,
@@ -88,6 +89,78 @@ await check(
       paidVia: 'admin_manual',
     }),
   ),
+);
+await check(
+  'admin zero-charge test order AWAITING_PAYMENT allowed',
+  assertSucceeds(
+    setDoc(doc(admin, 'orders/admin2'), {
+      ...baseOrder,
+      isTest: true,
+      paymentStatus: 'AWAITING_PAYMENT',
+      amountMnt: 0,
+    }),
+  ),
+);
+
+console.log('orders — update (payment fields are server-only):');
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'orders/upd1'), {
+    ...baseOrder,
+    paymentMethod: 'bank_transfer',
+    paymentStatus: 'AWAITING_PAYMENT',
+  });
+  await setDoc(doc(db, 'orders/upd2'), {
+    ...baseOrder,
+    paymentMethod: 'bank_transfer',
+    paymentStatus: 'EXPIRED',
+  });
+  // Separate doc for the customer-cancel assertions: that rule requires the
+  // order to still be `pending`, and upd1 gets advanced to `preparing` above.
+  await setDoc(doc(db, 'orders/upd3'), {
+    ...baseOrder,
+    paymentMethod: 'bank_transfer',
+    paymentStatus: 'AWAITING_PAYMENT',
+  });
+});
+await check(
+  'admin advancing kitchen status allowed',
+  assertSucceeds(updateDoc(doc(admin, 'orders/upd1'), { status: 'preparing' })),
+);
+await check(
+  'admin writing paymentStatus denied',
+  assertFails(updateDoc(doc(admin, 'orders/upd1'), { paymentStatus: 'CONFIRMED' })),
+);
+await check(
+  'admin confirming an EXPIRED order denied',
+  assertFails(
+    updateDoc(doc(admin, 'orders/upd2'), {
+      paymentStatus: 'CONFIRMED',
+      paidAt: new Date().toISOString(),
+      paidVia: 'admin_manual',
+    }),
+  ),
+);
+await check(
+  'admin writing matchedTxId denied',
+  assertFails(updateDoc(doc(admin, 'orders/upd1'), { matchedTxId: 'tx-123' })),
+);
+await check(
+  'admin smuggling paymentStatus alongside status denied',
+  assertFails(
+    updateDoc(doc(admin, 'orders/upd1'), {
+      status: 'preparing',
+      paymentStatus: 'CONFIRMED',
+    }),
+  ),
+);
+await check(
+  'anon writing paymentStatus denied',
+  assertFails(updateDoc(doc(anon, 'orders/upd3'), { paymentStatus: 'CONFIRMED' })),
+);
+await check(
+  'anon cancelling own pending order still allowed',
+  assertSucceeds(updateDoc(doc(anon, 'orders/upd3'), { status: 'cancelled' })),
 );
 
 console.log('orders — delete:');
@@ -116,6 +189,59 @@ await check(
 await check(
   'admin delete of CONFIRMED order allowed',
   assertSucceeds(deleteDoc(doc(admin, 'orders/paid1'))),
+);
+
+console.log('bank_transactions:');
+const manualTx = {
+  source: 'manual',
+  amountMnt: 12000,
+  direction: 'credit',
+  description: 'transfer GR-7K2M9Q',
+  postedAt: new Date().toISOString(),
+  receivedAt: new Date().toISOString(),
+  matchStatus: 'unmatched',
+};
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'bank_transactions/seed1'), manualTx);
+});
+await check(
+  'anon read of bank_transactions denied',
+  assertFails(getDoc(doc(anon, 'bank_transactions/seed1'))),
+);
+await check(
+  'admin read of bank_transactions allowed',
+  assertSucceeds(getDoc(doc(admin, 'bank_transactions/seed1'))),
+);
+await check(
+  'admin manual entry allowed',
+  assertSucceeds(setDoc(doc(admin, 'bank_transactions/man1'), manualTx)),
+);
+await check(
+  'admin entry claiming a bank source denied',
+  assertFails(
+    setDoc(doc(admin, 'bank_transactions/man2'), {
+      ...manualTx,
+      source: 'gmail_api',
+    }),
+  ),
+);
+await check(
+  'admin entry pre-marked reconciled denied',
+  assertFails(
+    setDoc(doc(admin, 'bank_transactions/man3'), {
+      ...manualTx,
+      matchStatus: 'reconciled',
+      matchedOrderId: 'order-123',
+    }),
+  ),
+);
+await check(
+  'admin updating matchStatus denied (server owns it)',
+  assertFails(updateDoc(doc(admin, 'bank_transactions/seed1'), { matchStatus: 'reconciled' })),
+);
+await check(
+  'anon create of bank_transactions denied',
+  assertFails(setDoc(doc(anon, 'bank_transactions/anon1'), manualTx)),
 );
 
 console.log('settings:');

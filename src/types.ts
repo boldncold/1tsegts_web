@@ -92,7 +92,10 @@ export interface Order {
   paymentExpiresAt?: string;     // ISO timestamp; client expires after this
   matchedTxId?: string;          // id of the matched bank_transactions doc
   paidAt?: string;               // ISO timestamp set when payment confirmed
-  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse' | 'auto_email_match';
+  // Mirrors PaidSource in functions/src/markOrderPaid.ts — the server is the only
+  // writer. Historical docs may still carry 'auto_email_match', which was folded
+  // into 'email_parse'; nothing reads this field, it is audit data.
+  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse';
 
   // QPay-specific fields (set when createQpayInvoice cloud function returns)
   qpayInvoiceId?: string;        // QPay invoice uuid — passed to /payment/check
