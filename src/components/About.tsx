@@ -31,18 +31,6 @@ export default function About() {
   /** Mongolian and English of the same key, for the compact one-line slots. */
   const both = (key: string) => `${tl('mn', key)} · ${tl('en', key)}`;
 
-  const pillars = [
-    { num: '01', key: 'pillar1' },
-    { num: '02', key: 'pillar2' },
-    { num: '03', key: 'pillar3' },
-  ].map((p) => ({
-    ...p,
-    titleMn: tl('mn', `about.${p.key}_title`),
-    titleEn: tl('en', `about.${p.key}_title`),
-    descMn: tl('mn', `about.${p.key}_desc`),
-    descEn: tl('en', `about.${p.key}_desc`),
-  }));
-
   return (
     <div className="min-h-screen bg-[var(--surface-page)]">
 
@@ -108,104 +96,41 @@ export default function About() {
       {/* ── Story ───────────────────────────────────────────── */}
       <section className="py-24 bg-[var(--surface-page)]">
         <div className="max-w-3xl mx-auto px-6">
-          <div>
-            {/* Text */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="space-y-6"
-            >
-              <span className="eyebrow">{both('about.story_label')}</span>
-
-              <p className="text-white/60 text-[17px] leading-[1.75] font-light">
-                {withBrand(tl('mn', 'about.description'))}
-              </p>
-
-              {/* English translation, marked as secondary by the gold rule */}
-              <p className="text-white/35 text-[15px] leading-[1.7] font-light pl-4 border-l border-[rgba(212,175,55,0.25)]">
-                {withBrand(tl('en', 'about.description'))}
-              </p>
-
-              {/* Location & hours pills */}
-              <div className="flex flex-col gap-3 pt-2">
-                <div className="inline-flex items-center gap-2.5 text-white/60 text-sm">
-                  <MapPin size={15} className="text-[#D4AF37] shrink-0" />
-                  <span>{tl('mn', 'footer.location_detail')}</span>
-                </div>
-                <div className="flex items-start gap-2.5 text-white/60 text-sm">
-                  <Clock size={15} className="text-[#D4AF37] shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <p>{tl('mn', 'about.hours_value')}</p>
-                    <p className="text-white/35">{tl('en', 'about.hours_value')}</p>
-                    <p className="text-[#D4AF37] font-semibold text-[11px] uppercase tracking-wider pt-0.5">
-                      {both('about.closed_value')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Three Pillars ────────────────────────────────────── */}
-      <section className="py-24 bg-stone-950">
-        <div className="max-w-5xl mx-auto px-6">
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16 space-y-4"
+            className="space-y-6"
           >
-            <div className="flex items-center justify-center gap-3">
-              <span className="block w-8 h-px bg-[rgba(212,175,55,0.4)]" />
-              <Gem size={13} className="text-[#D4AF37]" />
-              <span className="block w-8 h-px bg-[rgba(212,175,55,0.4)]" />
-            </div>
-            <span className="eyebrow">{both('about.pillars_eyebrow')}</span>
-            <div className="space-y-1.5">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-white">
-                {tl('mn', 'about.pillars_title')}
-              </h2>
-              <p className="text-lg md:text-xl font-serif text-white/40">
-                {tl('en', 'about.pillars_title')}
-              </p>
-            </div>
-          </motion.div>
+            <span className="eyebrow">{both('about.story_label')}</span>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {pillars.map((pillar, idx) => (
-              <motion.div
-                key={pillar.num}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl border border-stone-800 hover:border-[rgba(212,175,55,0.4)] transition-colors duration-500 bg-[var(--espresso)] p-7 flex flex-col"
-              >
-                {/* Gold rule, the card's only ornament now that the photo is gone */}
-                <span className="block w-10 h-px bg-[rgba(212,175,55,0.4)] mb-5 group-hover:w-16 transition-all duration-500" />
+            <p className="text-white/60 text-[17px] leading-[1.75] font-light">
+              {withBrand(tl('mn', 'about.description'))}
+            </p>
 
-                <span className="eyebrow !text-[rgba(212,175,55,0.5)] mb-2">{pillar.num}</span>
+            {/* English translation, marked as secondary by the gold rule */}
+            <p className="text-white/35 text-[15px] leading-[1.7] font-light pl-4 border-l border-[rgba(212,175,55,0.25)]">
+              {withBrand(tl('en', 'about.description'))}
+            </p>
 
-                <h3 className="text-2xl font-serif font-bold text-white group-hover:text-[#D4AF37] transition-colors">
-                  {pillar.titleMn}
-                </h3>
-                <p className="text-white/45 text-sm font-serif mb-4">{pillar.titleEn}</p>
-
-                <div className="space-y-1 mt-auto">
-                  <p className="text-stone-300 text-sm leading-relaxed font-light">
-                    {pillar.descMn}
-                  </p>
-                  <p className="text-stone-500 text-[13px] leading-relaxed font-light">
-                    {pillar.descEn}
+            {/* Location & hours pills */}
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="inline-flex items-center gap-2.5 text-white/60 text-sm">
+                <MapPin size={15} className="text-[#D4AF37] shrink-0" />
+                <span>{tl('mn', 'footer.location_detail')}</span>
+              </div>
+              <div className="flex items-start gap-2.5 text-white/60 text-sm">
+                <Clock size={15} className="text-[#D4AF37] shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p>{tl('mn', 'about.hours_value')}</p>
+                  <p className="text-white/35">{tl('en', 'about.hours_value')}</p>
+                  <p className="text-[#D4AF37] font-semibold text-[11px] uppercase tracking-wider pt-0.5">
+                    {both('about.closed_value')}
                   </p>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
