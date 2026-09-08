@@ -6,6 +6,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **On any custom pointer-drag surface, kill native drag on nested `<img>` and `<a>` (`draggable={false}` + a `dragstart` preventDefault on the container), and swallow the click that ends a drag.**
+  *Why:* the featured-dishes belt only dragged from the lower part of a card — the top was bare `<img>`, whose native HTML drag-and-drop preempted the pointer stream, while the bottom was covered by the text overlay. The `<a>` CTA card had the mirror bug: a drag ending on it still fired a click and navigated to /menu.
+
 - **For mobile payment redirects, centralize the launch URL and guard auto-open per invoice.**
   *Why:* QPay mobile routing was tied to the fresh invoice creation path and a manually built QR URL, so cached invoices or provider short URLs could miss the qpay.mn deeplink behavior or bounce users repeatedly after returning from payment.
 

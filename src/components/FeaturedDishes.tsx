@@ -349,13 +349,18 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tapStartRef = useRef({ x: 0, y: 0, t: 0 });
+  // A drag that ends on the "Бүтэн цэс" <Link> still fires a click and would
+  // navigate to /menu; swallow that click when the pointer actually moved.
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
 
     const onDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
       draggingRef.current = true;
+      suppressClickRef.current = false;
       lastDragRef.current = { x: e.clientX, t: performance.now() };
       tapStartRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
       el.setPointerCapture?.(e.pointerId);
@@ -363,6 +368,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
     };
     const onMove = (e: PointerEvent) => {
       if (!draggingRef.current) return;
+      if (Math.abs(e.clientX - tapStartRef.current.x) > 8) suppressClickRef.current = true;
       const dx = e.clientX - lastDragRef.current.x;
       const dt = Math.max(performance.now() - lastDragRef.current.t, 1);
       offsetRef.current -= dx;
@@ -387,17 +393,31 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
         }
       }
     };
+    // Belt-and-braces: any nested draggable (img, <a>) would otherwise steal the
+    // pointer stream mid-drag and leave the belt stuck.
+    const onDragStart = (e: Event) => e.preventDefault();
+    const onClick = (e: MouseEvent) => {
+      if (!suppressClickRef.current) return;
+      suppressClickRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
     el.addEventListener('pointerdown', onDown);
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
     el.addEventListener('pointercancel', onUp);
     el.addEventListener('pointerleave', onUp);
+    el.addEventListener('dragstart', onDragStart);
+    el.addEventListener('click', onClick, true);
     return () => {
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
       el.removeEventListener('pointerleave', onUp);
+      el.removeEventListener('dragstart', onDragStart);
+      el.removeEventListener('click', onClick, true);
     };
   }, [tripled, onTap]);
 
@@ -410,7 +430,9 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       style={{
-        position: 'relative', cursor: 'grab', userSelect: 'none', touchAction: 'pan-y',
+        position: 'relative', cursor: 'grab',
+        userSelect: 'none', WebkitUserSelect: 'none',
+        touchAction: 'pan-y',
         padding: '8px 0 4px',
         WebkitMaskImage: 'linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)',
         maskImage: 'linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%)',
@@ -425,6 +447,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
             <Link
               key={'cta-' + i}
               to="/menu"
+              draggable={false}
               style={{
                 position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
                 borderRadius: 18, overflow: 'hidden',
@@ -502,11 +525,16 @@ function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number
           src={dish.image}
           alt={dish.name}
           referrerPolicy="no-referrer"
+          // Native image drag-and-drop hijacks the pointer stream and kills the
+          // carousel's drag on any bare part of the image (the top of the card).
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%', objectFit: 'cover',
             transform: parallaxX !== 0 ? `translateX(${parallaxX}px) scale(1.1)` : 'none',
             transition: parallaxX !== 0 ? 'transform 80ms linear' : 'none',
+            userSelect: 'none', WebkitUserSelect: 'none',
           }}
         />
       ) : (
