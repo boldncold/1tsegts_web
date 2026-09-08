@@ -278,6 +278,23 @@ export default function OrdersTab({
             ₮ {t('admin.orders.action.mark_paid')}
           </button>
         )}
+        {/* Cash is collected at the counter, so a cash order has no
+            paymentStatus until a cashier records it. */}
+        {(o.paymentMethod === 'cash' && !o.paymentStatus) && (
+          <button
+            onClick={() => onMarkPaid(order.id)}
+            className="w-full py-2 bg-emerald-500 text-stone-900 text-xs font-bold uppercase tracking-[0.15em] rounded-full hover:bg-emerald-400 transition-all"
+            title={t('admin.orders.confirm_cash')}
+          >
+            ₮ {t('admin.orders.action.mark_cash_paid')}
+          </button>
+        )}
+        {/* Who took the money. Absent on QPay orders — those confirm themselves. */}
+        {o.paidBy && (
+          <p className="text-[10px] text-stone-500 text-center">
+            {t('admin.orders.paid_by')}: <span className="text-stone-400">{o.paidBy}</span>
+          </p>
+        )}
         {(o.paymentMethod === 'qpay' && o.paymentStatus === 'CONFIRMED') && (
           <button
             onClick={() => onRefund(order.id)}

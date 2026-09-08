@@ -811,12 +811,20 @@ export default function AdminDashboard() {
   const markOrderPaid = async (
     orderId: string,
     matchedTxId?: string,
-    opts?: { silent?: boolean; via?: 'admin_manual' | 'email_parse' }
+    opts?: { silent?: boolean; via?: 'admin_manual' }
   ) => {
-    if (!opts?.silent && !window.confirm(t('admin.orders.confirm_paid'))) return;
+    // Cash was handed over at the counter, so the prompt asks about the cash
+    // rather than about a bank transfer the cashier never looked at.
+    const isCashOrder =
+      orders.find((o) => o.id === orderId)?.paymentMethod === 'cash';
+    const prompt = isCashOrder
+      ? t('admin.orders.confirm_cash')
+      : t('admin.orders.confirm_paid');
+
+    if (!opts?.silent && !window.confirm(prompt)) return;
     try {
       const fn = httpsCallable<
-        { orderId: string; bankTxId?: string; source?: 'admin_manual' | 'email_parse' },
+        { orderId: string; bankTxId?: string; source?: 'admin_manual' },
         { updated: boolean; reason?: string }
       >(functions, 'confirmOrderPayment');
 

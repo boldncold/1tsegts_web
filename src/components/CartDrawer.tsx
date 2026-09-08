@@ -352,7 +352,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       if (skipPayment) {
         try {
           await httpsCallable<
-            { orderId: string; source?: 'admin_manual' | 'email_parse' },
+            { orderId: string; source?: 'admin_manual' },
             { updated: boolean; reason?: string }
           >(functions, 'confirmOrderPayment')({
             orderId: docRef.id,

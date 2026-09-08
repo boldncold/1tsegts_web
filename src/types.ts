@@ -92,10 +92,15 @@ export interface Order {
   paymentExpiresAt?: string;     // ISO timestamp; client expires after this
   matchedTxId?: string;          // id of the matched bank_transactions doc
   paidAt?: string;               // ISO timestamp set when payment confirmed
+  // Which staff member confirmed the payment. Written server-side from the
+  // caller's verified auth token, so it is a real record of who took the money.
+  // Absent on webhook-confirmed orders (QPay confirms itself, no human).
+  paidBy?: string;               // email, shown on the order card
+  paidByUid?: string;
   // Mirrors PaidSource in functions/src/markOrderPaid.ts — the server is the only
-  // writer. Historical docs may still carry 'auto_email_match', which was folded
-  // into 'email_parse'; nothing reads this field, it is audit data.
-  paidVia?: 'qpay' | 'admin_manual' | 'monpay' | 'email_parse';
+  // writer. Historical docs may still carry 'email_parse' / 'auto_email_match'
+  // from the removed Gmail path; nothing reads this field, it is audit data.
+  paidVia?: 'qpay' | 'admin_manual' | 'monpay';
 
   // QPay-specific fields (set when createQpayInvoice cloud function returns)
   qpayInvoiceId?: string;        // QPay invoice uuid — passed to /payment/check
@@ -130,11 +135,13 @@ export interface UserProfile {
 }
 
 /**
- * Bank credit notifications, primarily ingested from Khan Bank emails to
- * `battsetseg1977@gmail.com` via a Gmail Apps Script (see GMAIL_INGESTION_SETUP.md).
- * Used by the Bank History admin tab.
+ * Bank credit notifications, entered by an admin in the Bank History tab.
+ *
+ * Gmail ingestion (a Khan Bank email → Apps Script pipeline) was an experiment
+ * and has been removed; every transaction is now typed by a human, which is why
+ * nothing auto-confirms — an admin verifies the transfer and clicks Confirm.
  */
-export type BankTxSource = 'manual' | 'gmail_apps_script' | 'gmail_api';
+export type BankTxSource = 'manual';
 export type BankTxDirection = 'credit' | 'debit';
 export type BankTxMatchStatus =
   | 'unmatched'         // no order ref code in description
@@ -148,16 +155,17 @@ export interface BankTransaction {
   source: BankTxSource;
   amountMnt: number;            // integer MNT
   direction: BankTxDirection;   // we mostly care about 'credit'
-  description: string;          // raw memo text from the bank
+  description: string;          // memo text, as typed from the bank statement
   referenceCode?: string;       // extracted GR-XXXXXX if found in description
-  bankTxId?: string;            // bank's own transaction reference number (from email)
+  bankTxId?: string;            // bank's own transaction reference number
   senderName?: string;
   senderAccount?: string;
-  postedAt: string;             // ISO timestamp from the bank notification
-  receivedAt: string;           // ISO timestamp when we ingested it
-  matchedOrderId?: string;      // set after admin confirms the match
+  postedAt: string;             // ISO timestamp of the transfer
+  receivedAt: string;           // ISO timestamp when the entry was created
+  // The order this currently matches — written by the server matcher, so it is
+  // NOT proof of payment on its own. Pair it with matchStatus === 'reconciled'.
+  matchedOrderId?: string;
   matchStatus: BankTxMatchStatus;
-  rawEmailSnippet?: string;     // first ~200 chars of the email for debugging
 }
 
 export interface StoreSettings {

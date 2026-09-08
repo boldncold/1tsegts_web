@@ -19,9 +19,9 @@ import { logger } from 'firebase-functions';
 import { assertAdmin } from './assertAdmin.js';
 import { markOrderPaid, type PaidSource } from './markOrderPaid.js';
 
-// The sources an admin-initiated confirmation may claim. 'qpay' / 'monpay' are
-// webhook-only and deliberately not reachable from here.
-const ALLOWED_SOURCES: PaidSource[] = ['admin_manual', 'email_parse'];
+// The only source an admin-initiated confirmation may claim. 'qpay' / 'monpay'
+// are webhook-only and deliberately not reachable from here.
+const ALLOWED_SOURCES: PaidSource[] = ['admin_manual'];
 
 export interface ConfirmOrderPaymentRequest {
   orderId: string;
@@ -48,9 +48,14 @@ export const confirmOrderPayment = onCall<ConfirmOrderPaymentRequest>(
       throw new HttpsError('invalid-argument', `source must be one of ${ALLOWED_SOURCES.join(', ')}`);
     }
 
+    // Attribution comes from the verified auth token, never from req.data —
+    // the whole point of routing this through a callable is that the browser
+    // does not get to author payment facts, and "who took the money" is one.
     const result = await markOrderPaid(orderId, {
       source: source ?? 'admin_manual',
       ...(bankTxId ? { bankTxId } : {}),
+      ...(req.auth?.uid ? { paidByUid: req.auth.uid } : {}),
+      ...(req.auth?.token?.email ? { paidByEmail: req.auth.token.email } : {}),
     });
 
     // Every confirmation attempt is a money event — log the outcome either way.

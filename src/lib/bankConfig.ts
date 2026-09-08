@@ -27,8 +27,5 @@ export const PAYMENT_WINDOW_MINUTES = 30;
  *
  * NOTE: nothing enforces this at checkout yet — the bank-transfer option is
  * offered regardless of total.
- *
- * The auto-confirm floor is a separate decision and lives server-side as
- * MIN_AUTO_CONFIRM_AMOUNT_MNT in functions/src/bankMatching.ts.
  */
 export const MIN_BANK_TRANSFER_AMOUNT = 5000;
