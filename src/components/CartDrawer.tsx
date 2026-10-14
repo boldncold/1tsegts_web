@@ -6,10 +6,9 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { api } from '../../convex/_generated/api';
-import { functions, httpsCallable } from '../firebase';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import ConfirmModal from './ConfirmModal';
@@ -186,6 +185,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const chargedTotal = Math.max(0, total - clampedDiscount);
   const createOrder = useMutation(api.orders.create);
   const cancelOrder = useMutation(api.orders.cancel);
+  const warmUpQpay = useAction(api.qpay.warmUp);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -217,15 +217,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       pendingOrderData.paymentMethod === 'bank_transfer') &&
     pendingOrderData.paymentStatus === 'CONFIRMED';
 
-  // Pre-warm the QPay invoice function while the customer fills the checkout
-  // form: absorbs the Cloud Function cold start and any QPay token re-auth,
+  // Pre-warm QPay while the customer fills the checkout form: absorbs any
+  // QPay token re-auth (convex/qpay.ts warmUp),
   // so the real call at "Confirm order" only pays for the invoice itself.
   // Best-effort and fire-once — a failed warmup just means a cold start.
   const qpayWarmupFired = React.useRef(false);
   React.useEffect(() => {
     if (!isCheckingOut || !QPAY_ENABLED || qpayWarmupFired.current) return;
     qpayWarmupFired.current = true;
-    httpsCallable(functions, 'createQpayInvoice')({ warmup: true }).catch(() => {});
+    warmUpQpay().catch(() => {});
   }, [isCheckingOut]);
 
   // Online order whose money hasn't landed yet. The completion screen must NOT

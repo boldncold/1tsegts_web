@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { orderType, paymentMethod } from "./validators";
 import { loadMenuFor, priceCart } from "./lib/orderPricing";
@@ -195,6 +196,11 @@ export const cancel = mutation({
       cancelledBy: "customer",
       cancelledAt: new Date().toISOString(),
     });
+    // Close the QPay invoice so the QR stops accepting money. Best-effort: a
+    // payment that still lands is flagged by the callback.
+    if (order.qpayInvoiceId && order.paymentStatus === "AWAITING_PAYMENT") {
+      await ctx.scheduler.runAfter(0, internal.qpay.cancelInvoice, { invoiceId: order.qpayInvoiceId });
+    }
     return { cancelled: true as const };
   },
 });

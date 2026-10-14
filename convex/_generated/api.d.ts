@@ -8,13 +8,17 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_firestoreRest from "../lib/firestoreRest.js";
 import type * as lib_orderPricing from "../lib/orderPricing.js";
+import type * as lib_qpayClient from "../lib/qpayClient.js";
 import type * as menu from "../menu.js";
 import type * as migrations_firestoreImport from "../migrations/firestoreImport.js";
 import type * as migrations_firestoreMappers from "../migrations/firestoreMappers.js";
 import type * as orders from "../orders.js";
+import type * as payments from "../payments.js";
+import type * as qpay from "../qpay.js";
 import type * as settings from "../settings.js";
 import type * as validators from "../validators.js";
 
@@ -25,13 +29,17 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   http: typeof http;
   "lib/firestoreRest": typeof lib_firestoreRest;
   "lib/orderPricing": typeof lib_orderPricing;
+  "lib/qpayClient": typeof lib_qpayClient;
   menu: typeof menu;
   "migrations/firestoreImport": typeof migrations_firestoreImport;
   "migrations/firestoreMappers": typeof migrations_firestoreMappers;
   orders: typeof orders;
+  payments: typeof payments;
+  qpay: typeof qpay;
   settings: typeof settings;
   validators: typeof validators;
 }>;

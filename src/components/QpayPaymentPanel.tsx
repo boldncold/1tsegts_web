@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { QrCode, Clock, Copy, CheckCircle, AlertCircle, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
-import { functions, httpsCallable } from '../firebase';
+import { useAction } from 'convex/react';
+import { ConvexError } from 'convex/values';
+import { api } from '../../convex/_generated/api';
 import { useLanguage } from '../context/LanguageContext';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
@@ -11,14 +13,14 @@ import type { QpayBankDeeplink } from '../types';
 /**
  * QPay payment panel — shown to the customer after they create a 'qpay' order.
  *
- * On mount, calls the `createQpayInvoice` Cloud Function with the order id.
+ * On mount, calls the `qpay.createInvoice` Convex action with the order id.
  * QPay returns a QR image (base64 PNG), a short URL, and a deeplink per bank.
  * The customer either scans the QR with any QPay-supported bank app, or taps
  * a bank button to launch that app directly.
  *
- * The order's paymentStatus flips to CONFIRMED via the qpayWebhook Cloud
- * Function once the customer pays. CartContext's existing onSnapshot picks
- * that up — this component doesn't need to poll.
+ * The order's paymentStatus flips to CONFIRMED via the QPay callback
+ * (convex/qpay.ts) once the customer pays. CartContext's live orders.track
+ * query picks that up — this component doesn't need to poll.
  */
 
 interface QpayInvoiceResponse {
@@ -96,6 +98,7 @@ function BankIcon({
 
 export default function QpayPaymentPanel({ order }: { order: any }) {
   const { language } = useLanguage();
+  const createInvoice = useAction(api.qpay.createInvoice);
   const [invoice, setInvoice] = useState<QpayInvoiceResponse | null>(() =>
     order.qpayInvoiceId
       ? {
@@ -165,21 +168,20 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     let cancelled = false;
     (async () => {
       try {
-        const fn = httpsCallable<
-          { orderId: string; skipQrImage?: boolean },
-          QpayInvoiceResponse
-        >(functions, 'createQpayInvoice');
         // Mobile is pay-by-app first: skip the ~30-60KB base64 QR image in
         // the response to get to the payment button/redirect sooner. The
         // image still lands on the order doc, and the QR toggle falls back
         // to it (order.qpayQrImage) once the snapshot syncs.
-        const res = await fn({ orderId: order.id, skipQrImage: isMobile });
+        const res = await createInvoice({ orderId: order.id, skipQrImage: isMobile });
         if (!cancelled) {
-          setInvoice(res.data);
+          setInvoice(res);
         }
       } catch (e: any) {
         if (!cancelled) {
-          setError(e?.message ?? 'Failed to load QPay invoice');
+          const data = e instanceof ConvexError ? (e.data as { code?: string; reason?: string }) : null;
+          setError(data?.code
+            ? `${data.code}${data.reason ? `: ${data.reason}` : ''}`
+            : (e?.message ?? 'Failed to load QPay invoice'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -278,24 +280,24 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
   }
 
   if (error || !invoice) {
-    // createQpayInvoice prices the order from the live menu; this is its
-    // refusal when an item (or portion) has since been removed or changed.
-    const unpriceable = error?.includes('ORDER_UNPRICEABLE') ?? false;
+    // qpay.createInvoice refuses an order that can no longer be paid: its
+    // window closed or it was cancelled meanwhile. Not a QPay outage.
+    const notPayable = error?.startsWith('ORDER_NOT_PAYABLE') ?? false;
     return (
       <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-5 space-y-2">
         <div className="flex items-center gap-2 text-red-700">
           <AlertCircle size={18} />
           <p className="font-bold text-sm uppercase tracking-widest">
-            {unpriceable
-              ? (language === 'en' ? 'Menu has changed' : 'Цэс өөрчлөгдсөн байна')
+            {notPayable
+              ? (language === 'en' ? 'Payment window closed' : 'Төлбөрийн хугацаа дууссан')
               : (language === 'en' ? 'QPay unavailable' : 'QPay ажиллахгүй байна')}
           </p>
         </div>
         <p className="text-xs text-red-700/80 leading-relaxed">
-          {unpriceable
+          {notPayable
             ? (language === 'en'
-              ? 'An item in this order is no longer on the menu. Please cancel this order and order again from the menu.'
-              : 'Энэ захиалгын нэг бүтээгдэхүүн цэснээс хасагдсан байна. Захиалгаа цуцалж, цэснээс дахин захиална уу.')
+              ? 'This order can no longer be paid. Please order again.'
+              : 'Энэ захиалгыг төлөх боломжгүй болсон байна. Дахин захиална уу.')
             : (language === 'en'
               ? 'We could not reach QPay. Please cancel this order and try cash or bank transfer.'
               : 'QPay-тэй холбогдох боломжгүй байна. Захиалгаа цуцалж, бэлэн мөнгө эсвэл данс шилжүүлгээр дахин оролдоно уу.')}
