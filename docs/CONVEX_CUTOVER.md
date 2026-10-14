@@ -11,25 +11,25 @@ Dev deployment: `grand-stoat-248` (US). Production: a new deployment in **EU
 |---|-----|------|
 | 0.1 | You | **QPay callback whitelist for `1tsegts.com`.** Send `docs/qpay/callback-whitelist-email-1tsegts-domain.md`. Production QPay rejects unknown callback hosts (`callback_url: INVALID`), so this must be confirmed **before** cutover. |
 | 0.2 | You | **Google OAuth client** (Google Cloud Console → project `ai-studio-applet-webapp-730e3` → APIs & Services → Credentials → OAuth client ID → Web application). Authorized redirect URIs: `https://grand-stoat-248.convex.site/api/auth/callback/google` now, plus the production one from step 2.2 later. Put the ID/secret on the dev deployment as `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`. |
-| 0.3 | You | **QPay sandbox env on dev** (Convex dashboard → dev → Settings → Environment Variables): `QPAY_BASE_URL=https://merchant-sandbox.qpay.mn`, `QPAY_INVOICE_CODE=1TSEGTS_INVOICE`, `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_CALLBACK_TOKEN` (new random string, not the Firebase one). |
+| 0.3 | Done | **QPay sandbox env on dev** — `QPAY_BASE_URL=https://merchant-sandbox.qpay.mn` with QPay's **public test account** (`TEST_MERCHANT` / `123456`, invoice code `TEST_INVOICE`) and a generated `QPAY_CALLBACK_TOKEN`. The 1TSEGTS login is rejected by the sandbox since 2026-10 (it still works in production); don't put the real password on dev. |
 
 ## 1. Certify on dev (P5)
 
 Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant now).
 
-**Admin dashboard** (needs 0.2) — sign in at `/admin`, then:
-- [ ] Edit a menu item and replace its image → the menu page shows the new image.
-- [ ] Add a cash order from the storefront → "Mark paid" → order shows *paid by* your email.
-- [ ] Place a QPay order, try "Start preparing" before paying → refused.
-- [ ] Bank tab: add a credit whose memo has a bank-transfer order's `GR-` code → *matched* → confirm → order CONFIRMED, entry *reconciled*.
-- [ ] Staff: add and remove an admin email; store hours: save → storefront reflects them.
+**Admin dashboard** (done 2026-10-14, signed in with Google on dev):
+- [x] Cash order → "Paid in cash" → CONFIRMED, *paid by* your email, kitchen status untouched.
+- [x] Unpaid QPay order offers no "Start" (server-side gate covered by tests).
+- [x] Bank tab: credit with the order's `GR-` code → *matched* on save → confirm → order CONFIRMED, entry *reconciled*.
+- [x] Edit a menu item's price → saved; stored images and orderCount unchanged.
+- [ ] Not exercised in the UI (backend tests only): image replacement, staff add/remove, store hours.
 
-**QPay sandbox** (needs 0.3):
-- [ ] QPay order → QR/bank links appear (no `callback_url: INVALID`; if sandbox also enforces the whitelist, ask QPay to add `grand-stoat-248.convex.site` or test through a tunnel).
-- [ ] Pay in sandbox → order flips to CONFIRMED within seconds; customer toast fires.
-- [ ] Replay the callback (URL is in the Convex logs for `qpay.createInvoice`'s invoice; `curl` it) → order unchanged, log says `already_confirmed`.
-- [ ] Let one order expire (15 min + ≤5 min cron) → EXPIRED; invoice cancelled at QPay.
-- [ ] Cancel an unpaid QPay order from the storefront → invoice cancelled at QPay.
+**QPay sandbox** (done 2026-10-14 against the public test account):
+- [x] QPay order → sandbox invoice with QR; callback URL accepted (the sandbox does not enforce the whitelist); missing deep links handled.
+- [x] Callback with a wrong token → 401; with the right token and no payment → 500 (QPay retries), order stays AWAITING_PAYMENT.
+- [x] Customer cancel → invoice `OPEN` → `CANCELED` at QPay.
+- [x] Expiry cron closes a lapsed order on schedule.
+- [ ] **Paid path — not possible in the sandbox** (its short links 404 and there is no sandbox bank app). Covered by the 13 tests in `convex/qpay.test.ts` and proven for real by the small real order in step 3.7.
 
 ## 2. Prepare production (any day before cutover)
 

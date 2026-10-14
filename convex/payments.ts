@@ -238,20 +238,20 @@ export const orderForCallback = internalQuery({
 });
 
 export const cachedQpayToken = internalQuery({
-  args: { baseUrl: v.string() },
-  handler: (ctx, { baseUrl }) =>
+  args: { baseUrl: v.string(), username: v.string() },
+  handler: (ctx, { baseUrl, username }) =>
     ctx.db
       .query("qpayTokens")
-      .withIndex("by_baseUrl", (q) => q.eq("baseUrl", baseUrl))
+      .withIndex("by_account", (q) => q.eq("baseUrl", baseUrl).eq("username", username))
       .unique(),
 });
 
 export const storeQpayToken = internalMutation({
-  args: { baseUrl: v.string(), accessToken: v.string(), expiresAt: v.number() },
+  args: { baseUrl: v.string(), username: v.string(), accessToken: v.string(), expiresAt: v.number() },
   handler: async (ctx, token) => {
     const existing = await ctx.db
       .query("qpayTokens")
-      .withIndex("by_baseUrl", (q) => q.eq("baseUrl", token.baseUrl))
+      .withIndex("by_account", (q) => q.eq("baseUrl", token.baseUrl).eq("username", token.username))
       .unique();
     if (existing) await ctx.db.replace(existing._id, token);
     else await ctx.db.insert("qpayTokens", token);

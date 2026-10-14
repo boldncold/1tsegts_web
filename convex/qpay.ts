@@ -64,13 +64,14 @@ function readQpayConfig(): QpayConfig {
 }
 
 async function getQpayAccessToken(ctx: ActionCtx, config: QpayConfig): Promise<string> {
-  const cached = await ctx.runQuery(internal.payments.cachedQpayToken, { baseUrl: config.baseUrl });
+  const account = { baseUrl: config.baseUrl, username: config.username };
+  const cached = await ctx.runQuery(internal.payments.cachedQpayToken, account);
   if (cached && cached.expiresAt - Date.now() > REAUTH_BUFFER_MS) return cached.accessToken;
 
   // Re-auth from scratch rather than /refresh: the spec makes refresh one-shot.
   const fresh = await qpayAuth(config.baseUrl, config.username, config.password);
   await ctx.runMutation(internal.payments.storeQpayToken, {
-    baseUrl: config.baseUrl,
+    ...account,
     accessToken: fresh.access_token,
     expiresAt: fresh.expires_in * 1000, // QPay sends a unix timestamp in seconds
   });

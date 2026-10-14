@@ -130,6 +130,14 @@ describe("qpay.createInvoice", () => {
     expect(qpay.count("/v2/auth/token")).toBe(1);
   });
 
+  test("does not reuse a cached token after the merchant account changes", async () => {
+    const { t, qpay, placeQpayOrder } = await setup();
+    await t.action(api.qpay.createInvoice, { orderId: await placeQpayOrder() });
+    vi.stubEnv("QPAY_USERNAME", "another-merchant");
+    await t.action(api.qpay.createInvoice, { orderId: await placeQpayOrder() });
+    expect(qpay.count("/v2/auth/token")).toBe(2);
+  });
+
   test("refuses expired, cancelled and non-QPay orders", async () => {
     const { t, placeQpayOrder } = await setup();
     const expired = await placeQpayOrder();

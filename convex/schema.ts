@@ -145,13 +145,14 @@ export default defineSchema({
   }).index("by_name", ["name"]),
 
   // QPay bearer token, re-used until ~60s before expiry (QPay's spec asks for
-  // sparing /auth/token calls). Keyed by base URL so a sandbox token is never
-  // sent to production or the other way round.
+  // sparing /auth/token calls). Keyed by base URL and merchant, so a token is
+  // never sent to another environment or used for another merchant account.
   qpayTokens: defineTable({
     baseUrl: v.string(),
+    username: v.string(),
     accessToken: v.string(),
     expiresAt: v.number(), // ms since epoch
-  }).index("by_baseUrl", ["baseUrl"]),
+  }).index("by_account", ["baseUrl", "username"]),
 
   // Admin allowlist, replacing Firestore's admin_emails + users.role.
   admins: defineTable({
