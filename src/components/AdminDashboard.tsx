@@ -1337,7 +1337,12 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-[var(--white-45)]">{t('admin.bank.subtitle')}</p>
                   </div>
                   <button
-                    onClick={() => setShowAddBankTx(true)}
+                    onClick={() => {
+                      // The form state is created when the dashboard mounts, so
+                      // without this the default time is however old the tab is.
+                      setBankTxForm((f) => ({ ...f, postedAt: nowForDateTimeLocal() }));
+                      setShowAddBankTx(true);
+                    }}
                     className="flex min-h-9 items-center gap-2 rounded-full bg-[var(--gold)] px-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
                   >
                     <Plus size={16} />
