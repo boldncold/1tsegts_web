@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Minus, ShoppingCart, Star, Filter, Search, Flame, Users, Gem, Clock, ShieldCheck } from 'lucide-react';
-import { db, collection, onSnapshot, query, where, orderBy } from '../firebase';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { MenuItem, Category, Portion } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -57,34 +58,29 @@ export default function MenuSection() {
     }
   }, [location.search]);
 
-  useEffect(() => {
-    const q = query(collection(db, 'menu'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const menuItems = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const { id, ...rest } = data;
-        return {
-          id: doc.id,
-          ...rest,
-          portions: data.portions ? data.portions.filter((p: any) => p.available !== false) : []
-        } as MenuItem;
-      });
-      setItems(menuItems);
-      
-      // Initialize selected portions for items that have them
-      const initialPortions: Record<string, Portion> = {};
-      menuItems.forEach(item => {
-        if (item.portions && item.portions.length > 0) {
-          initialPortions[item.id] = { name: 'Default', price: item.price };
-        }
-      });
-      setSelectedPortions(initialPortions);
-      
-      setLoading(false);
-    });
+  const menu = useQuery(api.menu.list);
 
-    return () => unsubscribe();
-  }, []);
+  useEffect(() => {
+    if (menu === undefined) return; // still loading
+    // Cast at the boundary: the schema's category also admits legacy
+    // 'Specials', which the UI groups by `pool` instead.
+    const menuItems = menu.map(item => ({
+      ...item,
+      portions: item.portions ? item.portions.filter(p => p.available !== false) : []
+    })) as MenuItem[];
+    setItems(menuItems);
+
+    // Initialize selected portions for items that have them
+    const initialPortions: Record<string, Portion> = {};
+    menuItems.forEach(item => {
+      if (item.portions && item.portions.length > 0) {
+        initialPortions[item.id] = { name: 'Default', price: item.price };
+      }
+    });
+    setSelectedPortions(initialPortions);
+
+    setLoading(false);
+  }, [menu]);
 
   const filteredItems = visibleItems.filter(item => {
     let matchesCategory: boolean;

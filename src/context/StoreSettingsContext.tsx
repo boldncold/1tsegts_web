@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { db, doc, onSnapshot } from '../firebase';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { StoreSettings } from '../types';
 import { isStoreOpen, DEFAULT_STORE_SETTINGS } from '../lib/utils';
 
@@ -14,22 +15,17 @@ const StoreSettingsContext = createContext<StoreSettingsContextType>({
 });
 
 export function StoreSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
+  const stored = useQuery(api.settings.getStore);
+  const settings = useMemo<StoreSettings>(
+    () => (stored ? { ...DEFAULT_STORE_SETTINGS, ...stored } : DEFAULT_STORE_SETTINGS),
+    [stored],
+  );
   const [storeOpen, setStoreOpen] = useState(() => isStoreOpen(DEFAULT_STORE_SETTINGS));
 
+  // Re-evaluate on every settings change, and every minute in case an hour
+  // boundary crosses.
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'store'), (snap) => {
-      const data: StoreSettings = snap.exists()
-        ? { ...DEFAULT_STORE_SETTINGS, ...(snap.data() as Partial<StoreSettings>) }
-        : DEFAULT_STORE_SETTINGS;
-      setSettings(data);
-      setStoreOpen(isStoreOpen(data));
-    });
-    return () => unsub();
-  }, []);
-
-  // Re-evaluate every minute in case hour boundary crosses
-  useEffect(() => {
+    setStoreOpen(isStoreOpen(settings));
     const id = setInterval(() => setStoreOpen(isStoreOpen(settings)), 60_000);
     return () => clearInterval(id);
   }, [settings]);

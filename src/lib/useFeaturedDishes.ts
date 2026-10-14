@@ -1,53 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { collection, db, limit, onSnapshot, orderBy, query, where } from '../firebase';
+import { useMemo } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { MenuItem } from '../types';
 
 export function useFeaturedDishes() {
-  const [dishes, setDishes] = useState<MenuItem[]>([]);
-
-  useEffect(() => {
-    const featuredQuery = query(
-      collection(db, 'menu'),
-      where('available', '==', true),
-      where('featured', '==', true),
-      limit(10)
-    );
-
-    let fallbackUnsubscribe: (() => void) | null = null;
-    const unsubscribe = onSnapshot(featuredQuery, (snapshot) => {
-      if (!snapshot.empty) {
-        fallbackUnsubscribe?.();
-        fallbackUnsubscribe = null;
-        setDishes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as MenuItem[]);
-        return;
-      }
-
-      if (!fallbackUnsubscribe) {
-        const fallbackQuery = query(
-          collection(db, 'menu'),
-          where('available', '==', true),
-          orderBy('orderCount', 'desc'),
-          limit(10)
-        );
-        fallbackUnsubscribe = onSnapshot(fallbackQuery, (fallbackSnapshot) => {
-          setDishes(
-            fallbackSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as MenuItem[]
-          );
-        });
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      fallbackUnsubscribe?.();
-    };
-  }, []);
+  // Featured picks, or the most-ordered dishes when none are featured —
+  // the fallback now lives server-side in convex/menu.ts.
+  const dishes = useQuery(api.menu.featured);
 
   return useMemo(() => {
-    const featured = dishes.filter(
+    // The schema's category also admits legacy 'Specials'; the UI groups
+    // specials by `pool` and never branches on that value.
+    const items = (dishes ?? []) as MenuItem[];
+    const featured = items.filter(
       (dish) => dish.tags?.includes('chefsPick') || dish.tags?.includes('popular') || dish.featured
     );
-    const rest = dishes.filter((dish) => !featured.includes(dish));
+    const rest = items.filter((dish) => !featured.includes(dish));
     return [...featured, ...rest].slice(0, 10);
   }, [dishes]);
 }
