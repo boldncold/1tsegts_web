@@ -44,7 +44,7 @@ Agent behavior rules for Claude Code in this repository (1ЦЭГЦ / 1tsegts.com
 
 ## Planning Rules
 
-- Anything touching payments (QPay functions, `paymentStatus`), Firestore rules, or order state → present a plan and call out risks before writing code.
+- Anything touching payments (`convex/qpay.ts`, `convex/payments.ts`, `paymentStatus`), authorization (`convex/lib/admin.ts`), or order state → present a plan and call out risks before writing code.
 - Small, obvious fixes don't need a plan — just do them.
 
 ## Coding Standards
@@ -56,21 +56,21 @@ Agent behavior rules for Claude Code in this repository (1ЦЭГЦ / 1tsegts.com
 ## Architecture Principles
 
 - **`paymentStatus` and kitchen `status` are strictly separate** — never merge or infer one from the other. Non-cash orders must not start cooking until `paymentStatus = CONFIRMED`.
-- Firestore security rules are the enforcement boundary — client checks are UX only.
-- Money logic lives in Cloud Functions, never in the client.
+- Server functions are the enforcement boundary — every public Convex function authorizes itself (`convex/lib/admin.ts`); client checks are UX only.
+- Money logic lives in Convex server functions, never in the client.
 
 ## Code Review Checklist
 
 - Bugs (order/payment state transitions, race conditions)
-- Security (Firestore rules, admin-only paths, webhook verification)
-- Performance (Firestore reads, re-renders)
+- Security (function-level authorization, admin-only paths, webhook verification)
+- Performance (indexed queries, reactive re-runs, re-renders)
 - UX (loading/error states, Mongolian-first copy)
 - Money (amounts, currency, idempotency of payment handlers)
 
 ## Debugging Workflow
 
 1. Reproduce and capture the exact error.
-2. Isolate: client vs Cloud Functions vs Firestore rules vs QPay vs env.
+2. Isolate: client vs Convex functions vs authorization vs QPay vs env.
 3. Root cause, not symptom-patch.
 4. Fix and verify in the affected flow.
 5. Add a rule to LESSONS.md if the bug reveals a repeatable mistake.

@@ -1,279 +1,124 @@
-# QPay Integration — Deploy Guide
+# QPay Integration
 
-How to deploy and operate the QPay payment flow that's now wired into the 1tsegts checkout.
-
-> If you're trying to **test** the QPay API itself before deploying, read `QPAY_TEST_PLAN.md` first.
+How the QPay payment flow works and how to operate it. QPay runs on **Convex**
+(`convex/qpay.ts`, `convex/payments.ts`); the Firebase Cloud Functions it replaced
+stay in `functions/` only until they are decommissioned (see
+`docs/CONVEX_CUTOVER.md`, section 4).
 
 ---
 
-## 1. What got built
+## 1. Pieces
 
 | Layer | File(s) | What it does |
 |---|---|---|
-| Types | `src/types.ts`, `firebase-blueprint.json` | Add `'qpay'` to `PaymentMethod`; add `qpayInvoiceId`, `qpayQrText`, `qpayQrImage`, `qpayShortUrl`, `qpayDeeplinks`, `qpayPaymentId`, `paidVia` to `Order` |
-| Client config | `src/lib/qpayConfig.ts` | `QPAY_ENABLED` feature flag, payment window minutes, bank display ordering |
-| Cart UI | `src/components/CartDrawer.tsx` | QPay as primary button at checkout; Cash + Bank Transfer collapse into "Other payment methods" |
-| Payment screen | `src/components/QpayPaymentPanel.tsx` | Shows QR image + bank deep-link buttons + countdown |
-| Snapshot listener | `src/context/CartContext.tsx` | Surfaces QPay `CONFIRMED`/`EXPIRED` transitions as toasts |
-| Cloud Functions | `functions/` | `createQpayInvoice` (callable) + `qpayWebhook` (HTTP) + shared `markOrderPaid` |
+| Order creation | `convex/orders.ts` (`create`) | Prices the order from the menu on the server (`convex/lib/orderPricing.ts`) and sets `amountMnt`, `paymentStatus: AWAITING_PAYMENT`, `paymentExpiresAt` (15 min). The browser never sends an amount. |
+| Invoice | `convex/qpay.ts` (`createInvoice` action) | Bills `order.amountMnt`, stores the QR / short URL / deep links on the order. Idempotent. |
+| Callback | `convex/qpay.ts` (`qpayCallback`), routed in `convex/http.ts` | Verifies the token, asks QPay `/v2/payment/check`, then confirms or flags. |
+| State changes | `convex/payments.ts` | Every `paymentStatus` write: `markPaid`, `flagForReview`, `expireOrder`, `markRefunded`, `confirmPayment` (admin). Internal or admin-checked; each is one transaction. |
+| Expiry | `convex/crons.ts` → `qpay.expirePendingInvoices` | Every 5 min: cancels lapsed invoices at QPay and marks orders `EXPIRED`. |
+| Refund | `convex/qpay.ts` (`refund` action, admin) | CARD payments only; P2P is refused with guidance. |
+| Client | `src/components/QpayPaymentPanel.tsx`, `src/context/CartContext.tsx` | Renders the invoice; `orders.track` streams payment-status changes. |
+| Tests | `convex/qpay.test.ts`, `convex/admin.test.ts` | Against a fake QPay: billing, caching, every callback branch, expiry, cancel, refunds. |
 
 ---
 
-## 2. One-time setup
+## 2. Configuration
 
-### 2.1 Install Cloud Functions deps
+Convex environment variables, per deployment (dashboard → deployment →
+Settings → Environment Variables, or `npx convex env set [--prod] NAME value`):
 
-```bash
-cd functions
-npm install
-```
+| Variable | Production | Dev |
+|---|---|---|
+| `QPAY_BASE_URL` | `https://merchant.qpay.mn` | `https://merchant-sandbox.qpay.mn` |
+| `QPAY_USERNAME` / `QPAY_PASSWORD` | `1TSEGTS` / the merchant password | QPay's public test account `TEST_MERCHANT` / `123456` |
+| `QPAY_INVOICE_CODE` | `1TSEGTS_INVOICE` | `TEST_INVOICE` |
+| `QPAY_CALLBACK_TOKEN` | random secret | a different random secret |
+| `QPAY_CALLBACK_BASE_URL` | `https://www.1tsegts.com/api/qpay/callback` | unset (uses the deployment's own site URL) |
 
-### 2.2 Set Firebase secrets
-
-These are read by the deployed Cloud Functions. Never commit them.
-
-```bash
-firebase functions:secrets:set QPAY_BASE_URL
-# → enter: https://merchant.qpay.mn         (production, what you picked)
-#   or:    https://merchant-sandbox.qpay.mn (sandbox, recommended for first test)
-
-firebase functions:secrets:set QPAY_USERNAME
-# → enter: 1TSEGTS
-
-firebase functions:secrets:set QPAY_PASSWORD
-# → enter: <the password QPay support emailed you>
-
-firebase functions:secrets:set QPAY_INVOICE_CODE
-# → enter: 1TSEGTS_INVOICE
-
-firebase functions:secrets:set QPAY_CALLBACK_TOKEN
-# → enter a random string. On macOS/Linux: `openssl rand -hex 24`.
-#   On Windows PowerShell (no OpenSSL needed):
-#     -join ((1..48) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
-#   This is appended to the callback URL we register with QPay; the
-#   webhook rejects any inbound POST whose ?token=... doesn't match.
-
-firebase functions:secrets:set QPAY_WEBHOOK_URL
-# → enter ANY placeholder for now (e.g. "https://placeholder.invalid").
-#   The Firebase CLI's codebase-wide check requires every secret that
-#   any function declares to exist before the first deploy, so we set
-#   a stub here and overwrite it in §2.3 once we know the real URL.
-```
-
-You'll overwrite `QPAY_WEBHOOK_URL` with the real value after the first deploy (next step).
-
-### 2.3 First deploy (gets you the webhook URL)
-
-```bash
-firebase deploy --only functions:qpayWebhook,functions:createQpayInvoice
-```
-
-After deploy, the CLI prints the function URLs. Grab the `qpayWebhook` URL — it looks like:
-
-```
-https://qpaywebhook-<random>-as.a.run.app
-```
-
-Set it as a secret so `createQpayInvoice` knows where to point QPay's callback:
-
-```bash
-firebase functions:secrets:set QPAY_WEBHOOK_URL
-# → paste the URL from the deploy output
-```
-
-Then redeploy `createQpayInvoice` so it picks up the new secret:
-
-```bash
-firebase deploy --only functions:createQpayInvoice
-```
-
-### 2.4 Verify the webhook is reachable
-
-```bash
-curl -i "https://<your-webhook-url>?order_id=test&token=wrong"
-# expect: HTTP/2 401 unauthorized
-
-curl -i "https://<your-webhook-url>?order_id=does-not-exist&token=<QPAY_CALLBACK_TOKEN>"
-# expect: HTTP/2 200, body: SUCCESS
-```
-
-If the second call doesn't return 200 + `SUCCESS`, QPay will retry every real callback — fix this before going live.
+- The 1TSEGTS login is **production-only**: the sandbox has rejected it since
+  2026-10. Never put the real password on dev.
+- **Callback whitelist.** QPay production only accepts whitelisted callback hosts
+  (`callback_url: INVALID` otherwise). Callbacks therefore go to our own domain,
+  `www.1tsegts.com`, and `vercel.json` proxies `/api/qpay/callback/*` to the Convex
+  production deployment — the whitelisted host never changes with the backend.
+  Use `www`: `1tsegts.com` 307-redirects every path, and QPay won't follow it.
+- Secrets are read once per call; changing a variable needs no redeploy.
 
 ---
 
-## 3. Test end-to-end (sandbox first if possible)
-
-1. Open the app, add an item to cart, click "Order Now".
-2. Verify QPay is selected by default at the payment-method picker.
-3. Confirm the order.
-4. The drawer should show the QPay panel with a QR image and bank buttons.
-5. Open one of the bank apps on your phone (or scan the QR), pay the amount.
-6. Within ~10s the toast should pop: "QPay payment confirmed!" — the panel disappears and the regular "Active order" panel appears.
-7. Check the Firestore order doc: `paymentStatus === 'CONFIRMED'`, `paidVia === 'qpay'`, `qpayPaymentId` set.
-8. Check function logs:
-   ```bash
-   firebase functions:log --only qpayWebhook
-   ```
-   You should see "qpayWebhook: order marked paid".
-
-If anything fails, the test plan (`QPAY_TEST_PLAN.md` §3 and §4) has step-by-step troubleshooting.
-
----
-
-## 4. Feature flag rollout
-
-QPay is gated by `QPAY_ENABLED` in `src/lib/qpayConfig.ts`. Recommended sequence:
-
-1. **Day 0** — deploy with `QPAY_ENABLED = true` but **point at sandbox** (`QPAY_BASE_URL = https://merchant-sandbox.qpay.mn`). Test with your own phone.
-2. **Day 1** — once sandbox works, swap `QPAY_BASE_URL` to production and redeploy. Watch the function logs and `paidVia` field for ~50 orders.
-3. **Day 7** — if everything looks clean, leave it. Otherwise, set `QPAY_ENABLED = false` and rebuild the frontend — QPay disappears from the picker and the default switches back to cash. The Cloud Functions stay deployed but unused.
-
-To fully tear out QPay (don't expect to need this), see `MONPAY_DEEPLINK_DESIGN.md` §12 — the same pattern.
-
----
-
-## 5. Operational notes
+## 3. Protocol notes
 
 ### Token caching
-The first request after a deploy hits `/v2/auth/token`. The result is cached in Firestore at `qpay_state/token` and re-used for ~24h. When it's within 60s of expiry, we re-auth from scratch (we don't use `/auth/refresh` because the spec warns it's one-shot).
+`/v2/auth/token` is called sparingly: the bearer token is cached in the
+`qpayTokens` table, keyed by base URL **and** username, and reused until ~60 s
+before expiry. Re-auth is from scratch — the spec makes `/refresh` one-shot.
 
 ### Callback verification
-Every QPay callback hits `qpayWebhook` with `?order_id=...&token=...`. We:
-1. Verify `token` matches `QPAY_CALLBACK_TOKEN` — rejects random POSTs.
-2. Look up the order in Firestore and grab its `qpayInvoiceId`.
-3. Call `/v2/payment/check` server-side to confirm a PAID row with matching amount.
-4. Only then call `markOrderPaid` (which is idempotent — repeats are no-ops).
+QPay calls `<base>/<token>/<orderId>` (plus a `?qpay_payment_id=` query). The
+handler:
+1. Rejects a wrong token (constant-time compare) with **401**.
+2. Looks up the order and its `qpayInvoiceId`.
+3. Calls `/v2/payment/check` server-side — the request body is never trusted.
+4. Exact `PAID` amount → `markPaid` (idempotent: a repeat returns
+   `already_confirmed`). Wrong amount, paid after expiry, or paid after a customer
+   cancel → `flagForReview` (`MANUAL_REVIEW`) and ack. Nothing visible yet →
+   **500**, so QPay retries.
 
-The webhook must return HTTP 200 + body `SUCCESS` or QPay retries.
+QPay needs **HTTP 200 + body `SUCCESS`** to stop retrying. Every branch ends in
+confirmed, flagged for a human, or a deliberate retry — never "log and ack".
 
 ### Idempotency
-- `createQpayInvoice` reuses the cached QR if the order already has `qpayInvoiceId`.
-- `qpayWebhook` re-fires on QPay retry are harmless — `markOrderPaid` short-circuits.
+- `createInvoice` returns the stored invoice if the order already has one; if two
+  calls race, the losing call cancels its orphaned invoice at QPay.
+- Replayed callbacks change nothing.
 
-### Billed amount
-`createQpayInvoice` never bills the amount on the order doc (the browser wrote
-it). It reprices the order from the `menu` docs via `functions/src/orderPricing.ts`,
-honours `adminDiscountMnt` only when the caller is an admin, and rejects
-non-positive or fractional quantities and items/portions no longer on the menu
-(`ORDER_UNPRICEABLE`, shown to the customer as "menu has changed"). On a mismatch
-(a stale localStorage cart or a tampered order) it rewrites `items`, `total` and
-`amountMnt` **before** creating the invoice, so the webhook's
-`paid == order.amountMnt` check compares against the price actually billed.
-Mismatches log `createQpayInvoice: order repriced from menu`. Unit tests:
-`cd functions && npm test`.
-
-### Server-side expiry
-The `expirePendingQpayInvoices` scheduled function runs every 5 minutes
-(`Asia/Ulaanbaatar`). It finds `AWAITING_PAYMENT` QPay orders past their
-`paymentExpiresAt`, cancels the invoice with QPay (`DELETE /v2/invoice/{id}`),
-and flips `paymentStatus` to `EXPIRED` inside a transaction so an in-flight
-`CONFIRMED` write can't be clobbered. Auth failures are non-fatal — the next
-run picks the order up again.
+### Cancellations and expiry
+- A customer cancel keeps the order (`status: cancelled`, `cancelledBy:
+  customer`) and closes its invoice at QPay, so a late payment can still be found
+  and flagged.
+- `expirePendingInvoices` cancels lapsed invoices at QPay (best-effort) and flips
+  `AWAITING_PAYMENT` → `EXPIRED` only if still awaiting — a confirmation wins.
+- Once payment settles, the order's QR image is dropped (orders are kept).
 
 ### Refunds
-Implemented end-to-end. The admin dashboard shows a **Refund** button on QPay
-orders whose `paymentStatus === 'CONFIRMED'`. It calls the `refundQpayPayment`
-callable (admin-verified server-side), which hits `DELETE /v2/payment/refund/{id}`
-and flips the order to `REFUNDED`.
+Admin **Refund** on a `CONFIRMED` QPay order calls `DELETE
+/v2/payment/refund/{payment_id}` and marks it `REFUNDED`. QPay can only refund
+**CARD** payments; P2P (bank-app) payments must be reversed by a manual bank
+transfer, and the function says so (`P2P_NOT_REFUNDABLE`).
+`PAYMENT_ALREADY_CANCELED` from QPay is treated as success (an earlier attempt
+refunded but didn't record it).
 
-Caveat from the spec (`payment_refund` sheet): **QPay can only auto-refund CARD
-payments.** P2P (bank-app QR) payments — the common case for restaurant orders —
-must be reversed with a manual bank transfer. We capture `qpayPaymentType` at
-confirm time, so the refund function short-circuits P2P with a clear
-`P2P_NOT_REFUNDABLE` message instead of a confusing QPay error.
-
-### Amount-mismatch handling
-If QPay reports a `PAID` payment whose amount doesn't match what we billed
-(partial / overpayment / stale invoice), the webhook no longer 500-loops
-forever. It flips the order to `MANUAL_REVIEW` (recording expected vs observed
-amount and the payment id) and acks QPay with `200 SUCCESS` so retries stop. An
-admin reconciles from the dashboard.
-
-### What's still NOT implemented yet
-- QPay invoice cancellation on customer-cancelled orders (separate from the
-  scheduled expiry path above). The order doc gets deleted, but the QPay
-  invoice stays open. Low impact (no money has moved), but worth wiring up
-  later.
+### Amount mismatch
+A `PAID` payment whose amount differs from what we billed goes to `MANUAL_REVIEW`
+with the expected and observed amounts; an admin reconciles it.
 
 ---
 
-## 6. If something breaks
+## 4. Testing
+
+- `npm test` — the QPay tests run against a fake QPay (no network).
+- Dev deployment + QPay sandbox (public test account): invoices, callback-URL
+  acceptance, payment check, invoice cancel and expiry all work. **The sandbox
+  cannot be paid from our side** (its short links 404; there is no test bank
+  app), so the paid path is proven by the tests plus a small real order in
+  production after each payment-related deploy.
+- Replaying a real callback: copy the callback URL from the Convex logs and
+  `curl` it — the order must stay unchanged and the log say `already_confirmed`.
+
+---
+
+## 5. If something breaks
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Customer sees "QPay unavailable" | `createQpayInvoice` errored. | Check function logs; usually a bad secret or QPay 401. |
-| Webhook fires but order stays AWAITING_PAYMENT | The `?token=` doesn't match `QPAY_CALLBACK_TOKEN`, or `/payment/check` doesn't show PAID yet. | Logs will say. |
-| Order marked paid but customer paid wrong amount | `qpayWebhook` requires `payment_amount` == `order.amountMnt`. If not, we don't mark paid — but we also don't flag it. | Future: surface to admin reconciliation queue. |
-| QPay says credentials invalid | Password rotated, or sandbox vs prod mixup. | Re-set `QPAY_USERNAME` / `QPAY_PASSWORD` secrets and redeploy. |
+| Customer sees "QPay unavailable" (`QPAY_UNAVAILABLE`) | QPay auth or invoice call failed | Convex logs for `qpay.createInvoice`; check the variables above. |
+| QPay error `NO_CREDENDIALS` | Credentials rejected (`NO_CREDENTIALS`, spelled right, means none were sent) | Re-copy `QPAY_PASSWORD` (Secret Manager version 1 for production). |
+| `callback_url: INVALID` | Callback host not whitelisted | Confirm with QPay that `www.1tsegts.com` is whitelisted. |
+| Callback hits but order stays `AWAITING_PAYMENT` | Payment not visible yet (QPay retries), or wrong `QPAY_CALLBACK_TOKEN` (401 in logs) | Logs for `qpayCallback`. |
+| Order in `MANUAL_REVIEW` | Real money that couldn't be auto-confirmed | Check the expected vs observed amount in the dashboard; refund or settle by hand. |
 
----
+## 6. Kill switch
 
-## 7. Manual follow-ups (not automated)
-
-These need GCP Console access or live testing and aren't wired up in code yet.
-
-### Monitoring & alerting
-1. **Cloud Logging metric** on `qpayWebhook` log entries with `severity=ERROR`.
-   Alert if rate > 1/min for 5 min. Catches QPay outages and our own bugs.
-2. **Cloud Logging metric** on `markOrderPaid` failures (`reason: bad_state:*`
-   or `Firestore update failed`). Should be zero in steady state; any non-zero
-   means a customer paid but the order didn't flip to `CONFIRMED`.
-3. **Stale `AWAITING_PAYMENT` monitor** is already covered by
-   `expirePendingQpayInvoices`, but you might still want a dashboard count of
-   `EXPIRED` orders / day as a signal of customer-side flakiness or pricing
-   confusion.
-
-### Frontend / UX tests to run live
-- **Cached-invoice path**: open the QPay panel twice on the same order →
-  second call should return the cached QR (idempotent path in
-  `createQpayInvoice.ts`, no QPay round-trip). Confirm in logs.
-- **Expiry UX past the 15-min window**: leave the panel open past
-  `paymentExpiresAt`. UI should surface a retry / cancel option cleanly.
-- **Webhook retry idempotency**: replay one of the real webhook curls from
-  Cloud Logging. Verify `markOrderPaid` short-circuits with
-  `reason: already_confirmed` and no extra Firestore writes.
-
-### Token rotation
-Rotate `QPAY_CALLBACK_TOKEN` if the callback URL is ever logged externally
-or the secret is shared:
-```bash
-firebase functions:secrets:set QPAY_CALLBACK_TOKEN
-firebase deploy --only functions:qpayWebhook,functions:createQpayInvoice
-```
-Both functions read it, so deploy both. Note: `QPAY_USERNAME` and
-`QPAY_PASSWORD` are the same across sandbox and production for this
-merchant — no separate prod creds to rotate.
-
-### Kill-switch
-`QPAY_ENABLED` in `src/lib/qpayConfig.ts` is currently `true`. To soft-disable
-QPay, flip to `false` and rebuild the frontend — QPay disappears from the
-picker and the default switches back to cash. The Cloud Functions stay
-deployed but unused. Could be promoted to an admin-settings toggle later
-(Firestore-backed) if it's worth the round-trip per render.
-
----
-
-## 8. Files added / changed
-
-```
-NEW  functions/                                # entire Cloud Functions package
-     ├── package.json, tsconfig.json, .gitignore
-     └── src/
-         ├── index.ts                          # exports createQpayInvoice + qpayWebhook
-         ├── qpayClient.ts                     # HTTP wrappers over QPay API
-         ├── qpayTokenCache.ts                 # Firestore-backed token cache
-         ├── createQpayInvoice.ts              # callable function
-         ├── qpayWebhook.ts                    # HTTP onRequest function
-         └── markOrderPaid.ts                  # shared paid handler
-
-NEW  src/components/QpayPaymentPanel.tsx       # QR + bank-deeplink screen
-NEW  src/lib/qpayConfig.ts                     # client-side feature flag
-
-MOD  firebase.json                             # add functions config
-MOD  firebase-blueprint.json                   # extend Order entity
-MOD  src/types.ts                              # PaymentMethod + Order fields
-MOD  src/firebase.ts                           # export functions + httpsCallable
-MOD  src/components/CartDrawer.tsx             # QPay primary, others collapsed
-MOD  src/context/CartContext.tsx               # QPay status transitions
-MOD  src/context/LanguageContext.tsx           # QPay strings
-```
+`QPAY_ENABLED` in `src/lib/qpayConfig.ts` hides QPay at checkout (cash becomes
+the default) after a frontend redeploy. The backend keeps handling callbacks for
+existing invoices.
