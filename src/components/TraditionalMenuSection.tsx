@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { MenuItem, Category, Portion } from '../types';
 import { cn, getDynamicStatus } from '../lib/utils';
-import { query, collection, onSnapshot, orderBy, db, auth, onAuthStateChanged, doc, getDoc } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 
 // Add Google Fonts for Playfair Display
 const fontLink = document.createElement('link');
@@ -25,7 +25,7 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
   const [activeTab, setActiveTab] = useState<Category | 'Specials'>(firstValidCategory);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [addingItem, setAddingItem] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   
   const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -45,26 +45,6 @@ export default function TraditionalMenu({ items }: { items: MenuItem[] }) {
     }
   }, [items, hasInitialized]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        if (user.email === 'boldsaihanlolor@gmail.com') {
-          setIsAdmin(true);
-          return;
-        }
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          const adminEmailDoc = await getDoc(doc(db, 'admin_emails', user.email?.toLowerCase() || ''));
-          setIsAdmin(userDoc.data()?.role === 'admin' || adminEmailDoc.exists());
-        } catch (error) {
-          setIsAdmin(false);
-        }
-      } else {
-        setIsAdmin(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   // These are now directly provided by useCart context
   // const cartItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);

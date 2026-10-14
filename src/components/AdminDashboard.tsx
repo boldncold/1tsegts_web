@@ -8,22 +8,29 @@ import {
   Clock, CheckCircle2, XCircle, Package, Star, Users,
   Search, Minus, Filter, Banknote, Inbox, Link2, ExternalLink
 } from 'lucide-react';
-import {
-  auth, db, googleProvider, signInWithPopup, signOut,
-  collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, doc, getDoc, getDocs, setDoc,
-  functions, httpsCallable
-} from '../firebase';
+import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { ConvexError } from 'convex/values';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { MenuItem, Order, Category, OrderStatus, Portion, OrderType, ItemStatus, StoreSettings, BankTransaction, BankTxMatchStatus } from '../types';
 import PaymentBadge from './admin/PaymentBadge';
 import MenuItemRow from './admin/MenuItemRow';
 import OverviewTab from './admin/OverviewTab';
 import OrdersTab from './admin/OrdersTab';
 import { getUBDateString } from './admin/orderUtils';
-import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS, isStoreOpen } from '../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+
+/** A menu image as the server stores it (convex/validators.ts imageRef). */
+type ImageRef = { storageId: Id<'_storage'> } | { url: string };
+
+/** The machine-readable code a Convex function threw, if any. */
+function errorCode(error: unknown): string | undefined {
+  return error instanceof ConvexError ? (error.data as { code?: string }).code : undefined;
+}
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve) => {
@@ -309,6 +316,29 @@ function notifyNewOrder(pendingCount: number) {
 export default function AdminDashboard() {
   const { t, language } = useLanguage();
   const { currentUser: user, isAdmin, isAdminLoading: loading } = useAuth();
+  const { signIn, signOut } = useAuthActions();
+
+  // Live admin data. 'skip' until the server confirms admin rights; every one
+  // of these functions also checks on the server (convex/lib/admin.ts).
+  const adminMenu = useQuery(api.menuAdmin.list, isAdmin ? {} : 'skip');
+  const recentOrders = useQuery(api.ordersAdmin.recent, isAdmin ? {} : 'skip');
+  const adminList = useQuery(api.staff.listAdmins, isAdmin ? {} : 'skip');
+  const recentBankTxs = useQuery(api.bank.recent, isAdmin ? {} : 'skip');
+  const savedStoreSettings = useQuery(api.settings.getStore, isAdmin ? {} : 'skip');
+
+  const generateUploadUrl = useMutation(api.menuAdmin.generateUploadUrl);
+  const saveMenuItem = useMutation(api.menuAdmin.save);
+  const updateMenuItem = useMutation(api.menuAdmin.update);
+  const removeMenuItem = useMutation(api.menuAdmin.remove);
+  const setOrderStatus = useMutation(api.ordersAdmin.setStatus);
+  const removeOrder = useMutation(api.ordersAdmin.remove);
+  const createCounterOrder = useMutation(api.ordersAdmin.createCounterOrder);
+  const confirmPayment = useMutation(api.payments.confirmPayment);
+  const refundOrder = useAction(api.qpay.refund);
+  const addBankTx = useMutation(api.bank.add);
+  const addAdmin = useMutation(api.staff.addAdmin);
+  const removeAdmin = useMutation(api.staff.removeAdmin);
+  const saveStoreSettings = useMutation(api.settings.saveStore);
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'orders' | 'bank_history' | 'settings'>('overview');
   
   // Search States
@@ -390,113 +420,51 @@ export default function AdminDashboard() {
   }, [loading, user, isAdmin]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    // Cast at the boundary: the schema's unions are wider than src/types.ts
+    // (legacy 'Specials' category, legacy paidVia values).
+    if (adminMenu) setMenuItems(adminMenu as unknown as MenuItem[]);
+  }, [adminMenu]);
 
-    const menuUnsubscribe = onSnapshot(query(collection(db, 'menu'), orderBy('name')), (snapshot) => {
-      setMenuItems(snapshot.docs.map(doc => {
-        const data = doc.data();
-        const { id, ...rest } = data;
-        return { id: doc.id, ...rest } as MenuItem;
-      }));
-    });
-
-    // Orders: only stream the last 7 days. `where` + `orderBy` on the same
-    // field needs no composite index, and it stops the dashboard from
-    // re-reading the whole collection (weeks of history) on every mount —
-    // that was the main Firestore read burner.
-    const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-    const ordersUnsubscribe = onSnapshot(
-      query(
-        collection(db, 'orders'),
-        where('timestamp', '>=', sevenDaysAgoIso),
-        orderBy('timestamp', 'desc'),
-      ),
-      (snapshot) => {
-        const allOrders = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const { id, ...rest } = data;
-          return { id: doc.id, ...rest };
-        }) as Order[];
-
-        const oneDayAgo = new Date();
-        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-        const validOrders = allOrders.filter(order => {
-          // Delete cancelled orders after 24 hours
-          if (order.status === 'cancelled' && new Date(order.timestamp) < oneDayAgo) {
-            deleteDoc(doc(db, 'orders', order.id)).catch(console.error);
-            return false;
-          }
-          return true;
-        });
-
-        setOrders(validOrders);
-
-        // New-order alert: chime + tab-title flash when a pending order
-        // appears that wasn't in the previous snapshot. The first snapshot
-        // (initial load) only seeds the baseline — no alert.
-        const pendingIds = new Set(
-          validOrders.filter((o) => o.status === 'pending').map((o) => o.id),
-        );
-        const prev = prevPendingIdsRef.current;
-        if (prev && [...pendingIds].some((id) => !prev.has(id))) {
-          notifyNewOrder(pendingIds.size);
-        }
-        prevPendingIdsRef.current = pendingIds;
-      },
+  useEffect(() => {
+    if (!recentOrders) return;
+    // Orders are no longer deleted from here (the old janitor removed paid
+    // orders after 7 days); cancelled ones older than a day just stay off the board.
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const validOrders = (recentOrders as unknown as Order[]).filter(
+      (order) => !(order.status === 'cancelled' && new Date(order.timestamp) < oneDayAgo),
     );
+    setOrders(validOrders);
 
-    // Janitor: orders older than 7 days fall outside the capped listener, so
-    // clean them up with a one-shot query per dashboard mount instead of
-    // streaming them forever just to delete them.
-    getDocs(query(collection(db, 'orders'), where('timestamp', '<', sevenDaysAgoIso)))
-      .then((old) => {
-        old.docs.forEach((d) => deleteDoc(d.ref).catch(console.error));
-      })
-      .catch(console.error);
-
-    const staffUnsubscribe = onSnapshot(collection(db, 'admin_emails'), (snapshot) => {
-      setAdminEmails(snapshot.docs.map(doc => ({ id: doc.id })));
-    });
-
-    // Bank transactions: last 7 days, filtered server-side. Same-field
-    // where + orderBy needs no composite index, and it avoids re-reading the
-    // full history on every dashboard mount.
-    const bankTxUnsubscribe = onSnapshot(
-      query(
-        collection(db, 'bank_transactions'),
-        where('postedAt', '>=', new Date(Date.now() - 7 * 24 * 3600_000).toISOString()),
-        orderBy('postedAt', 'desc'),
-      ),
-      (snapshot) => {
-        const txs = snapshot.docs.map((d) => {
-          const data = d.data();
-          const { id, ...rest } = data;
-          return { id: d.id, ...rest } as BankTransaction;
-        });
-        setBankTransactions(txs);
-      },
-      (err) => console.error('bank_transactions listener error', err)
+    // New-order alert: chime + tab-title flash when a pending order appears
+    // that wasn't in the previous result. The first result only seeds the
+    // baseline — no alert.
+    const pendingIds = new Set(
+      validOrders.filter((o) => o.status === 'pending').map((o) => o.id),
     );
+    const prev = prevPendingIdsRef.current;
+    if (prev && [...pendingIds].some((id) => !prev.has(id))) {
+      notifyNewOrder(pendingIds.size);
+    }
+    prevPendingIdsRef.current = pendingIds;
+  }, [recentOrders]);
 
-    const settingsUnsubscribe = onSnapshot(doc(db, 'settings', 'store'), (snap) => {
-      if (snap.exists()) {
-        setStoreSettings({ ...DEFAULT_STORE_SETTINGS, ...(snap.data() as Partial<StoreSettings>) });
-      }
-    });
+  useEffect(() => {
+    if (adminList) setAdminEmails(adminList.map((email) => ({ id: email })));
+  }, [adminList]);
 
-    return () => {
-      menuUnsubscribe();
-      ordersUnsubscribe();
-      staffUnsubscribe();
-      settingsUnsubscribe();
-      bankTxUnsubscribe();
-    };
-  }, [isAdmin]);
+  useEffect(() => {
+    if (recentBankTxs) setBankTransactions(recentBankTxs as unknown as BankTransaction[]);
+  }, [recentBankTxs]);
+
+  useEffect(() => {
+    if (savedStoreSettings) setStoreSettings({ ...DEFAULT_STORE_SETTINGS, ...savedStoreSettings });
+  }, [savedStoreSettings]);
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      // Redirects to Google and back to /admin (Convex Auth).
+      await signIn('google', { redirectTo: '/admin' });
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Failed to login.');
@@ -505,7 +473,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       toast.success('Logged out successfully.');
     } catch (error) {
       console.error('Logout error:', error);
@@ -541,42 +509,18 @@ export default function AdminDashboard() {
     }
 
     try {
-      const total = adminOrderItems.reduce((acc, curr) => {
-        const price = curr.selectedPortion ? curr.selectedPortion.price : curr.item.price;
-        return acc + (price * curr.quantity);
-      }, 0);
-
-      // Get next order number
-      const statsDoc = await getDoc(doc(db, 'stats', 'orders'));
-      let orderNumber = '001';
-      if (statsDoc.exists()) {
-        const nextNum = (statsDoc.data().lastNumber || 0) + 1;
-        orderNumber = nextNum.toString().padStart(3, '0');
-        await updateDoc(doc(db, 'stats', 'orders'), { lastNumber: nextNum });
-      } else {
-        await setDoc(doc(db, 'stats', 'orders'), { lastNumber: 1 });
-      }
-
-      const orderData: any = {
+      // Priced and numbered on the server (convex/ordersAdmin.ts).
+      const { orderNumber } = await createCounterOrder({
         items: adminOrderItems.map(i => ({
-          id: i.item.id,
-          name: i.item.name,
-          price: i.selectedPortion ? i.selectedPortion.price : i.item.price,
+          menuId: i.item.id,
           quantity: i.quantity,
-          selectedPortion: i.selectedPortion || null
+          ...(i.selectedPortion ? { portionName: i.selectedPortion.name } : {}),
         })),
-        total,
         orderType: adminOrderForm.orderType,
-        orderNumber,
-        status: 'preparing', // Start immediately
-        timestamp: new Date().toISOString()
-      };
-
-      if (adminOrderForm.orderType === 'kiosk' && adminOrderForm.kioskNumber) {
-        orderData.kioskNumber = adminOrderForm.kioskNumber;
-      }
-
-      await addDoc(collection(db, 'orders'), orderData);
+        ...(adminOrderForm.orderType === 'kiosk' && adminOrderForm.kioskNumber
+          ? { kioskNumber: adminOrderForm.kioskNumber }
+          : {}),
+      });
       toast.success(`Order #${orderNumber} created and started!`);
       setIsAddingOrder(false);
       setAdminOrderItems([]);
@@ -585,7 +529,7 @@ export default function AdminDashboard() {
         kioskNumber: ''
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders');
+      console.error('Create order error:', error);
       toast.error('Failed to create order.');
     }
   };
@@ -594,37 +538,61 @@ export default function AdminDashboard() {
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Strip id from editForm to avoid saving it as a field
-      const { id, ...formData } = editForm;
-      
       const uiCategory = (editForm.category as any) as string;
       const isSpecialsPool = uiCategory === 'Specials';
-      const itemData = {
-        ...formData,
-        price: Math.round(Number(editForm.price)),
-        packagingPrice: editForm.packagingPrice !== undefined ? Math.round(Number(editForm.packagingPrice)) : 0,
-        available: editForm.available ?? true,
-        status: editForm.status || 'available',
-        statusUntil: editForm.statusUntil || null,
-        todayOnly: editForm.todayOnly ?? false,
-        scheduledDays: editForm.scheduledDays || [],
-        featured: editForm.featured ?? false,
-        orderCount: editForm.orderCount ?? 0,
-        tags: editForm.tags || [],
-        category: (isSpecialsPool ? 'Draft' : (editForm.category || 'Draft')) as Category,
-        pool: isSpecialsPool ? 'specials' : null,
-        image: editForm.image || `https://picsum.photos/seed/${editForm.name}/800/600`,
-        sideImages: editForm.sideImages || [],
-        portions: editForm.portions || []
-      };
 
-      if (isEditing) {
-        await updateDoc(doc(db, 'menu', isEditing), itemData);
-        toast.success('Item updated!');
-      } else {
-        await addDoc(collection(db, 'menu'), itemData);
-        toast.success('Item added to Draft Pool!');
-      }
+      // Images: a fresh upload is a data URL from compressImage; an unchanged
+      // image comes back as the URL we served, mapped to its stored reference.
+      const editing = isEditing ? adminMenu?.find((m) => m.id === isEditing) : undefined;
+      const known = new Map<string, ImageRef>();
+      if (editing?.imageRef && editing.image) known.set(editing.image, editing.imageRef);
+      editing?.sideImages.forEach((url, i) => {
+        const ref = editing.sideImageRefs[i];
+        if (ref) known.set(url, ref);
+      });
+      const resolveImage = async (src: string): Promise<ImageRef> => {
+        const existing = known.get(src);
+        if (existing) return existing;
+        if (!src.startsWith('data:')) return { url: src };
+        const blob = await (await fetch(src)).blob();
+        const res = await fetch(await generateUploadUrl(), {
+          method: 'POST',
+          headers: { 'Content-Type': blob.type },
+          body: blob,
+        });
+        if (!res.ok) throw new Error(`Image upload failed: HTTP ${res.status}`);
+        const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
+        return { storageId };
+      };
+      const image = await resolveImage(editForm.image || `https://picsum.photos/seed/${editForm.name}/800/600`);
+      const sideImages = await Promise.all((editForm.sideImages || []).map(resolveImage));
+
+      await saveMenuItem({
+        ...(isEditing ? { id: isEditing as Id<'menu'> } : {}),
+        item: {
+          name: editForm.name ?? '',
+          description: editForm.description ?? '',
+          price: Math.round(Number(editForm.price)),
+          packagingPrice: editForm.packagingPrice !== undefined ? Math.round(Number(editForm.packagingPrice)) : 0,
+          available: editForm.available ?? true,
+          status: editForm.status || 'available',
+          statusUntil: editForm.statusUntil ?? null,
+          todayOnly: editForm.todayOnly ?? false,
+          scheduledDays: editForm.scheduledDays || [],
+          featured: editForm.featured ?? false,
+          tags: editForm.tags || [],
+          category: (isSpecialsPool ? 'Draft' : (editForm.category || 'Draft')) as Category,
+          pool: isSpecialsPool ? 'specials' : null,
+          portions: (editForm.portions || []).map(p => ({
+            name: p.name,
+            price: Number(p.price),
+            ...(p.available !== undefined ? { available: p.available } : {}),
+          })),
+        },
+        image,
+        sideImages,
+      });
+      toast.success(isEditing ? 'Item updated!' : 'Item added to Draft Pool!');
       setIsEditing(null);
       setIsAdding(false);
       setEditForm({});
@@ -702,7 +670,10 @@ export default function AdminDashboard() {
         updates.statusUntil = null as any;
       }
 
-      await updateDoc(doc(db, 'menu', item.id), updates);
+      await updateMenuItem({
+        id: item.id as Id<'menu'>,
+        changes: { status: newStatus, available: updates.available, statusUntil: updates.statusUntil ?? null },
+      });
       toast.success(`${item.name} status updated to ${newStatus.replace(/_/g, ' ')}`);
     } catch (error) {
       console.error(error);
@@ -712,7 +683,7 @@ export default function AdminDashboard() {
 
   const handleToggleFeatured = async (item: MenuItem) => {
     try {
-      await updateDoc(doc(db, 'menu', item.id), { featured: !item.featured });
+      await updateMenuItem({ id: item.id as Id<'menu'>, changes: { featured: !item.featured } });
       toast.success(`${item.name} is ${!item.featured ? 'Featured' : 'Unfeatured'}`);
     } catch (error) {
       console.error(error);
@@ -727,7 +698,14 @@ export default function AdminDashboard() {
         scheduledDays: schedule.scheduledDays,
       };
       if (schedule.todayOnly) updates.statusUntil = getMidnightTonight();
-      await updateDoc(doc(db, 'menu', item.id), updates);
+      await updateMenuItem({
+        id: item.id as Id<'menu'>,
+        changes: {
+          todayOnly: schedule.todayOnly,
+          scheduledDays: schedule.scheduledDays,
+          ...(updates.statusUntil !== undefined ? { statusUntil: updates.statusUntil } : {}),
+        },
+      });
       toast.success(`${item.name} schedule updated`);
     } catch (error) {
       console.error(error);
@@ -738,9 +716,9 @@ export default function AdminDashboard() {
   const handleChangeCategory = async (item: MenuItem, newValue: string) => {
     try {
       if (newValue === 'Specials') {
-        await updateDoc(doc(db, 'menu', item.id), { pool: 'specials' });
+        await updateMenuItem({ id: item.id as Id<'menu'>, changes: { pool: 'specials' } });
       } else {
-        await updateDoc(doc(db, 'menu', item.id), { category: newValue as Category, pool: null });
+        await updateMenuItem({ id: item.id as Id<'menu'>, changes: { category: newValue as Category, pool: null } });
       }
       toast.success(`${item.name} moved to ${newValue}`);
     } catch (error) {
@@ -756,7 +734,7 @@ export default function AdminDashboard() {
       message: 'Are you sure you want to delete this item? This action cannot be undone.',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'menu', id));
+          await removeMenuItem({ id: id as Id<'menu'> });
           toast.success('Item deleted.');
         } catch (error) {
           console.error('Delete error:', error);
@@ -768,7 +746,7 @@ export default function AdminDashboard() {
 
   const toggleAvailability = async (item: MenuItem) => {
     try {
-      await updateDoc(doc(db, 'menu', item.id), { available: !item.available });
+      await updateMenuItem({ id: item.id as Id<'menu'>, changes: { available: !item.available } });
       toast.success(`Item ${!item.available ? 'available' : 'unavailable'}`);
     } catch (error) {
       console.error('Toggle error:', error);
@@ -791,10 +769,14 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status });
+      await setOrderStatus({ orderId: orderId as Id<'orders'>, status });
       toast.success(`Order status updated to ${status}`);
     } catch (error) {
       console.error('Status update error:', error);
+      // The server enforces the payment gate too (convex/ordersAdmin.ts).
+      toast.error(errorCode(error) === 'AWAITING_PAYMENT'
+        ? t('admin.orders.payment.awaiting')
+        : 'Failed to update order status');
     }
   };
 
@@ -823,15 +805,10 @@ export default function AdminDashboard() {
 
     if (!opts?.silent && !window.confirm(prompt)) return;
     try {
-      const fn = httpsCallable<
-        { orderId: string; bankTxId?: string; source?: 'admin_manual' },
-        { updated: boolean; reason?: string }
-      >(functions, 'confirmOrderPayment');
-
-      const { data } = await fn({
-        orderId,
-        ...(matchedTxId ? { bankTxId: matchedTxId } : {}),
-        ...(opts?.via ? { source: opts.via } : {}),
+      // Who confirmed is recorded server-side from the signed-in admin.
+      const data = await confirmPayment({
+        orderId: orderId as Id<'orders'>,
+        ...(matchedTxId ? { bankTxId: matchedTxId as Id<'bankTransactions'> } : {}),
       });
 
       if (data.updated) {
@@ -867,22 +844,18 @@ export default function AdminDashboard() {
     if (!window.confirm(t('admin.orders.confirm_refund'))) return;
     setRefundingId(orderId);
     try {
-      const fn = httpsCallable<{ orderId: string }, { refunded: boolean }>(
-        functions,
-        'refundQpayPayment',
-      );
-      await fn({ orderId });
+      await refundOrder({ orderId: orderId as Id<'orders'> });
       toast.success(t('admin.orders.refund.success'));
     } catch (error: any) {
-      const msg: string = error?.message ?? '';
-      // The cloud function encodes P2P as a failed-precondition with this token.
-      if (msg.includes('P2P_NOT_REFUNDABLE')) {
+      // convex/qpay.ts refund: P2P_NOT_REFUNDABLE, or QPAY_REFUND_FAILED with QPay's key.
+      const data = error instanceof ConvexError ? (error.data as { code?: string; reason?: string }) : {};
+      if (data.code === 'P2P_NOT_REFUNDABLE') {
         toast.error(t('admin.orders.refund.p2p'));
       } else {
-        const code = msg.match(/QPAY_([A-Z_]+)/)?.[1];
+        const detail = data.code === 'QPAY_REFUND_FAILED' ? data.reason : data.code;
         toast.error(
-          code
-            ? `${t('admin.orders.refund.failed')}: ${code}`
+          detail
+            ? `${t('admin.orders.refund.failed')}: ${detail}`
             : t('admin.orders.refund.failed'),
         );
       }
@@ -923,17 +896,12 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      const refMatch = bankTxForm.description.match(/GR-[A-Z2-9]{6}/i)?.[0]?.toUpperCase();
-      await addDoc(collection(db, 'bank_transactions'), {
-        source: 'manual',
+      // Matched against orders on the server as it is saved (convex/bank.ts).
+      await addBankTx({
         amountMnt: amount,
-        direction: 'credit',
         description: bankTxForm.description,
-        referenceCode: refMatch ?? null,
-        senderName: bankTxForm.senderName || '',
+        ...(bankTxForm.senderName ? { senderName: bankTxForm.senderName } : {}),
         postedAt: new Date(bankTxForm.postedAt).toISOString(),
-        receivedAt: new Date().toISOString(),
-        matchStatus: 'unmatched',
       });
       toast.success('Transaction added');
       setShowAddBankTx(false);
@@ -952,11 +920,14 @@ export default function AdminDashboard() {
   const handleDeleteOrder = async (orderId: string) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       try {
-        await deleteDoc(doc(db, 'orders', orderId));
+        await removeOrder({ orderId: orderId as Id<'orders'> });
         toast.success('Order deleted');
       } catch (error) {
         console.error('Error deleting order:', error);
-        toast.error('Failed to delete order');
+        // Paid, refunded and under-review orders are financial records.
+        toast.error(errorCode(error) === 'HOLDS_PAYMENT'
+          ? 'This order holds a payment and cannot be deleted. Cancel or refund it instead.'
+          : 'Failed to delete order');
       }
     }
   };
@@ -966,10 +937,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!newAdminEmail) return;
     try {
-      await setDoc(doc(db, 'admin_emails', newAdminEmail.toLowerCase().trim()), {
-        addedAt: new Date().toISOString(),
-        addedBy: user.email
-      });
+      await addAdmin({ email: newAdminEmail });
       setNewAdminEmail('');
       toast.success('Admin email added!');
     } catch (error) {
@@ -989,7 +957,7 @@ export default function AdminDashboard() {
       message: `Are you sure you want to remove ${email} from the admin list?`,
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'admin_emails', email));
+          await removeAdmin({ email });
           toast.success('Admin email removed.');
         } catch (error) {
           console.error('Delete admin error:', error);
@@ -1002,7 +970,7 @@ export default function AdminDashboard() {
   const handleUpdateStoreSetting = async (updates: Partial<StoreSettings>) => {
     try {
       const merged = { ...storeSettings, ...updates };
-      await setDoc(doc(db, 'settings', 'store'), merged as any);
+      await saveStoreSettings({ settings: merged });
       toast.success('Store settings updated');
     } catch (error) {
       console.error(error);
@@ -1232,8 +1200,17 @@ export default function AdminDashboard() {
                             { name: 'Matcha Latte', description: 'Premium Japanese matcha with steamed milk.', price: 5.50, category: 'Drinks', available: true, image: 'https://picsum.photos/seed/matcha/800/600' },
                             { name: 'Buuz', description: 'Traditional Mongolian steamed dumplings.', price: 15.00, category: 'Mongolian', available: true, image: 'https://picsum.photos/seed/buuz/800/600' }
                           ];
-                          for (const item of initialItems) {
-                            await addDoc(collection(db, 'menu'), item);
+                          for (const { image, ...item } of initialItems) {
+                            await saveMenuItem({
+                              item: {
+                                ...item,
+                                category: item.category as Category,
+                                tags: [], status: 'available', statusUntil: null, scheduledDays: [],
+                                todayOnly: false, featured: false, packagingPrice: 0, portions: [], pool: null,
+                              },
+                              image: { url: image },
+                              sideImages: [],
+                            });
                           }
                           toast.success('Seed data added!');
                         }}

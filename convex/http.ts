@@ -1,8 +1,12 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
+import { auth } from "./auth";
 import { CALLBACK_PATH_PREFIX, qpayCallback } from "./qpay";
 
 const http = httpRouter();
+
+// Convex Auth: OAuth redirects/callbacks and the JWKS endpoint.
+auth.addHttpRoutes(http);
 
 // Latency probe used to choose the deployment region
 // (scripts/convex-latency.mjs). Touches no data.

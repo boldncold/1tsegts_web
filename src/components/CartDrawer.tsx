@@ -277,9 +277,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     setCompletedWasPaid(false);
     try {
       // The server prices, numbers and sets up payment for the order
-      // (convex/orders.ts); only the customer's choices are sent. Admin test
-      // discounts come back with admin sign-in (migration P4) — until then an
-      // admin's order is charged in full.
+      // (convex/orders.ts); only the customer's choices are sent. An admin's
+      // test discount is honoured only after the server checks they are one.
       const placed = await createOrder({
         items: cart.map(item => ({
           menuId: item.id,
@@ -293,6 +292,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         ...(formData.orderType === 'kiosk' ? { kioskNumber: formData.kioskNumber } : {}),
         ...(formData.notes ? { notes: formData.notes } : {}),
         paymentMethod: formData.paymentMethod,
+        ...(isAdmin && clampedDiscount > 0 ? { adminDiscountMnt: clampedDiscount } : {}),
       });
 
       setPendingOrderId(placed.orderId);

@@ -4,6 +4,8 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { orderType, paymentMethod } from "./validators";
 import { loadMenuFor, priceCart } from "./lib/orderPricing";
+import { getAdmin } from "./lib/admin";
+import { markPaid } from "./payments";
 
 // Payment windows. The server owns expiry now; the client copies in
 // src/lib/qpayConfig.ts and src/lib/bankConfig.ts are display-only.
@@ -29,7 +31,7 @@ function invalid(reason: string): never {
 }
 
 /** Sequential 001–999, wrapping. Replaces the random 3-digit number, which could collide. */
-async function nextOrderNumber(ctx: MutationCtx): Promise<string> {
+export async function nextOrderNumber(ctx: MutationCtx): Promise<string> {
   const counter = await ctx.db
     .query("counters")
     .withIndex("by_name", (q) => q.eq("name", "orderNumber"))
@@ -89,6 +91,8 @@ export const create = mutation({
     kioskNumber: v.optional(v.string()),
     notes: v.optional(v.string()),
     paymentMethod,
+    /** Admin test orders only (CartDrawer's discount input); refused for anyone else. */
+    adminDiscountMnt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     if (args.items.length > MAX_LINES) invalid("too_many_lines");
@@ -101,12 +105,42 @@ export const create = mutation({
     if (pricing.ok === false) {
       throw new ConvexError({ code: "ORDER_UNPRICEABLE", reason: pricing.reason });
     }
-    const amountMnt = pricing.chargedMnt;
-    if (args.paymentMethod !== "cash" && amountMnt <= 0) invalid("zero_amount");
+    // Admins test the storefront flow: their orders are marked isTest, and
+    // only they may discount — clamped to the subtotal as CartDrawer does.
+    const admin = await getAdmin(ctx);
+    if (args.adminDiscountMnt !== undefined && !admin) {
+      throw new ConvexError({ code: "NOT_ADMIN" });
+    }
+    const discountMnt = Math.max(0, Math.min(Math.floor(args.adminDiscountMnt ?? 0), pricing.chargedMnt));
+    const amountMnt = pricing.chargedMnt - discountMnt;
+    // A fully discounted test order skips the payment provider (QPay refuses
+    // ₮0) and is confirmed below through the same markPaid as real payments,
+    // so a break in that path shows up in testing.
+    const zeroChargeTest = admin !== null && amountMnt === 0;
+    if (args.paymentMethod !== "cash" && amountMnt <= 0 && !zeroChargeTest) invalid("zero_amount");
 
     const now = Date.now();
     const expiresIn = (minutes: number) => new Date(now + minutes * 60_000).toISOString();
     const orderNumber = await nextOrderNumber(ctx);
+
+    // Exactly one payment setup. Cash carries no payment state at all: the
+    // cashier takes the money.
+    const payment = zeroChargeTest
+      ? { paymentStatus: "AWAITING_PAYMENT" as const, amountMnt: 0 }
+      : args.paymentMethod === "qpay"
+        ? {
+            paymentStatus: "AWAITING_PAYMENT" as const,
+            amountMnt,
+            paymentExpiresAt: expiresIn(QPAY_PAYMENT_WINDOW_MINUTES),
+          }
+        : args.paymentMethod === "bank_transfer"
+          ? {
+              paymentStatus: "AWAITING_PAYMENT" as const,
+              amountMnt,
+              referenceCode: await newReferenceCode(ctx),
+              paymentExpiresAt: expiresIn(BANK_PAYMENT_WINDOW_MINUTES),
+            }
+          : {};
 
     const orderId = await ctx.db.insert("orders", {
       items: pricing.items,
@@ -120,23 +154,18 @@ export const create = mutation({
       status: "pending",
       timestamp: new Date(now).toISOString(),
       paymentMethod: args.paymentMethod,
-      // Cash orders carry no payment state: the cashier takes the money.
-      ...(args.paymentMethod === "qpay"
-        ? {
-            paymentStatus: "AWAITING_PAYMENT" as const,
-            amountMnt,
-            paymentExpiresAt: expiresIn(QPAY_PAYMENT_WINDOW_MINUTES),
-          }
-        : {}),
-      ...(args.paymentMethod === "bank_transfer"
-        ? {
-            paymentStatus: "AWAITING_PAYMENT" as const,
-            amountMnt,
-            referenceCode: await newReferenceCode(ctx),
-            paymentExpiresAt: expiresIn(BANK_PAYMENT_WINDOW_MINUTES),
-          }
-        : {}),
+      ...(admin ? { isTest: true } : {}),
+      ...(discountMnt > 0 ? { adminDiscountMnt: discountMnt } : {}),
+      ...payment,
     });
+
+    if (zeroChargeTest) {
+      await markPaid(ctx, orderId, {
+        source: "admin_manual",
+        paidByUid: admin.userId,
+        paidByEmail: admin.email,
+      });
+    }
 
     // Popularity, server-side now — Firestore let any client increment it.
     for (const item of pricing.items) {

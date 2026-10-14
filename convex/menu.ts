@@ -16,7 +16,7 @@ async function imageUrl(
  * The client's MenuItem shape (src/types.ts): `id` instead of `_id`, images
  * resolved to URLs, import bookkeeping left out.
  */
-async function toMenuItem(ctx: QueryCtx, item: Doc<"menu">) {
+export async function toMenuItem(ctx: QueryCtx, item: Doc<"menu">) {
   const { _id, _creationTime, legacyId, image, sideImages, ...rest } = item;
   return {
     ...rest,

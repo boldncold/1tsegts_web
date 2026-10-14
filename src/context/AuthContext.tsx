@@ -1,9 +1,16 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from 'firebase/auth';
-import { auth, db, onAuthStateChanged, doc, getDoc } from '../firebase';
+import React, { createContext, useContext } from 'react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+
+/** The signed-in admin, in the shape the dashboard already renders. */
+export interface CurrentUser {
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
 
 interface AuthContextValue {
-  currentUser: User | null;
+  currentUser: CurrentUser | null;
   isAdmin: boolean;
   isAdminLoading: boolean;
 }
@@ -14,52 +21,24 @@ const AuthContext = createContext<AuthContextValue>({
   isAdminLoading: true,
 });
 
-const HARDCODED_OWNER_EMAIL = 'boldsaihanlolor@gmail.com';
-
-async function resolveIsAdmin(user: User): Promise<boolean> {
-  if (user.email === HARDCODED_OWNER_EMAIL) return true;
-  try {
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (userDoc.data()?.role === 'admin') return true;
-  } catch {
-    // Firestore rules or network failure — fall through to admin_emails check.
-  }
-  try {
-    const emailKey = user.email?.toLowerCase() || '';
-    if (!emailKey) return false;
-    const adminEmailDoc = await getDoc(doc(db, 'admin_emails', emailKey));
-    return adminEmailDoc.exists();
-  } catch {
-    return false;
-  }
-}
-
+/**
+ * Admin sign-in state from Convex Auth (convex/auth.ts). isAdmin only decides
+ * what the UI shows — every admin function re-checks on the server
+ * (convex/lib/admin.ts).
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isAdminLoading, setIsAdminLoading] = useState(true);
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  const viewer = useQuery(api.staff.viewer, isAuthenticated ? {} : 'skip');
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (!user) {
-        setIsAdmin(false);
-        setIsAdminLoading(false);
-        return;
-      }
-      setIsAdminLoading(true);
-      const adminFlag = await resolveIsAdmin(user);
-      setIsAdmin(adminFlag);
-      setIsAdminLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  const value: AuthContextValue = {
+    currentUser: viewer
+      ? { email: viewer.email, displayName: viewer.name, photoURL: viewer.image }
+      : null,
+    isAdmin: viewer?.isAdmin ?? false,
+    isAdminLoading: isLoading || (isAuthenticated && viewer === undefined),
+  };
 
-  return (
-    <AuthContext.Provider value={{ currentUser, isAdmin, isAdminLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

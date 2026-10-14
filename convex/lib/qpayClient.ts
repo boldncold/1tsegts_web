@@ -131,3 +131,44 @@ export async function qpayCancelInvoice(
   });
   if (!res.ok && res.status !== 404) throw await failure(res, "cancelInvoice");
 }
+
+/** QPay rejected a refund; `code` is its machine-readable key, e.g. PAYMENT_SETTLED. */
+export class QpayApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "QpayApiError";
+  }
+}
+
+/**
+ * DELETE /v2/payment/refund/{payment_id} — refund a CARD payment.
+ *
+ * QPay cannot refund P2P (bank-app) payments through the API; those are
+ * reversed by a manual bank transfer. The caller checks payment_type first.
+ */
+export async function qpayRefundPayment(
+  baseUrl: string,
+  accessToken: string,
+  paymentId: string,
+  note?: string,
+): Promise<void> {
+  const res = await fetch(`${baseUrl}/v2/payment/refund/${encodeURIComponent(paymentId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ note: note ?? "refund" }),
+  });
+  if (res.ok) return;
+  const raw = await res.text().catch(() => "");
+  let code = `HTTP_${res.status}`;
+  try {
+    const parsed = JSON.parse(raw) as { error?: string };
+    if (parsed.error) code = parsed.error;
+  } catch {
+    // non-JSON body: keep the HTTP_<status> code
+  }
+  throw new QpayApiError(res.status, code, `QPay refund failed: HTTP ${res.status} — ${raw.slice(0, 300)}`);
+}

@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
@@ -101,6 +102,9 @@ export const orderFields = {
 };
 
 export default defineSchema({
+  // Convex Auth: users, sessions, accounts. Only admins ever sign in.
+  ...authTables,
+
   menu: defineTable(menuFields)
     .index("by_name", ["name"])
     .index("by_featured", ["featured", "available"])

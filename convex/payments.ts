@@ -11,8 +11,10 @@
  * `status` (see PROJECT.md).
  */
 
-import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { v, type Infer } from "convex/values";
+import { internalMutation, internalQuery, mutation, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { requireAdmin } from "./lib/admin";
 
 export const paidMeta = v.object({
   source: v.union(v.literal("qpay"), v.literal("monpay"), v.literal("admin_manual")),
@@ -38,43 +40,74 @@ export type MarkPaidResult = { updated: boolean; reason?: string };
  */
 export const markOrderPaid = internalMutation({
   args: { orderId: v.id("orders"), meta: paidMeta },
-  handler: async (ctx, { orderId, meta }): Promise<MarkPaidResult> => {
-    const order = await ctx.db.get(orderId);
-    if (!order) return { updated: false, reason: "order_not_found" };
-    if (order.paymentStatus === "CONFIRMED") return { updated: false, reason: "already_confirmed" };
+  handler: (ctx, { orderId, meta }) => markPaid(ctx, orderId, meta),
+});
 
-    // The customer cancelled while the payment was in flight. Never confirm a
-    // cancelled order: the kitchen won't cook it, yet the money is real — the
-    // caller flags it for an admin instead.
-    if (order.status === "cancelled") return { updated: false, reason: "bad_state:cancelled" };
-
-    // Cash orders carry no payment state until a cashier marks them paid.
-    // Narrow on purpose: a cash order since EXPIRED or REFUNDED still fails.
-    const isUnpaidCashOrder = order.paymentMethod === "cash" && order.paymentStatus === undefined;
-    if (!isUnpaidCashOrder && order.paymentStatus !== "AWAITING_PAYMENT") {
-      return { updated: false, reason: `bad_state:${order.paymentStatus ?? "none"}` };
-    }
-
-    await ctx.db.patch(orderId, {
-      paymentStatus: "CONFIRMED",
-      paidAt: new Date().toISOString(),
-      paidVia: meta.source,
-      ...(meta.qpayPaymentId ? { qpayPaymentId: meta.qpayPaymentId } : {}),
-      ...(meta.qpayPaymentType ? { qpayPaymentType: meta.qpayPaymentType } : {}),
-      ...(meta.qpayPaymentWallet ? { qpayPaymentWallet: meta.qpayPaymentWallet } : {}),
-      ...(meta.monpayTxnId ? { monpayTxnId: meta.monpayTxnId } : {}),
-      ...(meta.bankTxId ? { matchedTxId: meta.bankTxId } : {}),
-      ...(meta.paidByUid ? { paidByUid: meta.paidByUid } : {}),
-      ...(meta.paidByEmail ? { paidBy: meta.paidByEmail } : {}),
+/**
+ * An admin confirms a payment by hand: cash at the counter, or a bank transfer
+ * they have checked (pass bankTxId to reconcile it in the same transaction).
+ * Attribution comes from the verified sign-in, never from the browser.
+ * Returns the result rather than throwing on a refusal, so the dashboard can
+ * tell "already confirmed" (benign) from "bad state" (money on a closed order).
+ */
+export const confirmPayment = mutation({
+  args: { orderId: v.id("orders"), bankTxId: v.optional(v.id("bankTransactions")) },
+  handler: async (ctx, { orderId, bankTxId }) => {
+    const admin = await requireAdmin(ctx);
+    const result = await markPaid(ctx, orderId, {
+      source: "admin_manual",
+      ...(bankTxId ? { bankTxId } : {}),
+      paidByUid: admin.userId,
+      paidByEmail: admin.email,
     });
-
-    if (meta.bankTxId) {
-      const tx = await ctx.db.get(meta.bankTxId);
-      if (tx) await ctx.db.patch(tx._id, { matchStatus: "reconciled", matchedOrderId: orderId });
-    }
-    return { updated: true };
+    console.log("confirmPayment", { orderId, bankTxId, by: admin.email, ...result });
+    return result;
   },
 });
+
+export async function markPaid(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  meta: Infer<typeof paidMeta>,
+): Promise<MarkPaidResult> {
+  const order = await ctx.db.get(orderId);
+  if (!order) return { updated: false, reason: "order_not_found" };
+  if (order.paymentStatus === "CONFIRMED") return { updated: false, reason: "already_confirmed" };
+
+  // The customer cancelled while the payment was in flight. Never confirm a
+  // cancelled order: the kitchen won't cook it, yet the money is real — the
+  // caller flags it for an admin instead.
+  if (order.status === "cancelled") return { updated: false, reason: "bad_state:cancelled" };
+
+  // Cash orders carry no payment state until a cashier marks them paid.
+  // Narrow on purpose: a cash order since EXPIRED or REFUNDED still fails.
+  const isUnpaidCashOrder = order.paymentMethod === "cash" && order.paymentStatus === undefined;
+  if (!isUnpaidCashOrder && order.paymentStatus !== "AWAITING_PAYMENT") {
+    return { updated: false, reason: `bad_state:${order.paymentStatus ?? "none"}` };
+  }
+
+  await ctx.db.patch(orderId, {
+    paymentStatus: "CONFIRMED",
+    paidAt: new Date().toISOString(),
+    paidVia: meta.source,
+    ...(meta.qpayPaymentId ? { qpayPaymentId: meta.qpayPaymentId } : {}),
+    ...(meta.qpayPaymentType ? { qpayPaymentType: meta.qpayPaymentType } : {}),
+    ...(meta.qpayPaymentWallet ? { qpayPaymentWallet: meta.qpayPaymentWallet } : {}),
+    ...(meta.monpayTxnId ? { monpayTxnId: meta.monpayTxnId } : {}),
+    ...(meta.bankTxId ? { matchedTxId: meta.bankTxId } : {}),
+    ...(meta.paidByUid ? { paidByUid: meta.paidByUid } : {}),
+    ...(meta.paidByEmail ? { paidBy: meta.paidByEmail } : {}),
+    // The ~30-60KB QR is only needed while awaiting payment; dropping it
+    // keeps a kept-forever order at a couple of KB.
+    qpayQrImage: undefined,
+  });
+
+  if (meta.bankTxId) {
+    const tx = await ctx.db.get(meta.bankTxId);
+    if (tx) await ctx.db.patch(tx._id, { matchStatus: "reconciled", matchedOrderId: orderId });
+  }
+  return { updated: true };
+}
 
 /**
  * Real money arrived that can't be auto-confirmed (wrong amount, paid after
@@ -110,7 +143,11 @@ export const expireOrder = internalMutation({
   handler: async (ctx, { orderId }) => {
     const order = await ctx.db.get(orderId);
     if (order?.paymentStatus !== "AWAITING_PAYMENT") return false;
-    await ctx.db.patch(orderId, { paymentStatus: "EXPIRED", expiredAt: new Date().toISOString() });
+    await ctx.db.patch(orderId, {
+      paymentStatus: "EXPIRED",
+      expiredAt: new Date().toISOString(),
+      qpayQrImage: undefined, // see markPaid
+    });
     return true;
   },
 });
@@ -218,5 +255,36 @@ export const storeQpayToken = internalMutation({
       .unique();
     if (existing) await ctx.db.replace(existing._id, token);
     else await ctx.db.insert("qpayTokens", token);
+  },
+});
+
+/** What the refund action needs to decide, by Convex id. */
+export const orderForRefund = internalQuery({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, { orderId }) => {
+    const order = await ctx.db.get(orderId);
+    if (!order) return null;
+    return {
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      qpayPaymentId: order.qpayPaymentId,
+      qpayPaymentType: order.qpayPaymentType,
+    };
+  },
+});
+
+/** Only flips a still-CONFIRMED order, so a state that changed meanwhile is not clobbered. */
+export const markRefunded = internalMutation({
+  args: { orderId: v.id("orders"), note: v.optional(v.string()) },
+  handler: async (ctx, { orderId, note }) => {
+    const order = await ctx.db.get(orderId);
+    if (order?.paymentStatus !== "CONFIRMED") return false;
+    await ctx.db.patch(orderId, {
+      paymentStatus: "REFUNDED",
+      refundedAt: new Date().toISOString(),
+      refundedVia: "qpay",
+      ...(note ? { refundNote: note } : {}),
+    });
+    return true;
   },
 });

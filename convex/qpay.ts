@@ -19,10 +19,12 @@ import { ConvexError, v } from "convex/values";
 import { action, httpAction, internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
+  QpayApiError,
   qpayAuth,
   qpayCancelInvoice,
   qpayCreateInvoice,
   qpayPaymentCheck,
+  qpayRefundPayment,
 } from "./lib/qpayClient";
 
 const REAUTH_BUFFER_MS = 60_000;
@@ -363,6 +365,49 @@ export const expirePendingInvoices = internalAction({
       await ctx.runMutation(internal.payments.expireOrder, { orderId });
     }
     console.log("expirePendingInvoices: expired", { count: expired.length });
+  },
+});
+
+/**
+ * Admin refunds a confirmed QPay payment. QPay can only refund CARD payments
+ * through the API; a P2P (bank-app) payment — the usual case — is refused with
+ * P2P_NOT_REFUNDABLE so the admin refunds it by hand.
+ */
+export const refund = action({
+  args: { orderId: v.id("orders"), note: v.optional(v.string()) },
+  handler: async (ctx, { orderId, note }): Promise<{ refunded: true; alreadyRefunded?: true }> => {
+    const admin = await ctx.runQuery(internal.staff.currentAdmin, {});
+    if (!admin) throw new ConvexError({ code: "NOT_ADMIN" });
+
+    const order = await ctx.runQuery(internal.payments.orderForRefund, { orderId });
+    if (!order) throw new ConvexError({ code: "NOT_FOUND" });
+    if (order.paymentMethod !== "qpay") throw new ConvexError({ code: "NOT_QPAY" });
+    if (order.paymentStatus === "REFUNDED") return { refunded: true, alreadyRefunded: true };
+    if (order.paymentStatus !== "CONFIRMED") {
+      throw new ConvexError({ code: "NOT_REFUNDABLE", reason: order.paymentStatus ?? "none" });
+    }
+    if (!order.qpayPaymentId) throw new ConvexError({ code: "NO_PAYMENT_ID" });
+    if (order.qpayPaymentType && order.qpayPaymentType !== "CARD") {
+      throw new ConvexError({ code: "P2P_NOT_REFUNDABLE" });
+    }
+
+    const config = readQpayConfig();
+    try {
+      await qpayRefundPayment(config.baseUrl, await getQpayAccessToken(ctx, config), order.qpayPaymentId, note);
+    } catch (err) {
+      // PAYMENT_ALREADY_CANCELED: an earlier attempt refunded at QPay but did
+      // not get to record it. Treat as success so the order can settle.
+      if (!(err instanceof QpayApiError && err.code === "PAYMENT_ALREADY_CANCELED")) {
+        console.error("qpay.refund: QPay refused", { orderId, error: String(err) });
+        throw new ConvexError({
+          code: "QPAY_REFUND_FAILED",
+          reason: err instanceof QpayApiError ? err.code : "unknown",
+        });
+      }
+    }
+    await ctx.runMutation(internal.payments.markRefunded, { orderId, ...(note ? { note } : {}) });
+    console.log("qpay.refund: refunded", { orderId, by: admin.email });
+    return { refunded: true };
   },
 });
 
