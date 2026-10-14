@@ -16,6 +16,11 @@ created before the cutover have stopped (about two weeks).
 Format the three `[MONOSPACE]` blocks in monospace, as with the first email.
 Review the wording before sending.
 
+> **Sent 2026-10-14 as below (asking for `1tsegts.com`).** The site's canonical
+> host turned out to be **`www.1tsegts.com`** — `1tsegts.com` 307-redirects every
+> path to it — so callbacks go to `https://www.1tsegts.com/api/qpay/callback/...`
+> and a follow-up asks QPay to whitelist `www.1tsegts.com` too.
+
 ---
 
 ## Email body (paste this part)

@@ -2,15 +2,19 @@
 
 What's left of the migration, in order. **You** = the owner (accounts, credentials,
 money); **Claude** = can be done by the agent. Branch: `claude/convex-migration`.
-Dev deployment: `grand-stoat-248` (US). Production: a new deployment in **EU
-(Dublin)** — measured ~140 ms from Ulaanbaatar vs ~225 ms for US.
+Convex project `1tsegts-497d5` in **EU (Dublin)** — ~150 ms from Ulaanbaatar vs
+~225 ms for US: dev `moonlit-goat-443`, production `tame-ram-325`. The first
+project (`1tsegts`, US, dev `grand-stoat-248`) is retired after cutover.
+
+The site's canonical host is **`www.1tsegts.com`**: `1tsegts.com` answers every
+path with a 307 to it, so callbacks, the QPay whitelist and `SITE_URL` use `www`.
 
 ## 0. Long-lead items — start now
 
 | # | Who | What |
 |---|-----|------|
-| 0.1 | You | **QPay callback whitelist for `1tsegts.com`.** Send `docs/qpay/callback-whitelist-email-1tsegts-domain.md`. Production QPay rejects unknown callback hosts (`callback_url: INVALID`), so this must be confirmed **before** cutover. |
-| 0.2 | You | **Google OAuth client** (Google Cloud Console → project `ai-studio-applet-webapp-730e3` → APIs & Services → Credentials → OAuth client ID → Web application). Authorized redirect URIs: `https://grand-stoat-248.convex.site/api/auth/callback/google` now, plus the production one from step 2.2 later. Put the ID/secret on the dev deployment as `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`. |
+| 0.1 | You | **QPay callback whitelist for `www.1tsegts.com`.** Sent 2026-10-14 asking for `1tsegts.com`; a follow-up must add **`www.1tsegts.com`** (the apex only redirects). Production QPay rejects unknown callback hosts (`callback_url: INVALID`), so this must be confirmed **before** cutover. |
+| 0.2 | Done | **Google OAuth client** in Google Cloud project `ai-studio-applet-webapp-730e3`, with redirect URIs `https://moonlit-goat-443.eu-west-1.convex.site/api/auth/callback/google` (dev) and `https://tame-ram-325.eu-west-1.convex.site/api/auth/callback/google` (prod). `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are on dev. |
 | 0.3 | Done | **QPay sandbox env on dev** — `QPAY_BASE_URL=https://merchant-sandbox.qpay.mn` with QPay's **public test account** (`TEST_MERCHANT` / `123456`, invoice code `TEST_INVOICE`) and a generated `QPAY_CALLBACK_TOKEN`. The 1TSEGTS login is rejected by the sandbox since 2026-10 (it still works in production); don't put the real password on dev. |
 
 ## 1. Certify on dev (P5)
@@ -33,24 +37,24 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 
 ## 2. Prepare production (any day before cutover)
 
-| # | Who | Command / action | Check |
-|---|-----|------------------|-------|
-| 2.1 | You | Create the production deployment in **EU** (dashboard → project `1tsegts` → Production; if no region choice is offered for this project, create a new project in the EU region and use that). | Dashboard shows region EU. |
-| 2.2 | Claude | `npx convex deploy` (pushes functions + schema to prod) | `Convex functions ready`. |
-| 2.3 | Claude | `npx @convex-dev/auth --prod --web-server-url https://1tsegts.com` | Sets `SITE_URL`, `JWT_PRIVATE_KEY`, `JWKS` on prod. |
-| 2.4 | You | Add `https://<prod>.convex.site/api/auth/callback/google` to the OAuth client; set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` on prod. | — |
-| 2.5 | You | Prod QPay env: `QPAY_BASE_URL=https://merchant.qpay.mn`, `QPAY_INVOICE_CODE`, `QPAY_USERNAME`, `QPAY_PASSWORD`, new `QPAY_CALLBACK_TOKEN`, and `QPAY_CALLBACK_BASE_URL=https://1tsegts.com/api/qpay/callback`. | `npx convex env list --prod` shows the names. |
-| 2.6 | Claude | Add `vercel.json` with the callback rewrite (below) in a small PR to `main`; you merge. Harmless before cutover. | `curl -i https://1tsegts.com/api/qpay/callback/wrong/x` → **401** (from Convex). |
-| 2.7 | You | Vercel → Settings → Environment Variables: `VITE_CONVEX_URL` = `https://<prod>.convex.cloud` (Production) and `https://grand-stoat-248.convex.cloud` (Preview). | — |
-| 2.8 | Claude | Rehearsal import into prod: menu + settings (see step 3.4 command). Re-runnable; the cutover run converges. | Report: menu `failed: []`. |
+| # | Who | Command / action | Status / check |
+|---|-----|------------------|----------------|
+| 2.1 | Done | New project `1tsegts-497d5` in **EU**; production `tame-ram-325`. | ~150 ms, host `*.eu-west-1.convex.*`. |
+| 2.2 | Done | `npx convex deploy` (needs a human "y"). | `/ping` → `ok`. |
+| 2.3 | Done | `npx @convex-dev/auth --prod`; `SITE_URL=https://www.1tsegts.com`. | Keys set. |
+| 2.4 | Done | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` on prod (same client as dev). | Match dev. |
+| 2.5 | Done | Prod QPay login: `QPAY_USERNAME=1TSEGTS`, `QPAY_PASSWORD` (Secret Manager **version 1**). Already set: `QPAY_BASE_URL=https://merchant.qpay.mn`, `QPAY_INVOICE_CODE=1TSEGTS_INVOICE`, `QPAY_CALLBACK_BASE_URL=https://www.1tsegts.com/api/qpay/callback`, generated `QPAY_CALLBACK_TOKEN`. | QPay prod issued a token for `1TSEGTS`; fake callback via `www` → **401**. |
+| 2.6 | Done | Merged PR #9 (`vercel.json`): SPA fallback — fixes today's 404 on direct visits to `/menu`, `/admin` — and the callback proxy. | `curl -i https://www.1tsegts.com/api/qpay/callback/wrong/x` answered by Convex; `/menu` → 200. |
+| 2.7 | Done | Vercel → Settings → Environment Variables: `VITE_CONVEX_URL` = `https://tame-ram-325.eu-west-1.convex.cloud` (Production) and `https://moonlit-goat-443.eu-west-1.convex.cloud` (Preview). | — |
+| 2.8 | Done | Rehearsal import into prod: menu 47/47 (33 images into prod storage); settings doc doesn't exist yet (store hours never saved on the live site). | Re-run converges at cutover. |
+
+`vercel.json` (PR #9):
 
 ```json
 {
   "rewrites": [
-    {
-      "source": "/api/qpay/callback/:path*",
-      "destination": "https://<prod>.convex.site/qpay/callback/:path*"
-    }
+    { "source": "/api/qpay/callback/:path*", "destination": "https://tame-ram-325.eu-west-1.convex.site/qpay/callback/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
 ```
