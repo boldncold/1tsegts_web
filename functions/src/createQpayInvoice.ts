@@ -11,9 +11,12 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
+import { logger } from 'firebase-functions';
 import { getDb } from './db.js';
 import { getAccessToken, readConfigFromEnv } from './qpayTokenCache.js';
 import { qpayCreateInvoice } from './qpayClient.js';
+import { isAdminCaller } from './assertAdmin.js';
+import { loadMenuPricing, priceOrderItems } from './orderPricing.js';
 
 const QPAY_USERNAME = defineSecret('QPAY_USERNAME');
 const QPAY_PASSWORD = defineSecret('QPAY_PASSWORD');
@@ -144,6 +147,53 @@ export const createQpayInvoice = onCall(
       };
     }
 
+    // Never bill the amount on the order doc — the browser wrote it. Price the
+    // order from the menu instead (orderPricing.ts). The discount field is
+    // client-written too, so it only counts when an admin is the caller: that
+    // is the CartDrawer test-order path, the one place it is meant to be set.
+    const requestedDiscount = Number(order.adminDiscountMnt ?? 0);
+    const discountMnt =
+      requestedDiscount > 0 && (await isAdminCaller(req.auth)) ? requestedDiscount : 0;
+    const pricing = priceOrderItems(
+      order.items,
+      await loadMenuPricing(db, order.items),
+      discountMnt,
+    );
+    if (!pricing.ok) {
+      logger.warn('createQpayInvoice: order cannot be priced', {
+        orderId,
+        reason: pricing.reason,
+      });
+      throw new HttpsError('failed-precondition', `ORDER_UNPRICEABLE: ${pricing.reason}`);
+    }
+    const amountMnt = pricing.chargedMnt;
+    if (amountMnt <= 0) {
+      throw new HttpsError('failed-precondition', 'order total is zero — nothing to bill');
+    }
+
+    // Mismatch = a stale cart (cart prices are frozen in localStorage when an
+    // item is added) or a tampered order. Either way the menu wins. Correct the
+    // doc BEFORE billing: qpayWebhook confirms by comparing the paid amount to
+    // order.amountMnt, so that field must already hold the price we invoice.
+    if (
+      Math.round(Number(order.amountMnt)) !== amountMnt ||
+      Math.round(Number(order.total)) !== amountMnt
+    ) {
+      logger.warn('createQpayInvoice: order repriced from menu', {
+        orderId,
+        clientAmountMnt: order.amountMnt ?? null,
+        clientTotal: order.total ?? null,
+        amountMnt,
+        discountMnt: pricing.discountMnt,
+      });
+      await ref.update({
+        items: pricing.items,
+        total: amountMnt,
+        amountMnt,
+        ...(order.adminDiscountMnt !== undefined ? { adminDiscountMnt: pricing.discountMnt } : {}),
+      });
+    }
+
     // Wrap the QPay round-trip so failures surface useful detail to the
     // client instead of an opaque "INTERNAL".
     try {
@@ -166,7 +216,7 @@ export const createQpayInvoice = onCall(
         sender_invoice_no: orderId,
         invoice_receiver_code: 'terminal',
         invoice_description: description,
-        amount: Math.round(Number(order.amountMnt ?? order.total ?? 0)),
+        amount: amountMnt,
         callback_url: callbackUrl,
       });
 

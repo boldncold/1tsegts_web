@@ -150,6 +150,18 @@ The webhook must return HTTP 200 + body `SUCCESS` or QPay retries.
 - `createQpayInvoice` reuses the cached QR if the order already has `qpayInvoiceId`.
 - `qpayWebhook` re-fires on QPay retry are harmless — `markOrderPaid` short-circuits.
 
+### Billed amount
+`createQpayInvoice` never bills the amount on the order doc (the browser wrote
+it). It reprices the order from the `menu` docs via `functions/src/orderPricing.ts`,
+honours `adminDiscountMnt` only when the caller is an admin, and rejects
+non-positive or fractional quantities and items/portions no longer on the menu
+(`ORDER_UNPRICEABLE`, shown to the customer as "menu has changed"). On a mismatch
+(a stale localStorage cart or a tampered order) it rewrites `items`, `total` and
+`amountMnt` **before** creating the invoice, so the webhook's
+`paid == order.amountMnt` check compares against the price actually billed.
+Mismatches log `createQpayInvoice: order repriced from menu`. Unit tests:
+`cd functions && npm test`.
+
 ### Server-side expiry
 The `expirePendingQpayInvoices` scheduled function runs every 5 minutes
 (`Asia/Ulaanbaatar`). It finds `AWAITING_PAYMENT` QPay orders past their
