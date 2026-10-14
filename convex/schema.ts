@@ -58,6 +58,10 @@ export const orderFields = {
   notes: v.optional(v.string()),
   status: orderStatus, // kitchen state — never derived from paymentStatus
   timestamp: v.string(), // ISO
+  // Cancelled orders are kept, not deleted: a QPay payment can still land on
+  // one, and the webhook must be able to find it and flag it for review.
+  cancelledBy: v.optional(v.union(v.literal("customer"), v.literal("restaurant"))),
+  cancelledAt: v.optional(v.string()),
 
   paymentMethod: v.optional(paymentMethod),
   paymentStatus: v.optional(paymentStatus),
@@ -128,6 +132,13 @@ export default defineSchema({
   })
     .index("by_postedAt", ["postedAt"])
     .index("by_matchStatus", ["matchStatus"]),
+
+  // Named monotonic counters, e.g. "orderNumber". One row per name, so
+  // concurrent increments conflict and Convex retries them in order.
+  counters: defineTable({
+    name: v.string(),
+    value: v.number(),
+  }).index("by_name", ["name"]),
 
   // Admin allowlist, replacing Firestore's admin_emails + users.role.
   admins: defineTable({
