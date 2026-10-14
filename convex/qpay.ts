@@ -12,7 +12,10 @@
  *   QPAY_BASE_URL       https://merchant-sandbox.qpay.mn (sandbox) or https://merchant.qpay.mn
  *   QPAY_USERNAME, QPAY_PASSWORD, QPAY_INVOICE_CODE
  *   QPAY_CALLBACK_TOKEN random string; part of the callback URL, checked on every callback
- * The callback URL itself derives from CONVEX_SITE_URL, which Convex provides.
+ *   QPAY_CALLBACK_BASE_URL optional; production sets it to the whitelisted
+ *                       https://1tsegts.com/api/qpay/callback (see callbackBase)
+ * Without QPAY_CALLBACK_BASE_URL the callback URL derives from CONVEX_SITE_URL,
+ * which Convex provides.
  */
 
 import { ConvexError, v } from "convex/values";
@@ -81,6 +84,22 @@ export interface InvoiceReply {
   qr_image: string | null;
   qPay_shortUrl: string;
   qPay_deeplink: { name: string; description: string; logo: string; link: string }[];
+}
+
+/**
+ * Where QPay sends payment callbacks. QPay production only accepts callback
+ * hosts on its whitelist (docs/qpay/callback-whitelist-email.md), so
+ * production sets QPAY_CALLBACK_BASE_URL to a domain we own —
+ * https://1tsegts.com/api/qpay/callback, proxied to this deployment by a
+ * Vercel rewrite — and the whitelisted host survives any backend move.
+ * Without it, callbacks go straight to this deployment's own site URL.
+ */
+function callbackBase(): string {
+  const configured = process.env.QPAY_CALLBACK_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  const site = process.env.CONVEX_SITE_URL;
+  if (!site) throw new Error("CONVEX_SITE_URL is not set");
+  return `${site}${CALLBACK_PATH_PREFIX.replace(/\/$/, "")}`;
 }
 
 function notPayable(reason: string): never {
@@ -156,8 +175,6 @@ export const createInvoice = action({
     try {
       config = readQpayConfig();
       accessToken = await getQpayAccessToken(ctx, config);
-      const site = process.env.CONVEX_SITE_URL;
-      if (!site) throw new Error("CONVEX_SITE_URL is not set");
       created = await qpayCreateInvoice(config.baseUrl, accessToken, {
         invoice_code: config.invoiceCode,
         sender_invoice_no: order.id,
@@ -166,7 +183,7 @@ export const createInvoice = action({
         amount,
         // Token first, so an order id that leaks alone exposes nothing.
         callback_url:
-          `${site}${CALLBACK_PATH_PREFIX}${encodeURIComponent(config.callbackToken)}` +
+          `${callbackBase()}/${encodeURIComponent(config.callbackToken)}` +
           `/${encodeURIComponent(order.id)}`,
       });
     } catch (err) {

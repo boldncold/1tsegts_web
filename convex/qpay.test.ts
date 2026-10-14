@@ -104,6 +104,15 @@ describe("qpay.createInvoice", () => {
     expect((await order(orderId))?.qpayInvoiceId).toBe("inv-1");
   });
 
+  test("uses the whitelisted callback base when one is configured", async () => {
+    vi.stubEnv("QPAY_CALLBACK_BASE_URL", "https://1tsegts.com/api/qpay/callback/");
+    const { t, qpay, placeQpayOrder } = await setup();
+    const orderId = await placeQpayOrder();
+    await t.action(api.qpay.createInvoice, { orderId });
+    const sent = qpay.calls.find((c) => c.path === "/v2/invoice")!.body!;
+    expect(sent.callback_url).toBe(`https://1tsegts.com/api/qpay/callback/${TOKEN}/${orderId}`);
+  });
+
   test("is idempotent: a second call returns the stored invoice without calling QPay", async () => {
     const { t, qpay, placeQpayOrder } = await setup();
     const orderId = await placeQpayOrder();
