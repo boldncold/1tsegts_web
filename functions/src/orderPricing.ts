@@ -42,6 +42,9 @@ export type PricingResult =
     }
   | { ok: false; reason: string };
 
+/** The base-price choice the menu UI shows ahead of an item's real portions. */
+const DEFAULT_PORTION = 'Default';
+
 interface RawLine {
   id?: unknown;
   name?: unknown;
@@ -88,11 +91,17 @@ export function priceOrderItems(
     if (raw.selectedPortion != null) {
       const portionName = raw.selectedPortion.name;
       const portion = menuItem.portions?.find((p) => p.name === portionName);
-      if (!portion || typeof portion.price !== 'number') {
+      if (portion && typeof portion.price === 'number') {
+        unitPrice = portion.price;
+        selectedPortion = { name: portion.name, price: portion.price };
+      } else if (portionName === DEFAULT_PORTION) {
+        // The menu UI offers the base price as a pseudo-portion named 'Default'
+        // (MenuSection / TraditionalMenuSection prepend it to the real list),
+        // so it reaches the cart without existing on the menu doc.
+        selectedPortion = { name: DEFAULT_PORTION, price: unitPrice };
+      } else {
         return { ok: false, reason: `unknown_portion:${id}` };
       }
-      unitPrice = portion.price;
-      selectedPortion = { name: portion.name, price: portion.price };
     }
 
     const packagingPrice = menuItem.packagingPrice ?? 0;

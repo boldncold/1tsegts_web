@@ -6,6 +6,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **Before the server starts validating a value the client sends, grep every place the UI builds it — including placeholder values the UI invents — and test the validator with those exact values, not just the documented shape.**
+  *Why:* the server-side pricing in `createQpayInvoice` rejected the `'Default'` portion that `MenuSection` / `TraditionalMenuSection` put ahead of an item's real portions (meaning "base price"). For about two hours, a QPay order failed as "menu has changed" whenever it included one of the 30 items with portions at its default size.
+
 - **Never bill or confirm against an amount the browser wrote. Every order field (`items[].price`, `total`, `amountMnt`, `adminDiscountMnt`, `quantity`) is customer input: recompute the charge server-side from the menu (`priceOrderItems` in `functions/src/orderPricing.ts`), reject any quantity that isn't a positive integer, and honour discounts only for a verified admin caller.**
   *Why:* `firestore.rules` left `amountMnt` client-settable and `createQpayInvoice` billed it verbatim, so anyone with devtools could order ₮50,000 of food, pay ₮100, and `qpayWebhook` would confirm it as exact. A `quantity: -1` line could also cancel out another item.
 
