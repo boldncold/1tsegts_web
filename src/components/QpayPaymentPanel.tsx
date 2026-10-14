@@ -278,18 +278,27 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
   }
 
   if (error || !invoice) {
+    // createQpayInvoice prices the order from the live menu; this is its
+    // refusal when an item (or portion) has since been removed or changed.
+    const unpriceable = error?.includes('ORDER_UNPRICEABLE') ?? false;
     return (
       <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-5 space-y-2">
         <div className="flex items-center gap-2 text-red-700">
           <AlertCircle size={18} />
           <p className="font-bold text-sm uppercase tracking-widest">
-            {language === 'en' ? 'QPay unavailable' : 'QPay ажиллахгүй байна'}
+            {unpriceable
+              ? (language === 'en' ? 'Menu has changed' : 'Цэс өөрчлөгдсөн байна')
+              : (language === 'en' ? 'QPay unavailable' : 'QPay ажиллахгүй байна')}
           </p>
         </div>
         <p className="text-xs text-red-700/80 leading-relaxed">
-          {language === 'en'
-            ? 'We could not reach QPay. Please cancel this order and try cash or bank transfer.'
-            : 'QPay-тэй холбогдох боломжгүй байна. Захиалгаа цуцалж, бэлэн мөнгө эсвэл данс шилжүүлгээр дахин оролдоно уу.'}
+          {unpriceable
+            ? (language === 'en'
+              ? 'An item in this order is no longer on the menu. Please cancel this order and order again from the menu.'
+              : 'Энэ захиалгын нэг бүтээгдэхүүн цэснээс хасагдсан байна. Захиалгаа цуцалж, цэснээс дахин захиална уу.')
+            : (language === 'en'
+              ? 'We could not reach QPay. Please cancel this order and try cash or bank transfer.'
+              : 'QPay-тэй холбогдох боломжгүй байна. Захиалгаа цуцалж, бэлэн мөнгө эсвэл данс шилжүүлгээр дахин оролдоно уу.')}
         </p>
         {error && (
           <p className="text-[10px] text-red-700/60 font-mono break-words">{error}</p>
