@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/qpay/callback/:path*",
+      "destination": "https://tame-ram-325.eu-west-1.convex.site/qpay/callback/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
