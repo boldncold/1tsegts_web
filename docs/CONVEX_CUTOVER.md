@@ -26,7 +26,8 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 - [x] Unpaid QPay order offers no "Start" (server-side gate covered by tests).
 - [x] Bank tab: credit with the order's `GR-` code → *matched* on save → confirm → order CONFIRMED, entry *reconciled*.
 - [x] Edit a menu item's price → saved; stored images and orderCount unchanged.
-- [ ] Not exercised in the UI (backend tests only): image replacement, staff add/remove, store hours.
+- [x] 2026-10-15, phone width: staff add (email lowercased) and remove; store hours save on change and restore; deleting an order with a QPay invoice is refused with guidance; bank tab — manual entry defaults to local time (15:46, stored 07:46Z), matched row shows as a card with a full-width confirm, confirm → order CONFIRMED (paid by the signed-in email, kitchen status untouched) and entry reconciled.
+- [ ] Not exercised in the UI: replacing a dish photo (needs a file upload; covered by `admin.test.ts`). Try it once on dev before switch day.
 
 **QPay sandbox** (done 2026-10-14 against the public test account):
 - [x] QPay order → sandbox invoice with QR; callback URL accepted (production acceptance is 0.1); missing deep links handled.
