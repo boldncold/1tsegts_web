@@ -96,7 +96,7 @@ export default function OrdersTab({
   const filtered = orders.filter((o) => orderMatchesFilter(o, selectedDate, searchQuery));
 
   // Day summary for the selected date — computed from orders already in
-  // memory, zero extra Firestore reads. "Confirmed revenue" counts cash
+  // memory, no extra queries. "Confirmed revenue" counts cash
   // orders (money changes hands at the counter) plus online orders whose
   // payment the server verified; awaiting/expired/refunded are excluded,
   // as are admin test orders.

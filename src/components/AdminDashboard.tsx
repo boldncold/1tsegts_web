@@ -791,16 +791,15 @@ export default function AdminDashboard() {
     }
   };
 
-  // Reconciliation: asks the confirmOrderPayment cloud function to flip
-  // paymentStatus → CONFIRMED. Called from:
-  //   1. The admin "Mark Paid" button on an order card (silent=false, manual confirm)
-  //   2. The "Confirm Order" button on a matched bank tx row (silent=false, manual confirm)
-  //   3. The auto-confirm useEffect for email-ingested matched txs (silent=true)
-  // The customer's screen reacts to the Firestore change via onSnapshot in CartContext.
+  // Reconciliation: asks payments.confirmPayment to flip paymentStatus →
+  // CONFIRMED. Called from:
+  //   1. The admin "Mark Paid" button on an order card
+  //   2. The "Confirm Order" button on a matched bank tx row
+  // The customer's screen updates through the orders.track subscription in CartContext.
   //
-  // The function owns the state guard (only AWAITING_PAYMENT confirms), the
+  // The mutation owns the state guard (only AWAITING_PAYMENT confirms), the
   // idempotency, and the bank-tx reconcile write — all in one transaction. The
-  // client no longer writes paymentStatus itself.
+  // client never writes paymentStatus itself.
   const markOrderPaid = async (
     orderId: string,
     matchedTxId?: string,
@@ -847,7 +846,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // QPay refund — calls the refundQpayPayment cloud function (admin-verified).
+  // QPay refund — calls the qpay.refund action (admin-verified).
   // Card payments are auto-refunded by QPay; P2P (bank-app) payments can't be,
   // so the function returns a P2P_NOT_REFUNDABLE error we surface as guidance.
   const [refundingId, setRefundingId] = useState<string | null>(null);

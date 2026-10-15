@@ -1,7 +1,7 @@
 /**
  * QPay-related client-side config.
  *
- * Credentials and API URLs live in Cloud Functions secrets — NOT here.
+ * Credentials and API URLs live in Convex environment variables — NOT here.
  * This file only holds feature flags and presentation metadata (bank logo
  * fallbacks, ordering preference).
  */

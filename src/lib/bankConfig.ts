@@ -4,7 +4,7 @@
  * v0: hardcoded constants. Replace the placeholder values below with your
  * real Khan Bank personal-account info before testing.
  *
- * Future: move these to Firestore /settings/bank so the admin can edit them
+ * Future: move these to the Convex storeSettings table so the admin can edit them
  * without redeploying.
  */
 

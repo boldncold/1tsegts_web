@@ -26,8 +26,8 @@ import type { PaymentMethod } from '../types';
  * paymentStatus=AWAITING_PAYMENT. The customer reads off the account number,
  * makes the transfer in their banking app with the reference code in the
  * description, then waits — the admin will mark the order paid in the admin
- * dashboard, which flips paymentStatus to CONFIRMED, which the existing
- * onSnapshot listener in CartContext picks up and surfaces as a toast.
+ * dashboard, which flips paymentStatus to CONFIRMED, which the orders.track
+ * subscription in CartContext picks up and surfaces as a toast.
  */
 function BankPaymentPanel({ order }: { order: any }) {
   const { language } = useLanguage();
