@@ -143,6 +143,22 @@ describe("kitchen status", () => {
     expect(await get(unpaid)).toBeNull();
   });
 
+  test("an order with a QPay invoice cannot be deleted, since the invoice can still be paid", async () => {
+    const { owner, insertOrder, get } = await setup();
+    const invoiced = { paymentMethod: "qpay", qpayInvoiceId: "inv-1" };
+    const expired = await insertOrder({ ...invoiced, paymentStatus: "EXPIRED" });
+    const awaiting = await insertOrder({ ...invoiced, paymentStatus: "AWAITING_PAYMENT", status: "cancelled" });
+    const test = await insertOrder({ ...invoiced, paymentStatus: "AWAITING_PAYMENT", isTest: true });
+    const noInvoice = await insertOrder({ paymentMethod: "qpay", paymentStatus: "EXPIRED" });
+    await expect(owner.mutation(api.ordersAdmin.remove, { orderId: expired })).rejects.toThrow(/HAS_QPAY_INVOICE/);
+    await expect(owner.mutation(api.ordersAdmin.remove, { orderId: awaiting })).rejects.toThrow(/HAS_QPAY_INVOICE/);
+    await owner.mutation(api.ordersAdmin.remove, { orderId: test });
+    await owner.mutation(api.ordersAdmin.remove, { orderId: noInvoice });
+    expect(await get(expired)).not.toBeNull();
+    expect(await get(test)).toBeNull();
+    expect(await get(noInvoice)).toBeNull();
+  });
+
   test("a counter order is priced on the server and goes straight to the kitchen", async () => {
     const { owner, menuId, get } = await setup();
     const { orderId, orderNumber } = await owner.mutation(api.ordersAdmin.createCounterOrder, {
@@ -179,6 +195,22 @@ describe("confirming payments", () => {
 
     expect(await owner.mutation(api.payments.confirmPayment, { orderId })).toEqual({ updated: false, reason: "already_confirmed" });
     await expect(t.mutation(api.payments.confirmPayment, { orderId })).rejects.toThrow(/NOT_ADMIN/);
+  });
+
+  test("a bank entry already reconciled against one order cannot confirm another", async () => {
+    const { owner, insertOrder, get } = await setup();
+    const awaiting = { paymentMethod: "bank_transfer", paymentStatus: "AWAITING_PAYMENT", amountMnt: 12000 };
+    const first = await insertOrder({ ...awaiting, referenceCode: "GR-AAA234" });
+    const second = await insertOrder({ ...awaiting, referenceCode: "GR-BBB234" });
+    const txId = await owner.mutation(api.bank.add, { amountMnt: 12000, description: "GR-AAA234", postedAt: new Date().toISOString() });
+    await owner.mutation(api.payments.confirmPayment, { orderId: first, bankTxId: txId });
+
+    expect(await owner.mutation(api.payments.confirmPayment, { orderId: second, bankTxId: txId })).toEqual({
+      updated: false,
+      reason: "bad_state:bank_entry_already_used",
+    });
+    expect((await get(second))?.paymentStatus).toBe("AWAITING_PAYMENT");
+    expect(await get(txId)).toMatchObject({ matchStatus: "reconciled", matchedOrderId: first });
   });
 });
 

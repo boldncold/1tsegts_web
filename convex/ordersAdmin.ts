@@ -60,9 +60,10 @@ export const setStatus = mutation({
 });
 
 /**
- * Delete an order — only one that holds no money. A confirmed, refunded or
- * under-review payment is a financial record; admin test orders are the
- * exception, since their "payment" is a zero-charge confirmation.
+ * Delete an order — only one that holds no money and can't receive any. A
+ * confirmed, refunded or under-review payment is a financial record, and an
+ * issued QPay invoice can still be paid; admin test orders are the exception,
+ * since their "payment" is a zero-charge confirmation.
  */
 export const remove = mutation({
   args: { orderId: v.id("orders") },
@@ -76,6 +77,12 @@ export const remove = mutation({
       order.paymentStatus === "MANUAL_REVIEW";
     if (holdsMoney && !order.isTest) {
       throw new ConvexError({ code: "HOLDS_PAYMENT", reason: order.paymentStatus });
+    }
+    // Its QPay invoice can still be paid (closing it at QPay is best-effort),
+    // and the callback would then find no order to confirm or flag — money in
+    // with nothing to show for it. Cancelling keeps the record instead.
+    if (order.qpayInvoiceId && !order.isTest) {
+      throw new ConvexError({ code: "HAS_QPAY_INVOICE" });
     }
     await ctx.db.delete(orderId);
   },

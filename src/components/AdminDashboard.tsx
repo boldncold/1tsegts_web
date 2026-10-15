@@ -935,10 +935,14 @@ export default function AdminDashboard() {
         toast.success('Order deleted');
       } catch (error) {
         console.error('Error deleting order:', error);
-        // Paid, refunded and under-review orders are financial records.
-        toast.error(errorCode(error) === 'HOLDS_PAYMENT'
+        // Paid, refunded and under-review orders are financial records; an
+        // issued QPay invoice can still be paid.
+        const code = errorCode(error);
+        toast.error(code === 'HOLDS_PAYMENT'
           ? 'This order holds a payment and cannot be deleted. Cancel or refund it instead.'
-          : 'Failed to delete order');
+          : code === 'HAS_QPAY_INVOICE'
+            ? 'This order has a QPay invoice that could still be paid, so it cannot be deleted. Cancel it instead.'
+            : 'Failed to delete order');
       }
     }
   };

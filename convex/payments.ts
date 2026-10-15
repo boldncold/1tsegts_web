@@ -86,6 +86,13 @@ export async function markPaid(
     return { updated: false, reason: `bad_state:${order.paymentStatus ?? "none"}` };
   }
 
+  // One bank credit settles one order: an entry already reconciled against a
+  // different order must not confirm this one too.
+  const tx = meta.bankTxId ? await ctx.db.get(meta.bankTxId) : null;
+  if (tx?.matchStatus === "reconciled" && tx.matchedOrderId !== orderId) {
+    return { updated: false, reason: "bad_state:bank_entry_already_used" };
+  }
+
   await ctx.db.patch(orderId, {
     paymentStatus: "CONFIRMED",
     paidAt: new Date().toISOString(),
@@ -102,10 +109,7 @@ export async function markPaid(
     qpayQrImage: undefined,
   });
 
-  if (meta.bankTxId) {
-    const tx = await ctx.db.get(meta.bankTxId);
-    if (tx) await ctx.db.patch(tx._id, { matchStatus: "reconciled", matchedOrderId: orderId });
-  }
+  if (tx) await ctx.db.patch(tx._id, { matchStatus: "reconciled", matchedOrderId: orderId });
   return { updated: true };
 }
 
