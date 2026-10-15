@@ -467,7 +467,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       {pendingOrderData.items?.map((item: any, idx: number) => (
                         <div key={idx} className="flex justify-between text-xs text-white/50">
                           <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/70"> ({item.selectedPortion.name})</span>}</span>
-                          <span className="tabular-nums text-white/70 font-medium">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
+                          <span className="tabular-nums text-white/70 font-medium">₮{((item.price + (item.packaging ? item.packagingPrice || 0 : 0)) * item.quantity).toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
@@ -649,7 +649,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             {pendingOrderData.items?.map((item: any, idx: number) => (
                               <div key={idx} className="flex justify-between text-xs text-stone-400">
                                 <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/60"> ({item.selectedPortion.name})</span>}</span>
-                                <span className="tabular-nums text-stone-300">₮{((item.price * item.quantity) + (item.packagingPrice || 0) * item.quantity).toLocaleString()}</span>
+                                <span className="tabular-nums text-stone-300">₮{((item.price + (item.packaging ? item.packagingPrice || 0 : 0)) * item.quantity).toLocaleString()}</span>
                               </div>
                             ))}
                           </div>

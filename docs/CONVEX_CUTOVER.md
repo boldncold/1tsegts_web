@@ -64,6 +64,16 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 
 ## 3. Cutover (quiet hour, ~45 min)
 
+> **Done 2026-10-15, 16:14–16:29 (Ulaanbaatar).** Live store closed in the old
+> admin; Firestore held no orders; final import into production: menu 41/41
+> (the 6 demo dishes removed), settings 1, orders 0; PR #10 merged 16:21 and
+> Vercel served the Convex build within a minute; staff re-added (3); cash smoke
+> test placed, marked paid and deleted; store reopened 16:29. The real QPay order
+> of 3.7 was skipped at the owner's call, so the first customer QPay payment is
+> the first live proof of the paid path. Watch it in the dashboard and the
+> Convex logs. Found in the smoke test: the order confirmation added packaging
+> to unpacked lines (display only), fixed in PR #11.
+
 | # | Who | Step | Check |
 |---|-----|------|-------|
 | 3.1 | — | Gate: 0.1 done (prod invoice created with the `www` callback), section 1 all ticked, section 2 done — 2.9 after the last `convex/` change. | — |
