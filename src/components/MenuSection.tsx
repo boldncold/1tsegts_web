@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingCart, Star, Filter, Search, Flame, Users, Gem, Clock, ShieldCheck } from 'lucide-react';
+import { Plus, Minus, Search, Flame, Clock, ShieldCheck } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { MenuItem, Category, Portion } from '../types';
@@ -127,6 +127,9 @@ export default function MenuSection() {
     .sort((a, b) => b - a)
     .slice(0, 15);
   const popularThreshold = top15OrderCounts.length > 0 ? top15OrderCounts[top15OrderCounts.length - 1] : Infinity;
+  // The badge is stricter than the sort boost: on a ~40-dish menu, "top 15" would
+  // label a third of the cards, and a badge on everything means nothing.
+  const badgeThreshold = top15OrderCounts.length >= 5 ? top15OrderCounts[4] : Infinity;
 
   // Smart Sorting Algorithm using Point System
   const sortedItems = [...filteredItems].sort((a, b) => {
@@ -190,23 +193,14 @@ export default function MenuSection() {
   return (
     <section id="menu-section" className="py-24 bg-[var(--surface-page)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-4"
-          >
-            <span className="eyebrow">{t('menu.selection')}</span>
-            {isAdmin && (
-              <span className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full border border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--gold)]">
-                <ShieldCheck size={13} />
-                {t('cart.admin.test_mode_hint')}
-              </span>
-            )}
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white">{t('menu.title')}</h2>
-            <div className="w-16 h-px bg-[#D4AF37] mx-auto mt-2 opacity-60"></div>
-          </motion.div>
+        <div className="text-center mb-12 flex flex-col items-center gap-4">
+          {isAdmin && (
+            <span className="label inline-flex items-center gap-1.5 rounded-full border border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] px-3 py-1.5">
+              <ShieldCheck size={14} />
+              {t('cart.admin.test_mode_hint')}
+            </span>
+          )}
+          <h2>{t('menu.title')}</h2>
         </div>
 
         {/* Search and Filter Bar */}
@@ -218,10 +212,10 @@ export default function MenuSection() {
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "px-5 py-2.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 border",
+                  "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
                   activeCategory === cat
-                    ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37] font-semibold shadow-[var(--shadow-btn-gold)]"
-                    : "bg-transparent text-white/50 border-white/15 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:bg-white/[0.04]"
+                    ? "bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]"
+                    : "bg-transparent text-[var(--text-secondary)] border-[var(--white-15)] hover:border-[var(--gold)] hover:text-[var(--gold)]"
                 )}
               >
                 {getCategoryLabel(cat)}
@@ -236,7 +230,7 @@ export default function MenuSection() {
               placeholder={t('menu.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/15 rounded-full px-12 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+              className="w-full bg-[var(--white-04)] border border-[var(--white-15)] rounded-full px-12 py-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] transition-colors"
             />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
           </div>
@@ -245,7 +239,7 @@ export default function MenuSection() {
         {/* Menu Grid */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-[var(--gold)] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grid-flow-row-dense">
@@ -253,16 +247,12 @@ export default function MenuSection() {
               {sortedItems.map((item) => {
                 const currentPortion = selectedPortions[item.id] || (item.portions && item.portions.length > 0 ? { name: 'Default', price: item.price } : undefined);
                 const displayPrice = currentPortion ? currentPortion.price : item.price;
-                const hasManyPortions = item.portions && item.portions.length >= 2;
                 const { isAvailable } = getDynamicStatus(item);
                 const canOrder = isAdmin || (isAvailable && effectiveStoreOpen);
 
                 const isDrink = item.category === 'Drinks';
-                const isPopular = !isDrink && popularThreshold !== Infinity && item.orderCount !== undefined && item.orderCount > 0 && item.orderCount >= popularThreshold;
-                const minPrice = Math.min(item.price, ...(item.portions?.map(p => p.price) || []));
-                const isLuxury = !isDrink && minPrice > 20000;
-                const isForGroups = hasManyPortions;
-                const scheduleLabel = getScheduleLabel(item);
+                const isPopular = !isDrink && (item.orderCount ?? 0) > 0 && (item.orderCount ?? 0) >= badgeThreshold;
+                const isTodayOnly = getScheduleLabel(item) === 'Today Only';
                 const isSpicy = item.tags?.includes('spicy');
                 const qty = quantities[item.id] || 1;
 
@@ -299,88 +289,61 @@ export default function MenuSection() {
                       {/* Sold out overlay */}
                       {!isAvailable && (
                         <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] flex items-center justify-center z-10">
-                          <span className="bg-white text-stone-900 px-5 py-1.5 rounded-full font-bold tracking-[0.18em] uppercase text-[11px] shadow-xl">
+                          <span className="bg-white text-[var(--stone-900)] px-4 py-1.5 rounded-full text-sm font-semibold">
                             {t('menu.sold_out')}
                           </span>
                         </div>
                       )}
 
-                      {/* Badges — top left, stacked */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-20">
-                        {item.featured && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Star size={9} className="fill-white" /> Featured
-                          </span>
-                        )}
-                        {isPopular && (
-                          <span className="inline-flex items-center gap-1 bg-orange-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Flame size={9} className="fill-white" /> Popular
-                          </span>
-                        )}
-                        {isSpicy && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(139,0,0,0.9)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Flame size={9} /> Spicy
-                          </span>
-                        )}
-                        {isLuxury && (
-                          <span className="inline-flex items-center gap-1 bg-purple-600/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Gem size={9} className="fill-white" /> Luxury
-                          </span>
-                        )}
-                        {isForGroups && (
-                          <span className="inline-flex items-center gap-1 bg-blue-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Users size={9} /> Groups
-                          </span>
-                        )}
-                        {scheduleLabel && (
-                          <span className="inline-flex items-center gap-1 bg-stone-900/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Clock size={9} /> {scheduleLabel}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Price pill — top right */}
-                      <div className="absolute top-3 right-3 z-20 bg-[rgba(21,16,10,0.85)] backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-[rgba(212,175,55,0.25)]">
-                        <span className="font-bold text-[13px] text-[#D4AF37] tabular-nums">₮{Math.round(displayPrice).toLocaleString()}</span>
-                      </div>
+                      {/* Only facts a customer can act on: today-only, spicy, genuinely top sellers. */}
+                      {(isTodayOnly || isSpicy || isPopular) && (
+                        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-20">
+                          {isTodayOnly && (
+                            <span className="menu-badge">
+                              <Clock size={12} aria-hidden /> {t('menu.badge_today')}
+                            </span>
+                          )}
+                          {isSpicy && (
+                            <span className="menu-badge spicy">
+                              <Flame size={12} aria-hidden /> {t('menu.badge_spicy')}
+                            </span>
+                          )}
+                          {isPopular && <span className="menu-badge">{t('menu.badge_popular')}</span>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Body */}
-                    <div className="p-[18px_20px_20px] flex flex-col flex-1" style={{ padding: '18px 20px 20px' }}>
-                      {/* Category */}
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-1">
+                    <div className="flex flex-col flex-1 p-5">
+                      <p className="label !text-[var(--text-muted)] mb-1">
                         {getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}
                       </p>
-                      {/* Name */}
-                      <h3 className="font-serif font-bold text-[17px] leading-snug text-white mb-2 group-hover:text-[#D4AF37] transition-colors" style={{ letterSpacing: '-0.005em' }}>
+                      <h3 className="mb-2 group-hover:text-[var(--gold)] transition-colors">
                         {item.name}
                       </h3>
-                      {/* Description */}
-                      <p className={cn(
-                        "text-white/45 font-light leading-[1.55] mb-3 flex-1",
-                        "line-clamp-2"
-                      )} style={{ fontSize: '13px' }}>
+                      <p className="text-sm text-[var(--text-muted)] mb-4 flex-1 line-clamp-2">
                         {item.description}
                       </p>
 
-                      {/* Portion selector */}
+                      {/* Portion selector. 'Default' (the base price) is the value the
+                          server prices; only its on-screen label is translated. */}
                       {item.portions && item.portions.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-2">Select Portion</p>
+                        <div className="mb-4">
+                          <p className="label !text-[var(--text-muted)] mb-2">{t('menu.select_portion')}</p>
                           <div className="grid gap-1.5 grid-cols-1">
                             {[{ name: 'Default', price: item.price }, ...item.portions].map((portion, idx) => (
                               <button
                                 key={idx}
                                 onClick={() => handlePortionSelect(item.id, portion)}
                                 className={cn(
-                                  "flex justify-between items-center px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all border",
+                                  "flex justify-between items-center px-4 py-2 rounded-full text-sm transition-colors border",
                                   currentPortion?.name === portion.name
-                                    ? "bg-[rgba(212,175,55,0.1)] text-[#D4AF37] border-[rgba(212,175,55,0.5)]"
-                                    : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[rgba(212,175,55,0.35)] hover:text-white/70"
+                                    ? "bg-[var(--gold-soft-10)] text-[var(--gold)] border-[var(--gold-soft-40)]"
+                                    : "bg-[var(--white-04)] text-[var(--text-secondary)] border-[var(--white-15)] hover:border-[var(--gold-soft-35)]"
                                 )}
                               >
-                                <span>{portion.name}</span>
-                                <span className="tabular-nums font-bold">₮{portion.price.toLocaleString()}</span>
+                                <span>{portion.name === 'Default' ? t('menu.portion_default') : portion.name}</span>
+                                <span className="tabular-nums font-semibold">₮{portion.price.toLocaleString()}</span>
                               </button>
                             ))}
                           </div>
@@ -388,28 +351,27 @@ export default function MenuSection() {
                       )}
 
                       {/* Bottom row: price + qty stepper / add button */}
-                      <div className="flex items-center justify-between pt-3.5 border-t border-white/[0.06] mt-auto gap-3">
-                        {/* Price (bottom left) */}
-                        <span className="font-serif font-bold text-[#D4AF37] text-[17px] tabular-nums leading-none">
+                      <div className="flex items-center justify-between pt-4 border-t border-[var(--border-subtle)] mt-auto gap-3">
+                        <span className="price">
                           ₮{Math.round(displayPrice).toLocaleString()}
                         </span>
 
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Qty stepper — only for single-portion items */}
                           {(!item.portions || item.portions.length === 0) && canOrder && (
-                            <div className="inline-flex items-center gap-1 bg-[#1a1510] rounded-full p-1">
+                            <div className="inline-flex items-center gap-1 bg-[var(--espresso-2)] rounded-full p-1">
                               <button
                                 onClick={() => handleQuantityChange(item.id, -1)}
-                                className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[#D4AF37] hover:bg-white/10 transition-colors"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--gold)] hover:bg-[var(--white-06)] transition-colors"
                               >
-                                <Minus size={11} />
+                                <Minus size={14} />
                               </button>
-                              <span className="min-w-[18px] text-center text-[13px] font-bold text-white tabular-nums">{qty}</span>
+                              <span className="min-w-[20px] text-center text-sm font-semibold text-white tabular-nums">{qty}</span>
                               <button
                                 onClick={() => handleQuantityChange(item.id, 1)}
-                                className="w-[26px] h-[26px] rounded-full bg-[#D4AF37] flex items-center justify-center text-[#1a1510] hover:bg-[#C5A028] transition-colors"
+                                className="w-8 h-8 rounded-full bg-[var(--gold)] flex items-center justify-center text-[var(--text-on-gold)] hover:bg-[var(--gold-hover)] transition-colors"
                               >
-                                <Plus size={11} />
+                                <Plus size={14} />
                               </button>
                             </div>
                           )}
@@ -422,13 +384,13 @@ export default function MenuSection() {
                             }}
                             disabled={!canOrder}
                             className={cn(
-                              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
+                              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-colors active:scale-95",
                               canOrder
-                                ? "bg-[#D4AF37] text-[#080606] hover:bg-[#C5A028] shadow-sm"
-                                : "bg-white/[0.06] text-white/40 cursor-not-allowed"
+                                ? "bg-[var(--gold)] text-[var(--text-on-gold)] hover:bg-[var(--gold-hover)]"
+                                : "bg-[var(--white-06)] text-[var(--text-muted)] cursor-not-allowed"
                             )}
                           >
-                            <Plus size={12} />
+                            <Plus size={14} />
                             {isAdmin
                               ? t('menu.add_to_cart')
                               : !effectiveStoreOpen
@@ -449,7 +411,7 @@ export default function MenuSection() {
 
         {!loading && filteredItems.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-white/45 text-lg italic">{t('menu.no_items')}</p>
+            <p className="text-[var(--text-muted)]">{t('menu.no_items')}</p>
           </div>
         )}
       </div>

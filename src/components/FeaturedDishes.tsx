@@ -72,16 +72,8 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
         gap: 16,
       }}>
         <div>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>
-          {language === 'en' ? 'Selected' : 'Онцлох'}
-        </div>
-        <h2 style={{
-          fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 25 : 30, lineHeight: 1.05,
-          letterSpacing: '-0.018em', margin: 0, color: '#fff',
-        }}>
-          {language === 'en' ? (
-            <>Featured <em style={{ color: 'var(--gold)', fontStyle: 'italic', fontWeight: 500 }}>Dishes</em></>
-          ) : 'Онцлох хоол'}
+        <h2 style={{ margin: 0 }}>
+          {language === 'en' ? 'Featured dishes' : 'Онцлох хоол'}
         </h2>
         </div>
         <Link
@@ -91,20 +83,18 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
             alignItems: 'center',
             gap: 6,
             color: 'var(--gold)',
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
+            fontSize: 14,
+            fontWeight: 600,
             paddingBottom: 5,
             whiteSpace: 'nowrap',
           }}
         >
-          {language === 'en' ? 'All' : 'Бүгд'} <ArrowRight size={11} />
+          {language === 'en' ? 'Full menu' : 'Бүтэн цэс'} <ArrowRight size={14} />
         </Link>
       </div>
 
       {variant === 'stack'
-        ? <StackDeck list={list} onTap={(d) => setExpanded(d.id)} />
+        ? <StackDeck list={list} onTap={(d) => setExpanded(d.id)} language={language} />
         : <MarqueeBelt list={list} onTap={(d) => setExpanded(d.id)} paused={expanded != null} language={language} />
       }
 
@@ -126,7 +116,7 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
 }
 
 // ─── STACK DECK ──────────────────────────────────────────────
-function StackDeck({ list, onTap }: { list: MenuItem[]; onTap: (d: MenuItem) => void }) {
+function StackDeck({ list, onTap, language = 'en' }: { list: MenuItem[]; onTap: (d: MenuItem) => void; language?: string }) {
   const [order, setOrder] = useState(() => list.map((_, i) => i));
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
   const [exiting, setExiting] = useState<{ direction: number } | null>(null);
@@ -266,14 +256,14 @@ function StackDeck({ list, onTap }: { list: MenuItem[]; onTap: (d: MenuItem) => 
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+            fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const,
             color: 'var(--stone-500)', fontVariantNumeric: 'tabular-nums',
           }}>
             <span style={{ color: 'var(--stone-900)' }}>{String(order[0] + 1).padStart(2, '0')}</span>
             <span style={{ opacity: 0.4 }}> / {String(list.length).padStart(2, '0')}</span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--stone-400)', letterSpacing: '0.04em' }}>
-            Swipe or tap to view
+          <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>
+            {language === 'en' ? 'Swipe or tap to view' : 'Гүйлгэх эсвэл дарж үзэх'}
           </div>
         </div>
 
@@ -468,12 +458,12 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
                 <ArrowRight size={isMobile ? 18 : 22} color="var(--stone-950)" />
               </div>
               <h3 style={{
-                fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isMobile ? 15 : 18,
+                fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 20,
                 color: 'var(--stone-950)', margin: '0 0 8px',
               }}>
-                {language === 'en' ? 'Explore Full Menu' : 'Бүтэн цэс'}
+                {language === 'en' ? 'Full menu' : 'Бүтэн цэс'}
               </h3>
-              <p style={{ fontSize: isMobile ? 11 : 12, color: 'rgba(12,10,9,0.65)', margin: 0, lineHeight: 1.4 }}>
+              <p style={{ fontSize: isMobile ? 12 : 14, color: 'rgba(12,10,9,0.7)', margin: 0, lineHeight: 1.4 }}>
                 {language === 'en' ? 'Discover all our dishes' : 'Бүх хоолтой танилцах'}
               </p>
             </Link>
@@ -503,8 +493,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
       <div style={{
         marginTop: isMobile ? 14 : 18, padding: '0 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-        fontSize: isMobile ? 10 : 11, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase' as const,
-        color: 'var(--stone-400)',
+        fontSize: 12, color: 'var(--stone-400)',
       }}>
         <ArrowRight size={11} style={{ transform: 'rotate(180deg)' }} />
         <span>{language === 'en' ? 'Drag to slow · Tap to open' : 'Чирж удаашруул · Дарж нээ'}</span>
@@ -564,23 +553,23 @@ function CardInfo({ dish, compact = false, mobile = false }: { dish: MenuItem; c
     }}>
       <h3 style={{
         fontFamily: 'var(--font-serif)', fontWeight: 700,
-        fontSize: small ? 15 : compact ? 18 : 24, lineHeight: 1.15, letterSpacing: '-0.012em',
+        fontSize: small ? 16 : compact ? 20 : 28, lineHeight: 1.15, letterSpacing: '-0.01em',
         margin: '0 0 5px', color: '#fff',
         textShadow: '0 2px 14px rgba(0,0,0,0.4)',
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
       }}>{dish.name}</h3>
       {!small && (
         <p style={{
-          fontSize: compact ? 11.5 : 13, lineHeight: 1.4, color: 'rgba(255,255,255,0.78)',
+          fontSize: compact ? 12 : 14, lineHeight: 1.4, color: 'rgba(255,255,255,0.78)',
           margin: '0 0 12px',
           display: '-webkit-box', WebkitLineClamp: compact ? 1 : 2, WebkitBoxOrient: 'vertical' as const,
           overflow: 'hidden',
         }}>{dish.description}</p>
       )}
       <div style={{
-        fontFamily: 'var(--font-serif)', fontWeight: 700,
-        fontSize: small ? 14 : compact ? 16 : 19, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
-        letterSpacing: '0.01em', marginTop: small ? 4 : 0,
+        fontWeight: 600,
+        fontSize: small ? 14 : compact ? 16 : 20, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
+        marginTop: small ? 4 : 0,
       }}>₮{minPrice.toLocaleString()}</div>
     </div>
   );
@@ -673,7 +662,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
             <span style={{
               position: 'absolute', bottom: 14, left: 14,
               background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)',
-              color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase' as const,
+              color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const,
               padding: '6px 12px', borderRadius: 999,
             }}>{cuisineLabel}</span>
           )}
@@ -681,7 +670,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
 
         <div style={{ padding: '20px 24px 24px', overflowY: 'auto' }}>
           <h3 style={{
-            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 26, color: 'var(--stone-900)',
+            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 28, color: 'var(--stone-900)',
             margin: '0 0 10px', letterSpacing: '-0.01em',
           }}>{dish.name}</h3>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--stone-500)', margin: '0 0 22px' }}>
@@ -689,7 +678,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: 'var(--stone-500)' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--stone-500)' }}>
               {language === 'en' ? 'Quantity' : 'Тоо ширхэг'}
             </span>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1510', color: '#fff', borderRadius: 999, padding: 5 }}>
@@ -697,7 +686,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
                 background: 'transparent', border: 'none', color: 'var(--gold)', width: 32, height: 32,
                 borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               }}><Minus size={14} /></button>
-              <span style={{ minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>{qty}</span>
+              <span style={{ minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: 600 }}>{qty}</span>
               <button onClick={() => setQty(q => q + 1)} style={{
                 background: 'var(--gold)', border: 'none', color: '#1a1510', width: 32, height: 32,
                 borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -707,15 +696,15 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
 
           <button onClick={() => onAdd({ ...dish, qty })} style={{
             width: '100%', background: 'var(--gold)', color: 'var(--stone-950)', border: 'none', borderRadius: 999,
-            padding: '15px 22px', fontSize: 13, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' as const,
+            padding: '14px 22px', fontSize: 16, fontWeight: 600,
             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between',
             fontFamily: 'var(--font-sans)',
             boxShadow: 'var(--shadow-btn-gold)',
           }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <Plus size={14} /> {language === 'en' ? 'Add to Cart' : 'Сагсанд нэмэх'}
+              <Plus size={16} /> {language === 'en' ? 'Add to cart' : 'Сагсанд нэмэх'}
             </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-serif)', fontSize: 16, letterSpacing: 0 }}>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
               ₮{(minPrice * qty).toLocaleString()}
             </span>
           </button>

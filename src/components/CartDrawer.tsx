@@ -64,7 +64,7 @@ function BankPaymentPanel({ order }: { order: any }) {
   }) => (
     <div className="flex items-center justify-between gap-3 py-2.5 border-b border-stone-200 last:border-b-0">
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-0.5">{label}</p>
+        <p className="text-xs uppercase tracking-[0.06em] text-stone-500 font-semibold mb-0.5">{label}</p>
         <p className={cn(
           "text-stone-900 font-semibold truncate",
           mono ? "tabular-nums text-base" : "text-sm"
@@ -74,7 +74,7 @@ function BankPaymentPanel({ order }: { order: any }) {
         type="button"
         onClick={() => copy(value, field)}
         className={cn(
-          "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-full border transition-all flex items-center gap-1.5 shrink-0",
+          "px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] rounded-full border transition-all flex items-center gap-1.5 shrink-0",
           copiedField === field
             ? "bg-green-50 text-green-700 border-green-200"
             : "bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900"
@@ -94,7 +94,7 @@ function BankPaymentPanel({ order }: { order: any }) {
       <div className="bg-amber-400 px-5 py-3 flex items-center gap-3">
         <Banknote size={22} className="text-stone-900" />
         <div className="flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900/70">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-900/70">
             {language === 'en' ? 'Awaiting Payment' : 'Төлбөр хүлээгдэж байна'}
           </p>
           <p className="text-sm font-bold text-stone-900">
@@ -411,7 +411,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 pendingOrderData.paymentStatus === 'AWAITING_PAYMENT' && (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full mb-6 py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
+                  className="w-full mb-6 py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
                 >
                   {language === 'en' ? 'Cancel Order' : 'Захиалга цуцлах'}
                 </button>
@@ -427,13 +427,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   {/* Header bar */}
                   <div className="bg-stone-900 px-5 py-4 flex justify-between items-center">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37] mb-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#D4AF37] mb-1">
                         {language === 'en' ? 'Active Order' : 'Идэвхтэй захиалга'}
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="text-3xl font-bold text-white tabular-nums">#{pendingOrderData.orderNumber}</span>
                         <span className={cn(
-                          "px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-widest animate-pulse",
+                          "px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-[0.06em] animate-pulse",
                           pendingOrderData.status === 'pending' ? "bg-[#D4AF37] text-stone-900" : "bg-green-500 text-white"
                         )}>
                           {pendingOrderData.status === 'pending'
@@ -441,7 +441,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             : (language === 'en' ? 'Ready!' : 'Бэлэн!')}
                         </span>
                         {paidOnline && (
-                          <span className="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-widest bg-green-500/15 text-green-400 border border-green-500/30 whitespace-nowrap">
+                          <span className="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-[0.06em] bg-green-500/15 text-green-400 border border-green-500/30 whitespace-nowrap">
                             ₮ {language === 'en' ? 'Paid' : 'Төлөгдсөн'}
                           </span>
                         )}
@@ -472,7 +472,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       ))}
                     </div>
                     <div className="pt-2 border-t border-white/[0.06] flex justify-between items-center">
-                      <span className="text-xs font-semibold text-white/45 uppercase tracking-widest">{t('cart.total')}</span>
+                      <span className="text-xs font-semibold text-white/45 uppercase tracking-[0.06em]">{t('cart.total')}</span>
                       <span className="text-xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                     </div>
                     <p className="text-sm font-bold text-[#D4AF37] text-center pt-1 tracking-wide">
@@ -511,7 +511,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       setOrderComplete(false);
                       setIsCheckingOut(false);
                     }}
-                    className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[#C5A028] transition-all"
+                    className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[#C5A028] transition-all"
                   >
                     {language === 'en' ? 'Order again' : 'Дахин захиалах'}
                   </button>
@@ -638,7 +638,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   {/* Order number — large & prominent */}
                   {orderNumber && (
                     <div className="w-full bg-stone-900 rounded-2xl p-6 text-center">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-2">{t('cart.order_number')}</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-400 mb-2">{t('cart.order_number')}</p>
                       <p className="font-serif font-bold leading-none tabular-nums" style={{ fontSize: '96px' }}>
                         <span className="text-[#D4AF37]">{orderNumber[0]}</span>
                         <span className="text-white">{orderNumber.slice(1)}</span>
@@ -654,7 +654,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             ))}
                           </div>
                           <div className="mt-3 pt-3 border-t border-stone-700 flex justify-between items-center">
-                            <span className="text-xs font-semibold text-stone-400 uppercase tracking-widest">{t('cart.total')}</span>
+                            <span className="text-xs font-semibold text-stone-400 uppercase tracking-[0.06em]">{t('cart.total')}</span>
                             <span className="text-2xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                           </div>
                         </>
@@ -677,7 +677,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         setIsCheckingOut(false);
                         onClose();
                       }}
-                      className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[#C5A028] transition-all"
+                      className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[#C5A028] transition-all"
                     >
                       {t('cart.back_to_menu')}
                     </button>
@@ -685,7 +685,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {pendingOrderId && !paidOnline && (
                       <button
                         onClick={() => setShowCancelConfirm(true)}
-                        className="w-full py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
+                        className="w-full py-3 bg-red-500/10 border border-red-500/50 text-red-500 font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-red-500 hover:text-white transition-all text-xs"
                       >
                         {language === 'en' ? 'Cancel Order' : 'Захиалга цуцлах'}
                       </button>
@@ -695,10 +695,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               ) : (cart.length === 0 && !pendingOrderId) ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                   <ShoppingBag className="text-[#D4AF37]/40" size={64} />
-                  <p className="text-white/45 font-light italic">{t('cart.empty')}</p>
+                  <p className="text-white/45 italic">{t('cart.empty')}</p>
                   <button
                     onClick={onClose}
-                    className="text-[#D4AF37] font-semibold uppercase tracking-[0.15em] text-xs hover:underline"
+                    className="text-[#D4AF37] font-semibold uppercase tracking-[0.06em] text-xs hover:underline"
                   >
                     {t('cart.start_adding')}
                   </button>
@@ -710,13 +710,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     
                     {/* Order Type Toggle */}
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.order_option')}</label>
+                      <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">{t('cart.order_option')}</label>
                       <div className="flex p-1 bg-white/[0.04] border border-white/15 rounded-full">
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, orderType: 'pickup' })}
                           className={cn(
-                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
+                            "flex-1 py-2 text-xs uppercase tracking-[0.06em] font-semibold rounded-full transition-all",
                             formData.orderType === 'pickup' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
                           )}
                         >
@@ -726,7 +726,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           type="button"
                           onClick={() => setFormData({ ...formData, orderType: 'kiosk' })}
                           className={cn(
-                            "flex-1 py-2 text-[10px] uppercase tracking-[0.2em] font-semibold rounded-full transition-all",
+                            "flex-1 py-2 text-xs uppercase tracking-[0.06em] font-semibold rounded-full transition-all",
                             formData.orderType === 'kiosk' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
                           )}
                         >
@@ -740,7 +740,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {formData.orderType === 'kiosk' && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.phone')}</label>
+                          <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">{t('cart.phone')}</label>
                           <input
                             required
                             type="text"
@@ -752,7 +752,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.kiosk_number')}</label>
+                          <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">{t('cart.kiosk_number')}</label>
                           <input
                             required
                             type="text"
@@ -764,7 +764,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">{t('cart.special_notes')}</label>
+                          <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">{t('cart.special_notes')}</label>
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -776,10 +776,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     )}
                     {isAdmin && (
                       <div className="space-y-2">
-                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[10px] uppercase tracking-[0.2em] text-amber-800 font-semibold text-center">
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs uppercase tracking-[0.06em] text-amber-800 font-semibold text-center">
                           {t('cart.admin.test_mode_hint')}
                         </div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">
+                        <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">
                           {t('cart.admin.discount_label')}
                         </label>
                         <input
@@ -793,7 +793,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           placeholder="0"
                         />
                         {chargedTotal === 0 && clampedDiscount > 0 && (
-                          <p className="text-[11px] text-amber-700 italic px-1">
+                          <p className="text-xs text-amber-700 italic px-1">
                             {t('cart.admin.zero_charge_hint')}
                           </p>
                         )}
@@ -803,7 +803,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     {/* Payment method picker — QPay is primary, cash + bank
                         transfer collapse into an "other methods" section. */}
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">
+                      <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">
                         {t('cart.payment_method')}
                       </label>
 
@@ -829,7 +829,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             <div className="flex items-center gap-2">
                               <p className="font-bold text-base">{t('cart.payment.qpay')}</p>
                               <span className={cn(
-                                "text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full",
+                                "text-xs uppercase tracking-[0.06em] font-bold px-2 py-0.5 rounded-full",
                                 formData.paymentMethod === 'qpay'
                                   ? "bg-[#080606]/15 text-[#080606]"
                                   : "bg-[#D4AF37] text-stone-900"
@@ -854,7 +854,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <button
                         type="button"
                         onClick={() => setShowOtherPaymentMethods((v) => !v)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-white/45 font-semibold hover:text-[#D4AF37] transition-colors"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs uppercase tracking-[0.06em] text-white/45 font-semibold hover:text-[#D4AF37] transition-colors"
                       >
                         <span>
                           {language === 'en' ? 'Other payment methods' : 'Бусад төлбөрийн арга'}
@@ -868,7 +868,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="button"
                             onClick={() => setFormData({ ...formData, paymentMethod: 'cash' })}
                             className={cn(
-                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
+                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.06em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'cash'
                                 ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
                                 : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
@@ -881,7 +881,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="button"
                             onClick={() => setFormData({ ...formData, paymentMethod: 'bank_transfer' })}
                             className={cn(
-                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2",
+                              "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.06em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'bank_transfer'
                                 ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
                                 : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
@@ -906,7 +906,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <button
                     type="button"
                     onClick={() => setIsCheckingOut(false)}
-                    className="w-full py-3 text-white/45 font-semibold uppercase tracking-[0.15em] text-xs hover:text-[#D4AF37] transition-colors"
+                    className="w-full py-3 text-white/45 font-semibold uppercase tracking-[0.06em] text-xs hover:text-[#D4AF37] transition-colors"
                   >
                     {t('cart.back_to_cart')}
                   </button>
@@ -940,7 +940,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             <Trash2 size={14} />
                           </button>
                         </div>
-                        <p className="text-xs text-white/45 font-light line-clamp-1">{item.category}</p>
+                        <p className="text-xs text-white/45 line-clamp-1">{item.category}</p>
 
                         <div className="pt-2 mt-2 border-t border-white/[0.06]">
                           <button
@@ -1003,7 +1003,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             {!orderComplete && cart.length > 0 && (
               <div className="p-6 border-t border-white/[0.06] bg-[var(--espresso)] space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-white/45 uppercase tracking-[0.2em] text-xs font-semibold">{t('cart.subtotal')}</span>
+                  <span className="text-white/45 uppercase tracking-[0.06em] text-xs font-semibold">{t('cart.subtotal')}</span>
                   <span className={cn(
                     "tabular-nums",
                     isAdmin && clampedDiscount > 0
@@ -1014,7 +1014,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isAdmin && clampedDiscount > 0 && (
                   <>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-amber-700 uppercase tracking-[0.2em] text-xs font-semibold">
+                      <span className="text-amber-700 uppercase tracking-[0.06em] text-xs font-semibold">
                         {t('cart.admin.discount_label')}
                       </span>
                       <span className="tabular-nums text-amber-700 font-semibold">
@@ -1022,7 +1022,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-white uppercase tracking-[0.2em] text-xs font-bold">
+                      <span className="text-white uppercase tracking-[0.06em] text-xs font-bold">
                         {language === 'en' ? 'Charged' : 'Төлбөр'}
                       </span>
                       <span className="text-2xl font-bold tabular-nums text-[#D4AF37]">
@@ -1033,15 +1033,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 )}
                 {isBlocked && !isAdmin && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center">
-                    <p className="text-xs text-red-600 font-semibold uppercase tracking-widest">{blockReason}</p>
+                    <p className="text-xs text-red-600 font-semibold uppercase tracking-[0.06em]">{blockReason}</p>
                   </div>
                 )}
                 {pendingOrderId && !isAdmin && (
                   <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl text-center space-y-2">
-                    <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-widest">
+                    <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-[0.06em]">
                       {language === 'en' ? 'Pending order must finish first' : 'Захиалга дуусахыг хүлээнэ үү'}
                     </p>
-                    <p className="text-[10px] text-white/45 font-light italic">
+                    <p className="text-xs text-white/45 italic">
                       {language === 'en' ? 'You can cancel your current order above to place a new one.' : 'Та шинээр захиалга өгөхийн тулд дээрх захиалгыг цуцалж болно.'}
                     </p>
                   </div>
@@ -1051,7 +1051,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={handleSubmit}
                     disabled={isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
-                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 hover:bg-[#C5A028]",
+                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 hover:bg-[#C5A028]",
                       (isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -1069,7 +1069,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={() => setIsCheckingOut(true)}
                     disabled={!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)}
                     className={cn(
-                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.15em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]",
+                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]",
                       (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#C5A028]"
                     )}
                   >

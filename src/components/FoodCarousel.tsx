@@ -111,7 +111,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
   return (
     <section aria-label={t('featured.title')} className="relative w-full overflow-hidden">
       <div className="mb-3 flex items-center justify-between px-1">
-        <span className="eyebrow !text-[9px]">{t('featured.title')}</span>
+        <span className="label">{t('featured.title')}</span>
         <span className="micro-label !text-white/45" aria-live="polite">
           {String(active + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
         </span>
@@ -158,13 +158,13 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
               <div className="absolute inset-y-0 left-0 flex w-[72%] flex-col justify-end p-3.5 md:p-5">
-                <span className="micro-label mb-1 !text-[7px] !text-[#D4AF37] md:!text-[9px]">
-                  {dish.category}
+                <span className="label mb-1">
+                  {dish.pool === 'specials' ? t('menu.specials') : t(`menu.${dish.category.toLowerCase()}`)}
                 </span>
-                <h2 className="line-clamp-2 font-serif text-[17px] font-bold leading-[1.08] text-white md:text-[23px]">
+                <h3 className="line-clamp-2 leading-[1.1] text-white md:text-[28px]">
                   {dish.name}
-                </h2>
-                <span className="mt-1.5 font-serif text-[14px] font-bold text-[#D4AF37] md:text-[17px]">
+                </h3>
+                <span className="mt-1.5 text-base font-semibold tabular-nums text-[var(--gold)] md:text-xl">
                   ₮{minPrice.toLocaleString()}
                 </span>
               </div>

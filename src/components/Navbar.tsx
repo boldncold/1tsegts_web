@@ -65,9 +65,9 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           >
             {/* Drawer header */}
             <div className="flex justify-between items-center px-6 py-6">
-              <span className="font-serif font-bold text-lg tracking-tighter flex items-baseline">
-                <span className="text-[#D4AF37] text-2xl leading-none mr-0.5">1</span>
-                <span className="text-[#8B0000]">ЦЭГЦ</span>
+              <span className="brand-wordmark text-lg">
+                <span className="one">1</span>
+                <span className="word">ЦЭГЦ</span>
               </span>
               <button
                 onClick={() => setIsOpen(false)}
@@ -86,7 +86,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                   to={link.path}
                   onClick={() => handleLinkClick(link.path)}
                   className={cn(
-                    'flex justify-between items-center py-[14px] font-serif text-[17px] border-b border-white/[0.06] transition-colors',
+                    'flex justify-between items-center py-3.5 text-base font-medium border-b border-[var(--border-subtle)] transition-colors',
                     location.pathname === link.path
                       ? 'text-[#D4AF37]'
                       : 'text-white hover:text-[#D4AF37]'
@@ -99,7 +99,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
 
               {/* Language switcher */}
               <div className="mt-8 pt-6 border-t border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold mb-3">
+                <p className="text-xs uppercase tracking-[0.06em] text-white/40 font-bold mb-3">
                   {language === 'en' ? 'Language' : 'Хэл'}
                 </p>
                 <div className="flex gap-2">
@@ -132,7 +132,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                 <div className="mt-6">
                   <button
                     onClick={() => { setIsOpen(false); setShowCancelConfirm(true); }}
-                    className="w-full px-6 py-3.5 bg-red-900/30 text-red-400 border border-red-900/40 font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                    className="w-full px-6 py-3.5 bg-red-900/30 text-red-400 border border-red-900/40 font-bold uppercase tracking-[0.06em] text-xs rounded-xl hover:bg-red-600 hover:text-white transition-all"
                   >
                     {language === 'en' ? 'Cancel Current Order' : 'Захиалга цуцлах'}
                   </button>
@@ -145,7 +145,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
               <Link
                 to="/admin"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 text-white/40 hover:text-[#D4AF37] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
+                className="flex items-center gap-2.5 text-white/40 hover:text-[#D4AF37] transition-colors text-xs font-bold uppercase tracking-[0.06em]"
               >
                 <span>Admin</span>
               </Link>
@@ -177,17 +177,17 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           <Link
             to="/"
             onClick={() => handleLinkClick('/')}
-            className="font-serif font-bold tracking-tighter flex items-baseline leading-none"
+            className="brand-wordmark text-lg"
           >
-            <span className="text-[#D4AF37] text-[36px] leading-none mr-0.5">1</span>
-            <span className="text-[#8B0000] text-[18px]">ЦЭГЦ</span>
+            <span className="one">1</span>
+            <span className="word">ЦЭГЦ</span>
           </Link>
 
           {/* Right: lang toggle + cart */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLanguage(language === 'en' ? 'mn' : 'en')}
-              className="text-[#D4AF37] text-[11px] font-bold tracking-[0.18em] uppercase px-1.5 py-1 hover:text-white transition-colors"
+              className="text-[#D4AF37] text-xs font-bold tracking-[0.06em] uppercase px-1.5 py-1 hover:text-white transition-colors"
             >
               {language === 'en' ? 'EN' : 'MN'}
             </button>
@@ -198,14 +198,16 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             >
               <ShoppingCart size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-[#080606] text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-[#080606] text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {itemCount}
                 </span>
               )}
               {pendingOrderId && (
-                <span className="absolute -bottom-1 -right-1 bg-[#D4AF37] text-[#1a1510] text-[7px] font-bold px-1 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
-                  {language === 'en' ? 'Active' : 'Идэвхтэй'}
-                </span>
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[var(--gold)] border-2 border-[var(--espresso)] animate-pulse"
+                  role="status"
+                  aria-label={language === 'en' ? 'Order in progress' : 'Захиалга хийгдэж байна'}
+                />
               )}
             </button>
           </div>

@@ -6,6 +6,12 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **Every font that sets Mongolian text must ship the `cyrillic-ext` subset — that is where Ө ө Ү ү live. Check the subset list in the Google Fonts CSS (`/* cyrillic-ext */` blocks), not the "Cyrillic" label on the font page.**
+  *Why:* Playfair Display, the heading font since the AI Studio scaffold, has `cyrillic` but not `cyrillic-ext`, so every ө and ү in a heading ("төгс", "Үхрийн") was drawn by a fallback serif mid-word. It read as "lots of uneven fonts" and nobody could say why.
+
+- **Never invent content for a real record. A missing photo, name or price stays missing and the UI shows an honest empty state — no placeholder service as a "default".**
+  *Why:* the admin form saved `picsum.photos/seed/<name>` as the image of any dish added without a photo, so 8 of 40 live dishes showed forests and seascapes as food. The cuisine tiles used the same service. Placeholders from a scaffold read as real data once they reach production.
+
 - **When records stop being deleted and are kept with a status instead (e.g. `cancelled`), re-check every UI filter and dismiss action that treated that status as "gone". And a state a human must settle needs a way to settle it in the app, tested end to end.**
   *Why:* on Firebase a cancelled order was deleted, so the review panel's `status !== 'cancelled'` filter was harmless. On Convex cancels are kept, and a payment landing after a customer cancel was flagged but hidden from the panel. The panel's "Mark paid" button had also never worked: the confirm path refuses `MANUAL_REVIEW` by design, so flagged money had no resolution at all.
 

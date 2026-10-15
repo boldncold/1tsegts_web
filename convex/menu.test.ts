@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
 
@@ -71,6 +71,38 @@ describe("menu.featured", () => {
 
     const items = await t.query(api.menu.featured, {});
     expect(items.map((i) => i.name)).toEqual(["most", "some"]);
+  });
+});
+
+describe("menuAdmin.clearPlaceholderImages", () => {
+  test("removes picsum.photos images and keeps real ones", async () => {
+    const t = convexTest(schema, modules);
+    const picsum = { url: "https://picsum.photos/seed/x/800/600" };
+    const ids = await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" }));
+      return {
+        forest: await ctx.db.insert("menu", { ...dish, name: "forest", image: picsum, sideImages: [{ storageId }] }),
+        sides: await ctx.db.insert("menu", { ...dish, name: "sides", image: { storageId }, sideImages: [picsum] }),
+        real: await ctx.db.insert("menu", { ...dish, name: "real", image: { storageId } }),
+        external: await ctx.db.insert("menu", { ...dish, name: "external", image: { url: "https://cdn.example.com/a.jpg" } }),
+      };
+    });
+
+    const cleared = await t.mutation(internal.menuAdmin.clearPlaceholderImages, {});
+    expect(cleared.sort()).toEqual(["forest", "sides"]);
+
+    await t.run(async (ctx) => {
+      const forest = await ctx.db.get(ids.forest);
+      expect(forest?.image).toBeUndefined();
+      expect(forest?.sideImages).toHaveLength(1);
+      const sides = await ctx.db.get(ids.sides);
+      expect(sides?.image).toHaveProperty("storageId");
+      expect(sides?.sideImages).toBeUndefined();
+      expect((await ctx.db.get(ids.real))?.image).toHaveProperty("storageId");
+      expect((await ctx.db.get(ids.external))?.image).toEqual({ url: "https://cdn.example.com/a.jpg" });
+    });
+
+    expect(await t.mutation(internal.menuAdmin.clearPlaceholderImages, {})).toEqual([]);
   });
 });
 

@@ -9,6 +9,12 @@
          setup — worth a few hundred ms on mobile networks. -->
     <link rel="preconnect" href="https://qpay.mn" />
     <link rel="preconnect" href="https://s.qpay.mn" />
+    <!-- The site's only two fonts. Both ship cyrillic-ext, where Mongolian
+         Ө ө Ү ү live; fonts without it (e.g. Playfair Display) drop those
+         letters to a fallback mid-word. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..800;1,400..800&family=Golos+Text:wght@400..700&display=swap" />
     <script>
       // Prevent libraries from trying to polyfill fetch if it already exists
       // This fixes "Uncaught TypeError: Cannot set property fetch of #<Window> which has only a getter"

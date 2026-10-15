@@ -174,7 +174,7 @@ export default function OrdersTab({
             <span className="text-[11px] uppercase tracking-[0.2em] text-yellow-400/70 font-semibold">
               {t('admin.orders.payment.ref')}
             </span>
-            <span className="font-mono font-bold text-yellow-300 tracking-widest">{o.referenceCode}</span>
+            <span className="font-bold text-yellow-300 tracking-widest">{o.referenceCode}</span>
           </div>
         )}
 

@@ -51,7 +51,7 @@ export default function ConfirmModal({
               
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-stone-100 mb-2">{title}</h3>
-                <p className="text-stone-400 font-light leading-relaxed">
+                <p className="text-stone-400 leading-relaxed">
                   {message}
                 </p>
               </div>
@@ -67,7 +67,7 @@ export default function ConfirmModal({
             <div className="mt-8 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-stone-800 text-stone-300 font-semibold uppercase tracking-widest text-xs rounded-xl hover:bg-stone-700 transition-all"
+                className="flex-1 py-3 px-4 bg-stone-800 text-stone-300 font-semibold uppercase tracking-[0.06em] text-xs rounded-xl hover:bg-stone-700 transition-all"
               >
                 {cancelText}
               </button>
@@ -76,7 +76,7 @@ export default function ConfirmModal({
                   onConfirm();
                   onClose();
                 }}
-                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'} text-stone-900 font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
+                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'} text-stone-900 font-bold uppercase tracking-[0.06em] text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
               >
                 {confirmText}
               </button>

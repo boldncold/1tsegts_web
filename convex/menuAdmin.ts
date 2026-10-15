@@ -5,7 +5,7 @@
  */
 
 import { ConvexError, v, type Infer } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/admin";
 import { toMenuItem } from "./menu";
@@ -66,6 +66,36 @@ function validate(item: Infer<typeof editable>) {
 function storageIds(refs: readonly (ImageRef | undefined)[]): Set<Id<"_storage">> {
   return new Set(refs.flatMap((ref) => (ref && "storageId" in ref ? [ref.storageId] : [])));
 }
+
+const isPlaceholder = (ref: ImageRef | undefined) =>
+  !!ref && "url" in ref && /^https?:\/\/([\w-]+\.)?picsum\.photos\//.test(ref.url);
+
+/**
+ * One-off cleanup. The admin form used to save a random picsum.photos photo
+ * for a dish added without one, so the live menu showed forests and seascapes
+ * as food. Removes those references; the menu falls back to its plain tile.
+ *   npx convex run menuAdmin:clearPlaceholderImages          (dev)
+ *   npx convex run --prod menuAdmin:clearPlaceholderImages   (production)
+ */
+export const clearPlaceholderImages = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cleared: string[] = [];
+    for (const item of await ctx.db.query("menu").collect()) {
+      const before = item.sideImages ?? [];
+      const sideImages = before.filter((ref) => !isPlaceholder(ref));
+      const dropMain = isPlaceholder(item.image);
+      if (!dropMain && sideImages.length === before.length) continue;
+      await ctx.db.patch(item._id, {
+        ...(dropMain ? { image: undefined } : {}),
+        sideImages: sideImages.length > 0 ? sideImages : undefined,
+      });
+      cleared.push(item.name);
+    }
+    console.log(`Cleared placeholder images from ${cleared.length} dishes:`, cleared);
+    return cleared;
+  },
+});
 
 /** Delete stored files the item no longer references. */
 async function dropUnusedImages(ctx: MutationCtx, before: Doc<"menu">, keep: Set<Id<"_storage">>) {

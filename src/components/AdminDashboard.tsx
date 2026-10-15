@@ -97,12 +97,14 @@ function MenuItemCard({
   return (
     <div className="group relative h-56 bg-stone-950 border border-stone-800 rounded-3xl overflow-hidden hover:border-amber-500/50 transition-all shadow-lg flex flex-col">
       {/* Background Image */}
-      <img 
-        src={item.image || `https://picsum.photos/seed/${item.name}/400/300`} 
-        alt={item.name} 
-        className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" 
-        referrerPolicy="no-referrer" 
-      />
+      {item.image && (
+        <img
+          src={item.image}
+          alt={item.name}
+          className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+          referrerPolicy="no-referrer"
+        />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/60 to-stone-950/20" />
 
       {/* Top Controls */}
@@ -577,7 +579,8 @@ export default function AdminDashboard() {
         const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
         return { storageId };
       };
-      const image = await resolveImage(editForm.image || `https://picsum.photos/seed/${editForm.name}/800/600`);
+      // No photo means no image: the menu shows its own fallback. Never invent one.
+      const image = editForm.image ? await resolveImage(editForm.image) : undefined;
       const sideImages = await Promise.all((editForm.sideImages || []).map(resolveImage));
 
       await saveMenuItem({
@@ -1233,34 +1236,6 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 items-stretch w-full sm:w-auto">
                       <button
-                        onClick={async () => {
-                          const initialItems = [
-                            { name: 'Truffle Carbonara', description: 'Creamy pasta with black truffle oil, pancetta, and parmesan.', price: 18.99, category: 'European', available: true, image: 'https://picsum.photos/seed/pasta/800/600' },
-                            { name: 'Sushi Platter', description: 'Assorted fresh nigiri and maki rolls with wasabi and ginger.', price: 24.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/sushi/800/600' },
-                            { name: 'Beef Bourguignon', description: 'Slow-cooked beef in red wine sauce with carrots and onions.', price: 22.50, category: 'European', available: true, image: 'https://picsum.photos/seed/beef/800/600' },
-                            { name: 'Pad Thai', description: 'Classic Thai rice noodles with shrimp, tofu, and peanuts.', price: 16.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/padthai/800/600' },
-                            { name: 'Matcha Latte', description: 'Premium Japanese matcha with steamed milk.', price: 5.50, category: 'Drinks', available: true, image: 'https://picsum.photos/seed/matcha/800/600' },
-                            { name: 'Buuz', description: 'Traditional Mongolian steamed dumplings.', price: 15.00, category: 'Mongolian', available: true, image: 'https://picsum.photos/seed/buuz/800/600' }
-                          ];
-                          for (const { image, ...item } of initialItems) {
-                            await saveMenuItem({
-                              item: {
-                                ...item,
-                                category: item.category as Category,
-                                tags: [], status: 'available', statusUntil: null, scheduledDays: [],
-                                todayOnly: false, featured: false, packagingPrice: 0, portions: [], pool: null,
-                              },
-                              image: { url: image },
-                              sideImages: [],
-                            });
-                          }
-                          toast.success('Seed data added!');
-                        }}
-                        className="w-full sm:w-auto text-xs text-stone-600 hover:text-amber-500 transition-colors"
-                      >
-                        Seed Data
-                      </button>
-                      <button
                         onClick={() => {
                           setIsAdding(true);
                           setIsEditing(null);
@@ -1577,7 +1552,7 @@ export default function AdminDashboard() {
                             type="text"
                             value={bankTxForm.description}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, description: e.target.value })}
-                            className="admin-control mt-1 w-full px-3 py-2.5 font-mono text-sm"
+                            className="admin-control mt-1 w-full px-3 py-2.5 text-sm"
                             placeholder="GR-K7P3M9"
                           />
                           <p className="text-[10px] text-stone-500 mt-1">
