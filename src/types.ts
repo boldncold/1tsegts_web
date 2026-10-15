@@ -97,14 +97,14 @@ export interface Order {
   // Absent on webhook-confirmed orders (QPay confirms itself, no human).
   paidBy?: string;               // email, shown on the order card
   paidByUid?: string;
-  // Mirrors PaidSource in functions/src/markOrderPaid.ts — the server is the only
+  // Mirrors paidMeta.source in convex/payments.ts — the server is the only
   // writer. Historical docs may still carry 'email_parse' / 'auto_email_match'
   // from the removed Gmail path; nothing reads this field, it is audit data.
   paidVia?: 'qpay' | 'admin_manual' | 'monpay';
 
-  // QPay-specific fields (set when createQpayInvoice cloud function returns)
+  // QPay-specific fields (set by the qpay.createInvoice action)
   qpayInvoiceId?: string;        // QPay invoice uuid — passed to /payment/check
-  qpayPaymentId?: string;        // QPay payment id, set by webhook on PAID
+  qpayPaymentId?: string;        // QPay payment id, set by the callback on PAID
   qpayPaymentType?: string;      // 'P2P' | 'CARD' — captured at confirm; refunds are CARD-only
   qpayPaymentWallet?: string;    // bank/app the customer paid from
   qpayQrText?: string;           // EMV-MPM QR payload string
@@ -112,16 +112,19 @@ export interface Order {
   qpayShortUrl?: string;         // https://s.qpay.mn/... — short link, opens QPay
   qpayDeeplinks?: QpayBankDeeplink[];
 
-  // Refund fields (set by the refundQpayPayment cloud function)
+  // Refund fields (set by the qpay.refund action)
   refundedAt?: string;           // ISO timestamp when the refund succeeded
-  refundedVia?: 'qpay';
+  refundedVia?: 'qpay' | 'manual'; // 'manual': returned outside QPay after a review
   refundNote?: string;
 
-  // Manual-review fields (set by qpayWebhook when real money can't be auto-confirmed)
+  // Manual-review fields (set by the QPay callback when real money can't be auto-confirmed)
   paymentReviewReason?: string;        // e.g. 'qpay_amount_mismatch'
   paymentReviewExpectedMnt?: number;   // what we billed
   paymentReviewObservedMnt?: number;   // what QPay reported as paid
   flaggedForReviewAt?: string;         // ISO timestamp
+  reviewResolution?: 'accepted' | 'refunded_manually'; // how an admin settled it
+  reviewResolvedAt?: string;
+  reviewResolvedBy?: string;           // admin email
 
   // Admin test-mode fields
   isTest?: boolean;              // placed by an admin while signed in, bypassing customer gates

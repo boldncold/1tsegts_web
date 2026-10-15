@@ -6,15 +6,15 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { db, collection, addDoc, updateDoc, doc, increment, deleteDoc, functions, httpsCallable } from '../firebase';
+import { useAction, useMutation } from 'convex/react';
+import { ConvexError } from 'convex/values';
+import { api } from '../../convex/_generated/api';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
-import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import ConfirmModal from './ConfirmModal';
-import { generateReferenceCode } from '../lib/referenceCode';
-import { BANK_DETAILS, PAYMENT_WINDOW_MINUTES } from '../lib/bankConfig';
+import { BANK_DETAILS } from '../lib/bankConfig';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
-import { QPAY_ENABLED, QPAY_PAYMENT_WINDOW_MINUTES } from '../lib/qpayConfig';
+import { QPAY_ENABLED } from '../lib/qpayConfig';
 import { isMobileDevice } from '../lib/device';
 import QpayPaymentPanel from './QpayPaymentPanel';
 import type { PaymentMethod } from '../types';
@@ -26,8 +26,8 @@ import type { PaymentMethod } from '../types';
  * paymentStatus=AWAITING_PAYMENT. The customer reads off the account number,
  * makes the transfer in their banking app with the reference code in the
  * description, then waits — the admin will mark the order paid in the admin
- * dashboard, which flips paymentStatus to CONFIRMED, which the existing
- * onSnapshot listener in CartContext picks up and surfaces as a toast.
+ * dashboard, which flips paymentStatus to CONFIRMED, which the orders.track
+ * subscription in CartContext picks up and surfaces as a toast.
  */
 function BankPaymentPanel({ order }: { order: any }) {
   const { language } = useLanguage();
@@ -183,6 +183,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [adminDiscount, setAdminDiscount] = useState(0);
   const clampedDiscount = Math.max(0, Math.min(adminDiscount, Math.floor(total)));
   const chargedTotal = Math.max(0, total - clampedDiscount);
+  const createOrder = useMutation(api.orders.create);
+  const cancelOrder = useMutation(api.orders.cancel);
+  const warmUpQpay = useAction(api.qpay.warmUp);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -214,15 +217,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       pendingOrderData.paymentMethod === 'bank_transfer') &&
     pendingOrderData.paymentStatus === 'CONFIRMED';
 
-  // Pre-warm the QPay invoice function while the customer fills the checkout
-  // form: absorbs the Cloud Function cold start and any QPay token re-auth,
+  // Pre-warm QPay while the customer fills the checkout form: absorbs any
+  // QPay token re-auth (convex/qpay.ts warmUp),
   // so the real call at "Confirm order" only pays for the invoice itself.
   // Best-effort and fire-once — a failed warmup just means a cold start.
   const qpayWarmupFired = React.useRef(false);
   React.useEffect(() => {
     if (!isCheckingOut || !QPAY_ENABLED || qpayWarmupFired.current) return;
     qpayWarmupFired.current = true;
-    httpsCallable(functions, 'createQpayInvoice')({ warmup: true }).catch(() => {});
+    warmUpQpay().catch(() => {});
   }, [isCheckingOut]);
 
   // Online order whose money hasn't landed yet. The completion screen must NOT
@@ -273,125 +276,34 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     setIsSubmitting(true);
     setCompletedWasPaid(false);
     try {
-      const generatedOrderNumber = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      
-      const order: any = {
-        items: cart.map(item => {
-          const mappedItem: any = {
-            id: item.id,
-            name: item.name,
-            price: item.selectedPortion ? item.selectedPortion.price : item.price,
-            quantity: item.quantity,
-            packagingPrice: item.packagingPrice !== undefined ? item.packagingPrice : 0
-          };
-          if (item.packaging !== undefined) mappedItem.packaging = item.packaging;
-          if (item.selectedPortion !== undefined) mappedItem.selectedPortion = item.selectedPortion;
-          return mappedItem;
-        }),
-        total: chargedTotal,
+      // The server prices, numbers and sets up payment for the order
+      // (convex/orders.ts); only the customer's choices are sent. An admin's
+      // test discount is honoured only after the server checks they are one.
+      const placed = await createOrder({
+        items: cart.map(item => ({
+          menuId: item.id,
+          quantity: item.quantity,
+          ...(item.selectedPortion ? { portionName: item.selectedPortion.name } : {}),
+          ...(item.packaging !== undefined ? { packaging: item.packaging } : {}),
+        })),
         customerName: formData.name || (formData.orderType === 'pickup' ? 'Pickup Customer' : 'Kiosk Customer'),
         phone: formData.phone || 'N/A',
         orderType: formData.orderType,
-        orderNumber: generatedOrderNumber,
-        status: 'pending',
-        timestamp: new Date().toISOString(),
+        ...(formData.orderType === 'kiosk' ? { kioskNumber: formData.kioskNumber } : {}),
+        ...(formData.notes ? { notes: formData.notes } : {}),
         paymentMethod: formData.paymentMethod,
-      };
+        ...(isAdmin && clampedDiscount > 0 ? { adminDiscountMnt: clampedDiscount } : {}),
+      });
 
-      if (isAdmin) {
-        order.isTest = true;
-        if (clampedDiscount > 0) order.adminDiscountMnt = clampedDiscount;
-      }
-
-      if (formData.orderType === 'kiosk') {
-        order.kioskNumber = formData.kioskNumber;
-      }
-
-      if (formData.notes) {
-        order.notes = formData.notes;
-      }
-
-      // Admin test mode with a full discount (chargedTotal === 0) skips the
-      // payment-provider round trip — QPay/bank-transfer would reject a
-      // zero-amount invoice anyway.
-      const skipPayment = isAdmin && chargedTotal === 0;
-
-      if (skipPayment) {
-        // Created AWAITING_PAYMENT and confirmed immediately below via
-        // confirmOrderPayment. The client is not allowed to write CONFIRMED
-        // (see hasNoForgedPayment in firestore.rules), and routing the test
-        // order through the real confirmation path means a break in that path
-        // shows up here rather than in production.
-        order.paymentStatus = 'AWAITING_PAYMENT';
-        order.amountMnt = 0;
-      } else if (formData.paymentMethod === 'bank_transfer') {
-        // Bank-transfer-specific fields. For cash orders these stay absent so
-        // the existing "go to cashier" flow runs unchanged.
-        order.paymentStatus = 'AWAITING_PAYMENT';
-        order.referenceCode = generateReferenceCode();
-        order.amountMnt = Math.round(chargedTotal);
-        order.paymentExpiresAt = new Date(
-          Date.now() + PAYMENT_WINDOW_MINUTES * 60_000
-        ).toISOString();
-      } else if (formData.paymentMethod === 'qpay') {
-        // QPay flow: order is created in AWAITING_PAYMENT, the createQpayInvoice
-        // cloud function (called by QpayPaymentPanel on mount) fills in
-        // qpayInvoiceId / qpayQrText / etc.
-        order.paymentStatus = 'AWAITING_PAYMENT';
-        order.amountMnt = Math.round(chargedTotal);
-        order.paymentExpiresAt = new Date(
-          Date.now() + QPAY_PAYMENT_WINDOW_MINUTES * 60_000
-        ).toISOString();
-      }
-
-      const docRef = await addDoc(collection(db, 'orders'), order);
-
-      // Zero-charge admin test order: confirm through the same cloud function
-      // the admin dashboard uses. Awaited before the completion screen renders
-      // so it never flashes the "waiting for payment" state.
-      if (skipPayment) {
-        try {
-          await httpsCallable<
-            { orderId: string; source?: 'admin_manual' },
-            { updated: boolean; reason?: string }
-          >(functions, 'confirmOrderPayment')({
-            orderId: docRef.id,
-            source: 'admin_manual',
-          });
-        } catch (err) {
-          console.error('Test order confirm failed:', err);
-          toast.error(language === 'en'
-            ? 'Test order created but could not be confirmed'
-            : 'Туршилтын захиалга үүссэн ч баталгаажаагүй байна');
-        }
-      }
-
-      // Set pending order in context
-      setPendingOrderId(docRef.id);
-
-      // Increment orderCount for each item
-      for (const item of cart) {
-        try {
-          await updateDoc(doc(db, 'menu', item.id), {
-            orderCount: increment(item.quantity)
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.UPDATE, `menu/${item.id}`);
-        }
-      }
-
-      setOrderNumber(generatedOrderNumber);
+      setPendingOrderId(placed.orderId);
+      setOrderNumber(placed.orderNumber);
       setCompletedOrderType(formData.orderType);
       setOrderComplete(true);
       clearCart();
       setAdminDiscount(0);
       // Non-cash orders aren't "placed successfully" until payment verifies —
-      // only cash / zero-charge orders get the success toast here.
-      const isOnlinePayment =
-        !skipPayment &&
-        (formData.paymentMethod === 'qpay' ||
-          formData.paymentMethod === 'bank_transfer');
-      if (isOnlinePayment) {
+      // only cash orders get the success toast here.
+      if (formData.paymentMethod === 'qpay' || formData.paymentMethod === 'bank_transfer') {
         toast.info(language === 'en'
           ? 'Order created — complete payment to confirm'
           : 'Захиалга үүслээ — баталгаажуулахын тулд төлбөрөө төлнө үү');
@@ -399,7 +311,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         toast.success(t('cart.success'));
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders');
+      console.error('Order failed:', error);
+      const code = error instanceof ConvexError ? (error.data as { code?: string }).code : undefined;
+      toast.error(code === 'ORDER_UNPRICEABLE'
+        ? (language === 'en'
+          ? 'An item in your cart is no longer on the menu. Please remove it and try again.'
+          : 'Таны сагсан дахь нэг бүтээгдэхүүн цэснээс хасагдсан байна. Түүнийг хасаад дахин оролдоно уу.')
+        : (language === 'en'
+          ? 'Could not place your order. Please try again.'
+          : 'Захиалга өгч чадсангүй. Дахин оролдоно уу.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1184,6 +1104,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               return;
             }
             try {
+              await cancelOrder({ orderId: pendingOrderId });
               const strikes = parseInt(localStorage.getItem('grand_strikes') || '0') + 1;
               localStorage.setItem('grand_strikes', strikes.toString());
               
@@ -1201,11 +1122,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   : "Таны захиалга цуцлагдлаа. Дахин цуцалбал захиалга өгөх эрх түр хаагдахыг анхаарна уу.");
               }
 
-              await deleteDoc(doc(db, 'orders', pendingOrderId));
               setOrderComplete(false);
               setIsCheckingOut(false);
             } catch (error) {
-              handleFirestoreError(error, OperationType.DELETE, `orders/${pendingOrderId}`);
+              console.error('Cancel failed:', error);
+              toast.error(language === 'en'
+                ? 'This order can no longer be cancelled here — call us at 99138866.'
+                : 'Энэ захиалгыг цуцлахын тулд 99138866 дугаарт залгана уу.');
             }
           }
         }}

@@ -6,6 +6,15 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **When records stop being deleted and are kept with a status instead (e.g. `cancelled`), re-check every UI filter and dismiss action that treated that status as "gone". And a state a human must settle needs a way to settle it in the app, tested end to end.**
+  *Why:* on Firebase a cancelled order was deleted, so the review panel's `status !== 'cancelled'` filter was harmless. On Convex cancels are kept, and a payment landing after a customer cancel was flagged but hidden from the panel. The panel's "Mark paid" button had also never worked: the confirm path refuses `MANUAL_REVIEW` by design, so flagged money had no resolution at all.
+
+- **A re-runnable import into a target that a rehearsal already filled must mirror the source — remove what the source deleted and replace what it changed — not only add. And guard the removal: never prune after a failed or empty read.**
+  *Why:* the Firestore → Convex importer upserted by legacyId and reused each dish's stored photo, so at cutover a dish deleted in the old admin after the rehearsal (e.g. the AI Studio demo items) would have stayed on the new site, and a changed photo would have been ignored.
+
+- **Before allowing a record to be deleted, ask whether money can still arrive for it, not just whether it already holds money. An issued QPay invoice can be paid until QPay closes it, and closing is best-effort.**
+  *Why:* `ordersAdmin.remove` allowed deleting an unpaid order with an open invoice; a late payment would reach a callback with no order to confirm or flag — the silent money drop the webhook rule below forbids.
+
 - **A `datetime-local` input holds local wall-clock time: build its default from local getters (`nowForDateTimeLocal` in `AdminDashboard.tsx`), never `toISOString().slice(0, 16)`, and convert to UTC with `new Date(value).toISOString()` only on save.**
   *Why:* the bank-history manual-entry form defaulted to the UTC string, which the input read as local time, so every `postedAt` left at the default was stored 8 hours early in Ulaanbaatar (an entry made at 20:42 local saved as 04:42Z).
 
@@ -17,6 +26,12 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 - **Never bill or confirm against an amount the browser wrote. Every order field (`items[].price`, `total`, `amountMnt`, `adminDiscountMnt`, `quantity`) is customer input: recompute the charge server-side from the menu (`priceOrderItems` in `functions/src/orderPricing.ts`), reject any quantity that isn't a positive integer, and honour discounts only for a verified admin caller.**
   *Why:* `firestore.rules` left `amountMnt` client-settable and `createQpayInvoice` billed it verbatim, so anyone with devtools could order ₮50,000 of food, pay ₮100, and `qpayWebhook` would confirm it as exact. A `quantity: -1` line could also cancel out another item.
+
+- **On a named Firestore database, every Firestore trigger must pass `database:` in its options. Triggers bind to a database at DEPLOY time, unlike `getDb()` which resolves at runtime — omit it and the function silently fails to deploy while every other function in the same deploy succeeds.**
+  *Why:* `reconcileBankTransaction` was written, built, and deployed with the rest of the payment work, and `firebase deploy` reported success. It simply was not in `firebase functions:list` afterwards: `onDocumentCreated` had defaulted to `(default)`, which does not exist on this project. Auto-confirm ran degraded on the 5-minute sweep alone, and nothing in the deploy output said so. Verify a deploy with `functions:list`, not with the deploy's exit code.
+
+- **Before proposing or running a project command, confirm it against the config that implements it (`firebase.json`, `package.json` scripts, CI files) — never against the prose in `PROJECT.md` / `WORKFLOW.md`. This repo has no Firebase Hosting target: the frontend ships on Vercel from `main`, and `ai-studio-applet-webapp-730e3` only held the Firebase functions and rules.**
+  *Why:* `firebase deploy --only hosting` was handed to the user on the strength of PROJECT.md's "Deployed on Firebase" and WORKFLOW.md's "deploy Functions before (or with) hosting". It cannot work — `firebase.json` declares only `firestore`, `functions` and `emulators`, `.firebaserc` is absent and there is no CI workflow. The docs describe intent; the config describes reality, and here the docs are stale.
 
 - **On any custom pointer-drag surface, kill native drag on nested `<img>` and `<a>` (`draggable={false}` + a `dragstart` preventDefault on the container), and swallow the click that ends a drag.**
   *Why:* the featured-dishes belt only dragged from the lower part of a card — the top was bare `<img>`, whose native HTML drag-and-drop preempted the pointer stream, while the bottom was covered by the text overlay. The `<a>` CTA card had the mirror bug: a drag ending on it still fired a click and navigated to /menu.

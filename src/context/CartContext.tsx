@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { CartItem, MenuItem, Portion } from '../types';
-import { db, doc, onSnapshot } from '../firebase';
 import { toast } from 'sonner';
 import { useLanguage } from './LanguageContext';
-import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 
 interface CartContextType {
   cart: CartItem[];
@@ -48,79 +48,86 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPendingOrderIdState(id);
   };
 
+  // Live view of the pending order (convex/orders.ts track): undefined while
+  // loading, null once the order no longer exists.
+  const tracked = useQuery(api.orders.track, pendingOrderId ? { orderId: pendingOrderId } : 'skip');
+  // Previous paymentStatus, so toasts fire on the transition only.
+  const prevPaymentStatus = useRef<string | undefined>(undefined);
+
   useEffect(() => {
+    prevPaymentStatus.current = undefined;
     if (!pendingOrderId) return;
 
     // Stretch the local cleanup to 35 min for bank-transfer orders (the server-side
-    // PAYMENT_WINDOW_MINUTES is 30; +5 buffer so we don't drop a still-valid pending order).
-    // Cash orders keep the original 20-min cleanup.
+    // payment window is 30; +5 buffer so we don't drop a still-valid pending order).
     const orderTime = localStorage.getItem('grand_pending_order_time');
     if (orderTime) {
       const diff = (new Date().getTime() - new Date(orderTime).getTime()) / 60000;
-      if (diff >= 35) {
+      if (diff >= 35) setPendingOrderId(null);
+    }
+  }, [pendingOrderId]);
+
+  useEffect(() => {
+    if (!pendingOrderId || tracked === undefined) return;
+
+    if (tracked === null) {
+      setPendingOrderId(null);
+      setPendingOrderData(null);
+      return;
+    }
+
+    // A pending order saved before the migration is tracked by its Firestore
+    // id; switch to the canonical Convex id (keeping the original order time).
+    if (tracked.id !== pendingOrderId) {
+      localStorage.setItem('grand_pending_order_id', tracked.id);
+      setPendingOrderIdState(tracked.id);
+    }
+
+    const orderData = tracked;
+    setPendingOrderData(orderData);
+
+    // Payment status transitions — both QPay and bank-transfer flows go
+    // through AWAITING_PAYMENT → CONFIRMED (or EXPIRED).
+    const newPaymentStatus = orderData.paymentStatus;
+    const isNonCashPayment =
+      orderData.paymentMethod === 'qpay' ||
+      orderData.paymentMethod === 'bank_transfer';
+    if (isNonCashPayment && newPaymentStatus !== prevPaymentStatus.current) {
+      if (newPaymentStatus === 'CONFIRMED') {
+        if (orderData.paymentMethod === 'qpay') {
+          toast.success(language === 'en'
+            ? 'QPay payment confirmed! Your order is being prepared.'
+            : 'QPay төлбөр амжилттай! Захиалга бэлтгэгдэж байна.');
+        } else {
+          toast.success(language === 'en'
+            ? 'Payment confirmed! Your order is being prepared.'
+            : 'Төлбөр баталгаажлаа! Захиалга бэлтгэгдэж байна.');
+        }
+      } else if (newPaymentStatus === 'EXPIRED') {
+        toast.error(language === 'en'
+          ? 'Payment window expired. Please reorder.'
+          : 'Төлбөрийн хугацаа дууслаа. Захиалгаа дахин өгнө үү.');
+        setPendingOrderExpired(true);
         setPendingOrderId(null);
+        setPendingOrderData(null);
         return;
       }
     }
+    prevPaymentStatus.current = newPaymentStatus;
 
-    // Track previous paymentStatus so we only toast on the transition, not every snapshot.
-    let prevPaymentStatus: string | undefined;
+    if (orderData.status !== 'pending') {
+      setPendingOrderId(null);
+      setPendingOrderData(null);
 
-    const unsubscribe = onSnapshot(doc(db, 'orders', pendingOrderId), (snapshot) => {
-      if (!snapshot.exists()) {
-        setPendingOrderId(null);
-        setPendingOrderData(null);
-        return;
+      // A customer's own cancellation is kept as a cancelled order now, so
+      // only a restaurant cancellation gets this toast.
+      if (orderData.status === 'cancelled' && orderData.cancelledBy !== 'customer') {
+        toast.error(language === 'en'
+          ? "Your order was cancelled by the restaurant."
+          : "Таны захиалгыг ресторан цуцаллаа.");
       }
-
-      const orderData = snapshot.data();
-      setPendingOrderData(orderData);
-
-      // Payment status transitions — both QPay and bank-transfer flows go
-      // through AWAITING_PAYMENT → CONFIRMED (or EXPIRED).
-      const newPaymentStatus = orderData.paymentStatus;
-      const isNonCashPayment =
-        orderData.paymentMethod === 'qpay' ||
-        orderData.paymentMethod === 'bank_transfer';
-      if (isNonCashPayment && newPaymentStatus !== prevPaymentStatus) {
-        if (newPaymentStatus === 'CONFIRMED') {
-          if (orderData.paymentMethod === 'qpay') {
-            toast.success(language === 'en'
-              ? 'QPay payment confirmed! Your order is being prepared.'
-              : 'QPay төлбөр амжилттай! Захиалга бэлтгэгдэж байна.');
-          } else {
-            toast.success(language === 'en'
-              ? 'Payment confirmed! Your order is being prepared.'
-              : 'Төлбөр баталгаажлаа! Захиалга бэлтгэгдэж байна.');
-          }
-        } else if (newPaymentStatus === 'EXPIRED') {
-          toast.error(language === 'en'
-            ? 'Payment window expired. Please reorder.'
-            : 'Төлбөрийн хугацаа дууслаа. Захиалгаа дахин өгнө үү.');
-          setPendingOrderExpired(true);
-          setPendingOrderId(null);
-          setPendingOrderData(null);
-          return;
-        }
-      }
-      prevPaymentStatus = newPaymentStatus;
-
-      if (orderData.status !== 'pending') {
-        setPendingOrderId(null);
-        setPendingOrderData(null);
-
-        if (orderData.status === 'cancelled') {
-          toast.error(language === 'en'
-            ? "Your order was cancelled by the restaurant."
-            : "Таны захиалгыг ресторан цуцаллаа.");
-        }
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `orders/${pendingOrderId}`);
-    });
-
-    return () => unsubscribe();
-  }, [pendingOrderId]);
+    }
+  }, [tracked, pendingOrderId]);
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));

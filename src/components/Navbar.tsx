@@ -6,9 +6,9 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
-import { db, doc, deleteDoc } from '../firebase';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import ConfirmModal from './ConfirmModal';
 
@@ -18,6 +18,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const cancelOrder = useMutation(api.orders.cancel);
   const location = useLocation();
 
   // Stop the page behind the sidebar from scrolling along on mobile.
@@ -219,6 +220,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
         onConfirm={async () => {
           if (pendingOrderId) {
             try {
+              await cancelOrder({ orderId: pendingOrderId });
               const strikes = parseInt(localStorage.getItem('grand_strikes') || '0') + 1;
               localStorage.setItem('grand_strikes', strikes.toString());
 
@@ -236,10 +238,12 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                   : 'Таны захиалга цуцлагдлаа. Дахин цуцалбал захиалга өгөх эрх түр хаагдахыг анхаарна уу.');
               }
 
-              await deleteDoc(doc(db, 'orders', pendingOrderId));
               setIsOpen(false);
             } catch (error) {
-              handleFirestoreError(error, OperationType.DELETE, `orders/${pendingOrderId}`);
+              console.error('Cancel failed:', error);
+              toast.error(language === 'en'
+                ? 'This order can no longer be cancelled here — call us at 99138866.'
+                : 'Энэ захиалгыг цуцлахын тулд 99138866 дугаарт залгана уу.');
             }
           }
         }}
