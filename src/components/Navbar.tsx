@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
 
   // Stop the page behind the sidebar from scrolling along on mobile.
   useBodyScrollLock(isOpen);
+  useEscapeKey(isOpen, () => setIsOpen(false));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -71,8 +73,8 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
               </span>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-white/60 hover:text-white transition-colors"
-                aria-label="Close"
+                className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                aria-label={t('common.close')}
               >
                 <X size={20} />
               </button>
@@ -167,7 +169,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           {/* Left: hamburger */}
           <button
             onClick={() => setIsOpen(true)}
-            className="p-1.5 text-white hover:text-[var(--gold)] transition-colors"
+            className="w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-white hover:text-[var(--gold)] transition-colors"
             aria-label="Menu"
           >
             <MenuIcon size={22} />
@@ -187,13 +189,13 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLanguage(language === 'en' ? 'mn' : 'en')}
-              className="text-[var(--gold)] text-xs font-bold tracking-[0.06em] uppercase px-1.5 py-1 hover:text-white transition-colors"
+              className="text-[var(--gold)] text-xs font-bold tracking-[0.06em] uppercase h-11 px-2 hover:text-white transition-colors"
             >
               {language === 'en' ? 'EN' : 'MN'}
             </button>
             <button
               onClick={onCartOpen}
-              className="relative p-2 border border-[var(--gold-soft-35)] text-[var(--gold)] rounded-full hover:border-[var(--gold)] transition-colors"
+              className="relative w-11 h-11 flex items-center justify-center border border-[var(--gold-soft-35)] text-[var(--gold)] rounded-full hover:border-[var(--gold)] transition-colors"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />

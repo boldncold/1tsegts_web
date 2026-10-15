@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function ConfirmModal({
   cancelText,
   variant = 'danger'
 }: ConfirmModalProps) {
+  useEscapeKey(isOpen, onClose);
   return (
     <AnimatePresence>
       {isOpen && (
@@ -39,7 +41,7 @@ export default function ConfirmModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl overflow-hidden"
           >
             {/* Background Accent */}
             <div className={`absolute top-0 left-0 w-full h-1 ${variant === 'danger' ? 'bg-red-500' : 'bg-[var(--warn-500)]'}`} />

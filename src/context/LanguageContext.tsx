@@ -23,16 +23,15 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.contact': 'Холбоо барих',
     'nav.admin': 'Админ',
     'nav.cart': 'Сагс',
+    'common.close': 'Хаах',
 
     // Hero / Home
-    'hero.title': 'Европ, Ази, Монгол хоол — нэг гал тогооноос',
     'hero.cta': 'Цэс үзэх',
     'hero.hours': 'Цагийн хуваарь',
     'hero.location': 'Байршил',
     'hero.hours_detail': 'Мягмар–Ням 11:00–19:00',
     'hero.location_detail': 'Дүнжингарав food court',
     'hero.phone': 'Утас',
-    'hero.tagline': 'Гурван дэлхий. Нэг ширээ.',
     'featured.title': 'Онцлох',
 
     // Menu
@@ -56,6 +55,20 @@ const translations: Record<Language, Record<string, string>> = {
     'menu.badge_today': 'Зөвхөн өнөөдөр',
     'menu.badge_spicy': 'Халуун ногоотой',
     'menu.badge_popular': 'Эрэлттэй',
+    'menu.closed_now': 'Одоо хаалттай',
+    'menu.opens_today': 'Өнөөдөр {time}-д нээгдэнэ',
+    'menu.opens_tomorrow': 'Маргааш {time}-д нээгдэнэ',
+    'menu.opens_on': '{day} {time}-д нээгдэнэ',
+    'menu.sizes': 'хэмжээ',
+    'menu.added': 'Нэмэгдлээ',
+    'menu.quantity': 'Тоо ширхэг',
+    'day.0': 'Ням',
+    'day.1': 'Даваа',
+    'day.2': 'Мягмар',
+    'day.3': 'Лхагва',
+    'day.4': 'Пүрэв',
+    'day.5': 'Баасан',
+    'day.6': 'Бямба',
 
     // Cart
     'cart.title': 'Сагс',
@@ -290,16 +303,15 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.contact': 'Contact',
     'nav.admin': 'Admin',
     'nav.cart': 'Cart',
+    'common.close': 'Close',
 
     // Hero / Home
-    'hero.title': 'European, Asian and Mongolian food from one kitchen',
     'hero.cta': 'View menu',
     'hero.hours': 'Hours',
     'hero.location': 'Location',
     'hero.hours_detail': 'Tue–Sun 11:00–19:00',
     'hero.location_detail': 'Dunjingarav Food Court',
     'hero.phone': 'Phone',
-    'hero.tagline': 'Three Worlds. One Table.',
     'featured.title': 'Featured Dishes',
 
     // Menu
@@ -323,6 +335,20 @@ const translations: Record<Language, Record<string, string>> = {
     'menu.badge_today': 'Today only',
     'menu.badge_spicy': 'Spicy',
     'menu.badge_popular': 'Popular',
+    'menu.closed_now': 'Closed now',
+    'menu.opens_today': 'Opens today at {time}',
+    'menu.opens_tomorrow': 'Opens tomorrow at {time}',
+    'menu.opens_on': 'Opens {day} at {time}',
+    'menu.sizes': 'sizes',
+    'menu.added': 'Added',
+    'menu.quantity': 'Quantity',
+    'day.0': 'Sunday',
+    'day.1': 'Monday',
+    'day.2': 'Tuesday',
+    'day.3': 'Wednesday',
+    'day.4': 'Thursday',
+    'day.5': 'Friday',
+    'day.6': 'Saturday',
 
     // Cart
     'cart.title': 'Your Cart',
@@ -343,7 +369,7 @@ const translations: Record<Language, Record<string, string>> = {
     'cart.order_preparing': 'Our chefs are preparing your meal.',
     'cart.est_time': 'Estimated time: 15-20 mins',
     'cart.back_to_menu': 'Back to Menu',
-    'cart.start_adding': 'Start Adding Dishes',
+    'cart.start_adding': 'Choose dishes',
     'cart.checkout_details': 'Checkout Details',
     'cart.order_option': 'Order Option',
     'cart.special_notes': 'Special Notes (Optional)',

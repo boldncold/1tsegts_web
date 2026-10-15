@@ -1,11 +1,11 @@
 import { defineConfig } from "vitest/config";
 
-// Backend tests only (convex/**/*.test.ts), run in the edge runtime that
-// convex-test expects. The app itself has no test runner yet.
+// Backend tests (convex/**) run in the edge runtime convex-test expects;
+// the app's pure helpers (src/**) run there too since they need no DOM.
 export default defineConfig({
   test: {
     environment: "edge-runtime",
     server: { deps: { inline: ["convex-test"] } },
-    include: ["convex/**/*.test.ts"],
+    include: ["convex/**/*.test.ts", "src/**/*.test.ts"],
   },
 });

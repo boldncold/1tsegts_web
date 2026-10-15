@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Minus, X, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MenuItem } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useStoreSettings } from '../context/StoreSettingsContext';
+import { useAuth } from '../context/AuthContext';
+import { getDynamicStatus } from '../lib/utils';
+import PortionSheet from './PortionSheet';
 
 type Variant = 'stack' | 'marquee';
 
@@ -42,11 +46,9 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
   const [expanded, setExpanded] = useState<string | null>(null);
   const dishById = (id: string) => list.find(d => d.id === id);
 
-  const handleAdd = useCallback((dish: MenuItem & { qty?: number }) => {
-    const qty = dish.qty || 1;
-    addToCart(dish, undefined, qty);
-    setExpanded(null);
-  }, [addToCart]);
+  const { storeOpen } = useStoreSettings();
+  const { isAdmin } = useAuth();
+  const sheetItem = expanded != null ? dishById(expanded) ?? null : null;
 
   if (list.length === 0) return null;
 
@@ -97,14 +99,13 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
         : <MarqueeBelt list={list} onTap={(d) => setExpanded(d.id)} paused={expanded != null} language={language} />
       }
 
-      {expanded != null && (
-        <BottomSheet
-          dish={dishById(expanded)!}
-          onClose={() => setExpanded(null)}
-          onAdd={handleAdd}
-          language={language}
-        />
-      )}
+      {/* The same size sheet as the menu, so a featured dish can be ordered in any size. */}
+      <PortionSheet
+        item={sheetItem}
+        canOrder={!!sheetItem && (isAdmin || (storeOpen && getDynamicStatus(sheetItem).isAvailable))}
+        onClose={() => setExpanded(null)}
+        onAdd={(item, portion, qty) => addToCart(item, portion, qty)}
+      />
 
       <style>{`
         @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
@@ -215,7 +216,7 @@ function StackDeck({ list, onTap, language = 'en' }: { list: MenuItem[]; onTap: 
               style={{
                 position: 'absolute', inset: 0, margin: 'auto',
                 width: '100%', maxWidth: 360, aspectRatio: '3 / 4.2',
-                borderRadius: 22, overflow: 'hidden', background: 'var(--surface-dish)',
+                borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--surface-dish)',
                 cursor: isTop ? (drag.active ? 'grabbing' : 'grab') : 'default',
                 transform, transition,
                 opacity: isExiting ? 0.2 : 1,
@@ -439,7 +440,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
               draggable={false}
               style={{
                 position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
-                borderRadius: 18, overflow: 'hidden',
+                borderRadius: 'var(--radius-card)', overflow: 'hidden',
                 background: 'linear-gradient(170deg, var(--gold) 0%, var(--gold-hover) 100%)',
                 border: '1px solid var(--gold-soft-25)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -473,7 +474,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
                 data-dish-id={i}
                 style={{
                   position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
-                  borderRadius: 18, overflow: 'hidden', background: 'var(--surface-dish)',
+                  borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--surface-dish)',
                   transform: `rotate(${tilt}deg)`,
                   transition: 'transform 220ms ease-out, box-shadow 220ms',
                   boxShadow: 'var(--shadow-belt-card)',
@@ -570,145 +571,6 @@ function CardInfo({ dish, compact = false, mobile = false }: { dish: MenuItem; c
         fontSize: small ? 14 : compact ? 16 : 20, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums',
         marginTop: small ? 4 : 0,
       }}>₮{minPrice.toLocaleString()}</div>
-    </div>
-  );
-}
-
-// ─── BOTTOM SHEET ────────────────────────────────────────────
-function BottomSheet({ dish, onClose, onAdd, language }: {
-  dish: MenuItem;
-  onClose: () => void;
-  onAdd: (d: MenuItem & { qty: number }) => void;
-  language: string;
-}) {
-  const [qty, setQty] = useState(1);
-  const [isVisible, setIsVisible] = useState(false);
-  // The tap that opens the sheet is followed by a synthetic `click` at the same
-  // coordinates, which would otherwise land on the backdrop and close it instantly.
-  const openedAtRef = useRef(performance.now());
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setIsVisible(true));
-    document.body.style.overflow = 'hidden';
-    return () => {
-      cancelAnimationFrame(id);
-      document.body.style.overflow = '';
-    };
-  }, []);
-
-  const close = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 260);
-  };
-
-  const onBackdrop = () => {
-    if (performance.now() - openedAtRef.current < 400) return; // ignore ghost click
-    close();
-  };
-
-  if (!dish) return null;
-
-  const cuisineLabels: Record<string, string> = {
-    European: language === 'en' ? 'European' : 'Европ',
-    Asian: language === 'en' ? 'Asian' : 'Ази',
-    Mongolian: language === 'en' ? 'Mongolian' : 'Монгол',
-    Drinks: language === 'en' ? 'Drinks' : 'Ундаа',
-  };
-  const cuisineLabel = cuisineLabels[dish.category] || '';
-  const minPrice = Math.min(dish.price, ...(dish.portions?.map(p => p.price) || [dish.price]));
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-    }}>
-      <div onClick={onBackdrop} style={{
-        position: 'absolute', inset: 0, background: 'var(--scrim)',
-        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-        opacity: isVisible ? 1 : 0, transition: 'opacity 240ms ease-out',
-      }} />
-      <div style={{
-        position: 'relative', width: '100%', maxWidth: 480, maxHeight: '88vh', overflow: 'hidden',
-        background: '#fcfaf5', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column',
-        transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
-        transition: 'transform 320ms cubic-bezier(.22,.95,.36,1)',
-        boxShadow: 'var(--shadow-sheet)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
-          <span style={{ display: 'block', width: 40, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.18)' }} />
-        </div>
-
-        <div style={{
-          height: 220, position: 'relative', overflow: 'hidden',
-          background: DISH_FALLBACK_BG,
-        }}>
-          {dish.image && (
-            <img
-              src={dish.image}
-              alt={dish.name}
-              referrerPolicy="no-referrer"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          )}
-          <button onClick={close} aria-label="Close" style={{
-            position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-            border: 'none', color: '#fff', borderRadius: 999, width: 36, height: 36, cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <X size={16} />
-          </button>
-          {cuisineLabel && (
-            <span style={{
-              position: 'absolute', bottom: 14, left: 14,
-              background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)',
-              color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const,
-              padding: '6px 12px', borderRadius: 999,
-            }}>{cuisineLabel}</span>
-          )}
-        </div>
-
-        <div style={{ padding: '20px 24px 24px', overflowY: 'auto' }}>
-          <h3 style={{
-            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 28, color: 'var(--stone-900)',
-            margin: '0 0 10px', letterSpacing: '-0.01em',
-          }}>{dish.name}</h3>
-          <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--stone-500)', margin: '0 0 22px' }}>
-            {dish.description}
-          </p>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--stone-500)' }}>
-              {language === 'en' ? 'Quantity' : 'Тоо ширхэг'}
-            </span>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-dish)', color: '#fff', borderRadius: 999, padding: 5 }}>
-              <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{
-                background: 'transparent', border: 'none', color: 'var(--gold)', width: 32, height: 32,
-                borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              }}><Minus size={14} /></button>
-              <span style={{ minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: 600 }}>{qty}</span>
-              <button onClick={() => setQty(q => q + 1)} style={{
-                background: 'var(--gold)', border: 'none', color: 'var(--surface-dish)', width: 32, height: 32,
-                borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              }}><Plus size={14} /></button>
-            </div>
-          </div>
-
-          <button onClick={() => onAdd({ ...dish, qty })} style={{
-            width: '100%', background: 'var(--gold)', color: 'var(--stone-950)', border: 'none', borderRadius: 999,
-            padding: '14px 22px', fontSize: 16, fontWeight: 600,
-            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between',
-            fontFamily: 'var(--font-sans)',
-            boxShadow: 'var(--shadow-btn-gold)',
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <Plus size={16} /> {language === 'en' ? 'Add to cart' : 'Сагсанд нэмэх'}
-            </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-              ₮{(minPrice * qty).toLocaleString()}
-            </span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

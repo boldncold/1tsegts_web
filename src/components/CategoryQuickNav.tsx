@@ -35,9 +35,9 @@ export default function CategoryQuickNav() {
   }, [menu]);
 
   return (
-    <section id="categories" className="py-24 bg-[var(--surface-page)]">
+    <section id="categories" className="pt-12 md:pt-16 bg-[var(--surface-page)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center mb-12">{t('menu.select_cuisine')}</h2>
+        <h2 className="mb-6">{t('menu.select_cuisine')}</h2>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {tiles.map((tile) => (

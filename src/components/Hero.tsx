@@ -30,36 +30,29 @@ export default function Hero({ dishes }: HeroProps) {
 
   return (
     <section
-      className="relative min-h-[92vh] md:min-h-0 text-white overflow-hidden"
+      className="relative text-white overflow-hidden"
       style={{ background: 'var(--gradient-hero)' }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--glow-hero)' }} />
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
       {/* pt clears the fixed navbar (56px). */}
-      <div className="relative max-w-[720px] mx-auto px-6 pt-[96px] pb-20 md:pb-16 text-center flex flex-col items-center">
-        <motion.div {...fadeUp} transition={step(0)} className="mb-4">
+      <div className="relative max-w-[720px] mx-auto px-6 pt-[96px] pb-8 md:pb-16 text-center flex flex-col items-center">
+        {/* The wordmark is the page's only heading; no slogan copy here. */}
+        <motion.h1 {...fadeUp} transition={step(0)} className="mb-8">
           <span className="brand-wordmark" style={{ fontSize: 'clamp(40px, 9vw, 48px)' }}>
             <span className="one">1</span>
             <span className="word">ЦЭГЦ</span>
           </span>
-        </motion.div>
-
-        <motion.p {...fadeUp} transition={step(1)} className="label mb-6">
-          {t('hero.tagline')}
-        </motion.p>
-
-        <motion.h1 {...fadeUp} transition={step(2)} className="mb-8 text-balance">
-          {t('hero.title')}
         </motion.h1>
 
-        <motion.div {...fadeUp} transition={step(3)} className="mb-8">
+        <motion.div {...fadeUp} transition={step(1)} className="mb-8">
           <Link to="/menu" className="btn btn-primary">
             {t('hero.cta')} <ArrowRight size={16} />
           </Link>
         </motion.div>
 
-        <motion.dl {...fadeUp} transition={step(4)} className="hidden md:grid grid-cols-3 gap-3 w-full max-w-[560px]">
+        <motion.dl {...fadeUp} transition={step(2)} className="hidden md:grid grid-cols-3 gap-3 w-full max-w-[560px]">
           {facts.map(({ icon: Icon, label, value, href }) => (
             <div
               key={label}
@@ -78,7 +71,7 @@ export default function Hero({ dishes }: HeroProps) {
 
         {/* Mobile-only compact carousel. Desktop's featured section is the
             marquee rendered by Home directly under this hero. */}
-        <motion.div {...fadeUp} transition={step(4)} className="md:hidden w-full">
+        <motion.div {...fadeUp} transition={step(2)} className="md:hidden w-full">
           <FoodCarousel dishes={dishes} />
         </motion.div>
       </div>

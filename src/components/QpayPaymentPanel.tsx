@@ -69,7 +69,7 @@ function BankIcon({
         src={logo}
         alt={name}
         referrerPolicy="no-referrer"
-        className={cn(className, 'rounded-lg object-contain bg-white p-0.5')}
+        className={cn(className, 'rounded-xl object-contain bg-white p-0.5')}
         onError={() => setFailed(true)}
       />
     );
@@ -88,7 +88,7 @@ function BankIcon({
       className={cn(
         className,
         color,
-        'rounded-lg text-white flex items-center justify-center text-xs font-bold shrink-0',
+        'rounded-xl text-white flex items-center justify-center text-xs font-bold shrink-0',
       )}
     >
       {initials}

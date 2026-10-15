@@ -143,14 +143,16 @@
   --text-btn-size: 16px;
   --text-btn-weight: 600;
 
+  /* Three radii: cards and sheets, controls and thumbnails, pills. */
   --radius-pill: 9999px;
-  --radius-card: 24px;
-  --radius-belt: 18px;
-  --radius-stack: 22px;
-  --radius-sheet: 24px;
-  --radius-panel: 16px;
-  --radius-chip: 14px;
-  --radius-field: 12px;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-belt: var(--radius-card);
+  --radius-stack: var(--radius-card);
+  --radius-sheet: var(--radius-card);
+  --radius-panel: var(--radius-card);
+  --radius-chip: var(--radius-control);
+  --radius-field: var(--radius-control);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -345,7 +347,7 @@
 
   .brand-wordmark .word {
     color: var(--red-deep);
-    font-size: 1em;
+    font-size: 1.3em;
   }
 
   .hover-glow-gold:hover {
@@ -456,6 +458,15 @@
 
   .admin-pane {
     animation: admin-pane-in 260ms var(--ease-card) both;
+  }
+
+  /* Horizontal rails (the menu's category row) scroll by swipe, no bar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   .admin-scrollbar::-webkit-scrollbar {

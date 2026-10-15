@@ -84,9 +84,7 @@ export function getDynamicStatus(item: MenuItem): { isVisible: boolean, isAvaila
   }
 }
 
-export function isStoreOpen(settings: StoreSettings = DEFAULT_STORE_SETTINGS): boolean {
-  const now = new Date();
-
+export function isStoreOpen(settings: StoreSettings = DEFAULT_STORE_SETTINGS, now: Date = new Date()): boolean {
   // Current date in Ulaanbaatar as YYYY-MM-DD (lexicographically comparable)
   const currentDateUB = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Ulaanbaatar',
@@ -121,4 +119,37 @@ export function isStoreOpen(settings: StoreSettings = DEFAULT_STORE_SETTINGS): b
   if (hour >= settings.openHour && hour < settings.closeHour) return true;
 
   return false;
+}
+
+/**
+ * When a closed store next opens, in Ulaanbaatar time, by the same rules as
+ * isStoreOpen. null while open, or if nothing opens within two weeks.
+ */
+export function nextOpening(
+  settings: StoreSettings,
+  now: Date = new Date(),
+): { daysAhead: number; weekday: number; hour: number } | null {
+  if (isStoreOpen(settings, now)) return null;
+
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ulaanbaatar',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', hourCycle: 'h23',
+    }).formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  const hour = Number(parts.hour);
+  // Walk calendar days as UTC dates so no local time zone leaks in.
+  const today = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
+
+  for (let daysAhead = 0; daysAhead <= 14; daysAhead++) {
+    const day = new Date(today + daysAhead * 86_400_000);
+    const date = day.toISOString().slice(0, 10);
+    const weekday = day.getUTCDay();
+    if (settings.closedUntil && date <= settings.closedUntil) continue;
+    const ignoringClosedDays = settings.noClosedDayUntil && date <= settings.noClosedDayUntil;
+    if (!ignoringClosedDays && settings.closedDays.includes(weekday)) continue;
+    if (daysAhead === 0 && hour >= settings.openHour) continue;
+    return { daysAhead, weekday, hour: settings.openHour };
+  }
+  return null;
 }

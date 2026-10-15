@@ -18,6 +18,8 @@ import { QPAY_ENABLED } from '../lib/qpayConfig';
 import { isMobileDevice } from '../lib/device';
 import QpayPaymentPanel from './QpayPaymentPanel';
 import type { PaymentMethod } from '../types';
+import { useEscapeKey } from '../lib/useEscapeKey';
+import { Link } from 'react-router-dom';
 
 /**
  * Bank-transfer payment instructions panel.
@@ -177,6 +179,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const { t, language } = useLanguage();
   const { storeOpen } = useStoreSettings();
   const { isAdmin } = useAuth();
+  useEscapeKey(isOpen, onClose);
   // Admins testing the customer flow bypass all the gates (store hours,
   // cancellation block, pending-order lock) and get a custom-discount input.
   const effectiveStoreOpen = storeOpen || isAdmin;
@@ -376,7 +379,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <ShoppingBag className="text-[var(--gold)]" size={24} />
                 <h2 className="text-xl font-medium text-white">{t('cart.title')}</h2>
               </div>
-              <button onClick={onClose} className="p-2 text-white/45 hover:text-[var(--gold)] transition-colors">
+              <button
+                onClick={onClose}
+                aria-label={t('common.close')}
+                className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-white/45 hover:text-[var(--gold)] transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
@@ -693,15 +700,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   </div>
                 </div>
               ) : (cart.length === 0 && !pendingOrderId) ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <ShoppingBag className="text-[var(--gold-soft-40)]" size={64} />
-                  <p className="text-white/45 italic">{t('cart.empty')}</p>
-                  <button
-                    onClick={onClose}
-                    className="text-[var(--gold)] font-semibold uppercase tracking-[0.06em] text-xs hover:underline"
-                  >
+                <div className="h-full flex flex-col items-center justify-center text-center gap-4">
+                  <ShoppingBag className="text-[var(--gold-soft-40)]" size={56} aria-hidden />
+                  <p className="text-[var(--text-secondary)]">{t('cart.empty')}</p>
+                  <Link to="/menu" onClick={onClose} className="btn btn-primary">
                     {t('cart.start_adding')}
-                  </button>
+                  </Link>
                 </div>
               ) : isCheckingOut ? (
                 <form onSubmit={handleSubmit} className="space-y-6">
