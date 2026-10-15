@@ -76,9 +76,9 @@ confirmed, flagged for a human, or a deliberate retry — never "log and ack".
 - Replayed callbacks change nothing.
 
 ### Cancellations and expiry
-- A customer cancel keeps the order (`status: cancelled`, `cancelledBy:
-  customer`) and closes its invoice at QPay, so a late payment can still be found
-  and flagged.
+- A cancel, by the customer or the restaurant, keeps the order (`status:
+  cancelled`, `cancelledBy: customer | restaurant`) and closes its invoice at
+  QPay, so a late payment can still be found and flagged.
 - `expirePendingInvoices` cancels lapsed invoices at QPay (best-effort) and flips
   `AWAITING_PAYMENT` → `EXPIRED` only if still awaiting — a confirmation wins.
 - Once payment settles, the order's QR image is dropped (orders are kept).
@@ -91,9 +91,19 @@ transfer, and the function says so (`P2P_NOT_REFUNDABLE`).
 `PAYMENT_ALREADY_CANCELED` from QPay is treated as success (an earlier attempt
 refunded but didn't record it).
 
-### Amount mismatch
-A `PAID` payment whose amount differs from what we billed goes to `MANUAL_REVIEW`
-with the expected and observed amounts; an admin reconciles it.
+### Flagged payments (`MANUAL_REVIEW`)
+A `PAID` payment that can't be auto-confirmed — wrong amount, paid after expiry,
+or paid after a cancel — goes to `MANUAL_REVIEW` with the expected and observed
+amounts. It stays in the dashboard's **Payments needing review** panel (whatever
+the kitchen status) until an admin settles it:
+- **Accept payment** (`payments.acceptReviewedPayment`) → `CONFIRMED`, so the
+  kitchen can start; an order the customer had cancelled is reopened.
+- **Refunded by hand** (`payments.markReviewRefunded`) → `REFUNDED` with
+  `refundedVia: manual` and an optional note, for money sent back outside QPay.
+
+Both are admin-only and only accept a `MANUAL_REVIEW` order; the review fields
+stay as the audit trail (`reviewResolution`, `reviewResolvedBy`). The callback's
+own confirm still refuses `MANUAL_REVIEW`, so only a person settles one.
 
 ---
 
@@ -118,7 +128,7 @@ with the expected and observed amounts; an admin reconciles it.
 | QPay error `NO_CREDENDIALS` | Credentials rejected (`NO_CREDENTIALS`, spelled right, means none were sent) | Re-copy `QPAY_PASSWORD` (Secret Manager version 1 for production). |
 | `callback_url: INVALID` | Malformed callback URL. Seen once (2026-06) with a query string; the token and order id now go in path segments | Check `QPAY_CALLBACK_BASE_URL` is an absolute `https://` URL with no query string. If it still fails, send QPay support the exact URL from the Convex logs. |
 | Callback hits but order stays `AWAITING_PAYMENT` | Payment not visible yet (QPay retries), or wrong `QPAY_CALLBACK_TOKEN` (401 in logs) | Logs for `qpayCallback`. |
-| Order in `MANUAL_REVIEW` | Real money that couldn't be auto-confirmed | Check the expected vs observed amount in the dashboard; refund or settle by hand. |
+| Order in `MANUAL_REVIEW` | Real money that couldn't be auto-confirmed | Check the expected vs observed amount in the review panel, then **Accept payment** or send the money back and mark **Refunded by hand**. |
 
 ## 6. Kill switch
 

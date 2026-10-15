@@ -199,6 +199,9 @@ export const track = query({
       paymentReviewExpectedMnt,
       paymentReviewObservedMnt,
       flaggedForReviewAt,
+      reviewResolution,
+      reviewResolvedAt,
+      reviewResolvedBy,
       isTest,
       adminDiscountMnt,
       ...view

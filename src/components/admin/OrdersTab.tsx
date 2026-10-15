@@ -26,6 +26,9 @@ interface OrdersTabProps {
   setSearchQuery: (q: string) => void;
   onNewOrder: () => void;
   onMarkPaid: (orderId: string) => void;
+  /** Settle a MANUAL_REVIEW payment: accept it, or record it as refunded by hand. */
+  onAcceptReview: (orderId: string) => void;
+  onRefundReview: (orderId: string) => void;
   onRefund: (orderId: string) => void;
   refundingId: string | null;
   onUpdateStatus: (orderId: string, status: OrderStatus) => void;
@@ -72,6 +75,8 @@ export default function OrdersTab({
   setSearchQuery,
   onNewOrder,
   onMarkPaid,
+  onAcceptReview,
+  onRefundReview,
   onRefund,
   refundingId,
   onUpdateStatus,
@@ -88,10 +93,9 @@ export default function OrdersTab({
   }, []);
 
   // Needs-attention: real money that couldn't be auto-confirmed. Deliberately
-  // ignores the date filter — a mismatch from yesterday still needs a human.
-  const reviewOrders = orders.filter(
-    (o) => (o as any).paymentStatus === 'MANUAL_REVIEW' && o.status !== 'cancelled',
-  );
+  // ignores the date filter and the kitchen status — a payment that landed
+  // after a cancel still needs a human. It leaves only once settled.
+  const reviewOrders = orders.filter((o) => (o as any).paymentStatus === 'MANUAL_REVIEW');
 
   const filtered = orders.filter((o) => orderMatchesFilter(o, selectedDate, searchQuery));
 
@@ -362,6 +366,11 @@ export default function OrdersTab({
                     <span className="text-sm text-stone-400 truncate">
                       {order.customerName || '—'}{order.phone && order.phone !== 'N/A' ? ` · ${order.phone}` : ''}
                     </span>
+                    {order.status === 'cancelled' && (
+                      <span className="shrink-0 rounded-full border border-stone-700 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-stone-400">
+                        {t('admin.orders.attention.cancelled_tag')}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-stone-400">
                     {t('admin.orders.attention.expected')}:{' '}
@@ -372,19 +381,20 @@ export default function OrdersTab({
                     {o.paymentReviewReason ? ` · ${o.paymentReviewReason}` : ''}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                {/* The regular confirm refuses MANUAL_REVIEW on purpose; these
+                    are the admin's two ways to settle a flagged payment. */}
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <button
-                    onClick={() => onMarkPaid(order.id)}
+                    onClick={() => onAcceptReview(order.id)}
                     className="px-4 py-2 bg-yellow-500 text-stone-900 text-xs font-bold uppercase tracking-[0.12em] rounded-full hover:bg-yellow-400 transition-all"
                   >
-                    ₮ {t('admin.orders.action.mark_paid')}
+                    ₮ {t('admin.orders.attention.accept')}
                   </button>
                   <button
-                    onClick={() => onUpdateStatus(order.id, 'cancelled')}
-                    className="p-2 text-stone-500 hover:text-amber-500 transition-colors"
-                    title={language === 'en' ? 'Cancel order' : 'Захиалга цуцлах'}
+                    onClick={() => onRefundReview(order.id)}
+                    className="px-4 py-2 border border-stone-600 text-stone-300 text-xs font-bold uppercase tracking-[0.12em] rounded-full hover:border-stone-400 transition-all"
                   >
-                    <XCircle size={20} />
+                    {t('admin.orders.attention.refunded')}
                   </button>
                 </div>
               </div>

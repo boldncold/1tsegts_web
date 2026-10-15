@@ -9,6 +9,7 @@
 
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/admin";
 import { loadMenuFor, priceCart } from "./lib/orderPricing";
@@ -50,12 +51,16 @@ export const setStatus = mutation({
       throw new ConvexError({ code: "AWAITING_PAYMENT", reason: order.paymentStatus ?? "none" });
     }
 
+    const cancelling = status === "cancelled" && order.status !== "cancelled";
     await ctx.db.patch(orderId, {
       status,
-      ...(status === "cancelled" && order.status !== "cancelled"
-        ? { cancelledBy: "restaurant" as const, cancelledAt: new Date().toISOString() }
-        : {}),
+      ...(cancelling ? { cancelledBy: "restaurant" as const, cancelledAt: new Date().toISOString() } : {}),
     });
+    // As with a customer cancel: close the QPay invoice so the QR stops taking
+    // money. Best-effort; a payment that still lands is flagged for review.
+    if (cancelling && order.qpayInvoiceId && order.paymentStatus === "AWAITING_PAYMENT") {
+      await ctx.scheduler.runAfter(0, internal.qpay.cancelInvoice, { invoiceId: order.qpayInvoiceId });
+    }
   },
 });
 

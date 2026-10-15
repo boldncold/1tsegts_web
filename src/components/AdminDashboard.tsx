@@ -345,6 +345,8 @@ export default function AdminDashboard() {
   const removeOrder = useMutation(api.ordersAdmin.remove);
   const createCounterOrder = useMutation(api.ordersAdmin.createCounterOrder);
   const confirmPayment = useMutation(api.payments.confirmPayment);
+  const acceptReviewedPayment = useMutation(api.payments.acceptReviewedPayment);
+  const markReviewRefunded = useMutation(api.payments.markReviewRefunded);
   const refundOrder = useAction(api.qpay.refund);
   const addBankTx = useMutation(api.bank.add);
   const addAdmin = useMutation(api.staff.addAdmin);
@@ -846,6 +848,32 @@ export default function AdminDashboard() {
     }
   };
 
+  // Settling a flagged (MANUAL_REVIEW) payment: real money the server could not
+  // confirm by itself. Accepting makes the order paid (and reopens it if the
+  // customer had cancelled); refunded-by-hand records money returned outside QPay.
+  const handleAcceptReview = async (orderId: string) => {
+    if (!window.confirm(t('admin.orders.attention.confirm_accept'))) return;
+    try {
+      await acceptReviewedPayment({ orderId: orderId as Id<'orders'> });
+      toast.success(t('admin.orders.attention.accepted'));
+    } catch (error) {
+      console.error('Accept reviewed payment error:', error);
+      toast.error(t('admin.orders.attention.failed'));
+    }
+  };
+
+  const handleRefundReview = async (orderId: string) => {
+    const note = window.prompt(t('admin.orders.attention.prompt_refund'), '');
+    if (note === null) return;
+    try {
+      await markReviewRefunded({ orderId: orderId as Id<'orders'>, ...(note.trim() ? { note } : {}) });
+      toast.success(t('admin.orders.attention.refunded_done'));
+    } catch (error) {
+      console.error('Mark review refunded error:', error);
+      toast.error(t('admin.orders.attention.failed'));
+    }
+  };
+
   // QPay refund — calls the qpay.refund action (admin-verified).
   // Card payments are auto-refunded by QPay; P2P (bank-app) payments can't be,
   // so the function returns a P2P_NOT_REFUNDABLE error we surface as guidance.
@@ -1297,6 +1325,8 @@ export default function AdminDashboard() {
                   setSearchQuery={setOrderSearchQuery}
                   onNewOrder={() => setIsAddingOrder(true)}
                   onMarkPaid={(id) => markOrderPaid(id)}
+                  onAcceptReview={handleAcceptReview}
+                  onRefundReview={handleRefundReview}
                   onRefund={refundQpayOrder}
                   refundingId={refundingId}
                   onUpdateStatus={updateOrderStatus}

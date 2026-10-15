@@ -87,13 +87,17 @@ export const orderFields = {
   monpayTxnId: v.optional(v.string()),
 
   refundedAt: v.optional(v.string()),
-  refundedVia: v.optional(v.literal("qpay")),
+  refundedVia: v.optional(v.union(v.literal("qpay"), v.literal("manual"))),
   refundNote: v.optional(v.string()),
 
   paymentReviewReason: v.optional(v.string()),
   paymentReviewExpectedMnt: v.optional(v.number()),
   paymentReviewObservedMnt: v.optional(v.number()),
   flaggedForReviewAt: v.optional(v.string()),
+  // How an admin settled the review (payments.acceptReviewedPayment / markReviewRefunded).
+  reviewResolution: v.optional(v.union(v.literal("accepted"), v.literal("refunded_manually"))),
+  reviewResolvedAt: v.optional(v.string()),
+  reviewResolvedBy: v.optional(v.string()),
 
   isTest: v.optional(v.boolean()),
   adminDiscountMnt: v.optional(v.number()),

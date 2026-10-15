@@ -189,6 +189,8 @@ describe("orders.track", () => {
         paidBy: "cashier@example.com",
         isTest: true,
         legacyId: "fs-order-1",
+        reviewResolution: "accepted",
+        reviewResolvedBy: "admin@example.com",
       }),
     );
     const byLegacy = await t.query(api.orders.track, { orderId: "fs-order-1" });
@@ -196,6 +198,8 @@ describe("orders.track", () => {
     expect(byLegacy).not.toHaveProperty("paidBy");
     expect(byLegacy).not.toHaveProperty("isTest");
     expect(byLegacy).not.toHaveProperty("legacyId");
+    expect(byLegacy).not.toHaveProperty("reviewResolvedBy");
+    expect(byLegacy).not.toHaveProperty("reviewResolution");
     expect(await t.query(api.orders.track, { orderId: "nope" })).toBeNull();
   });
 });

@@ -1,8 +1,9 @@
 /**
  * Payment state transitions — the only code that writes paymentStatus.
  *
- * Every function here is internal: reachable from the QPay callback, the expiry
- * cron and (from P4) the admin's confirm action, never from a browser. Each is
+ * Reachable from the QPay callback and the expiry cron (internal), and from
+ * admin-only mutations that check requireAdmin first: confirmPayment and the
+ * review settlements. Never from an anonymous browser. Each is
  * a Convex mutation, so it runs as one serializable transaction — the
  * explicit runTransaction calls of functions/src/markOrderPaid.ts and friends
  * are implicit here.
@@ -11,7 +12,7 @@
  * `status` (see PROJECT.md).
  */
 
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { internalMutation, internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/admin";
@@ -138,6 +139,75 @@ export const flagForReview = internalMutation({
       qpayPaymentId: args.qpayPaymentId,
       flaggedForReviewAt: new Date().toISOString(),
     });
+  },
+});
+
+async function requireInReview(ctx: MutationCtx, orderId: Id<"orders">) {
+  const order = await ctx.db.get(orderId);
+  if (!order) throw new ConvexError({ code: "NOT_FOUND" });
+  if (order.paymentStatus !== "MANUAL_REVIEW") {
+    throw new ConvexError({ code: "NOT_IN_REVIEW", reason: order.paymentStatus ?? "none" });
+  }
+  return order;
+}
+
+/**
+ * An admin checked a flagged payment and accepts it: the order counts as paid
+ * and may be cooked. The QPay callback never takes this path — markPaid still
+ * refuses MANUAL_REVIEW — so only a person can settle a flagged payment.
+ *
+ * Paid after the customer cancelled: the customer paid after all, so accepting
+ * reopens the order for the kitchen. That is the one place a payment decision
+ * also moves kitchen status, and it is the admin's explicit choice.
+ * The review fields stay as the audit trail.
+ */
+export const acceptReviewedPayment = mutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, { orderId }) => {
+    const admin = await requireAdmin(ctx);
+    const order = await requireInReview(ctx, orderId);
+    const now = new Date().toISOString();
+    await ctx.db.patch(orderId, {
+      paymentStatus: "CONFIRMED",
+      paidAt: now,
+      paidVia: order.paymentMethod === "qpay" ? "qpay" : "admin_manual",
+      paidBy: admin.email,
+      paidByUid: admin.userId,
+      reviewResolution: "accepted",
+      reviewResolvedAt: now,
+      reviewResolvedBy: admin.email,
+      qpayQrImage: undefined, // see markPaid
+      ...(order.status === "cancelled"
+        ? { status: "pending" as const, cancelledBy: undefined, cancelledAt: undefined }
+        : {}),
+    });
+    console.log("acceptReviewedPayment", { orderId, by: admin.email, reason: order.paymentReviewReason });
+  },
+});
+
+/**
+ * An admin returned a flagged payment outside QPay — usually a bank transfer
+ * back, since QPay can't refund P2P payments. Settles the review as REFUNDED.
+ * Kitchen status is left alone: cancel the order separately if it isn't.
+ */
+export const markReviewRefunded = mutation({
+  args: { orderId: v.id("orders"), note: v.optional(v.string()) },
+  handler: async (ctx, { orderId, note }) => {
+    const admin = await requireAdmin(ctx);
+    await requireInReview(ctx, orderId);
+    const now = new Date().toISOString();
+    const trimmed = note?.trim().slice(0, 500);
+    await ctx.db.patch(orderId, {
+      paymentStatus: "REFUNDED",
+      refundedAt: now,
+      refundedVia: "manual",
+      ...(trimmed ? { refundNote: trimmed } : {}),
+      reviewResolution: "refunded_manually",
+      reviewResolvedAt: now,
+      reviewResolvedBy: admin.email,
+      qpayQrImage: undefined,
+    });
+    console.log("markReviewRefunded", { orderId, by: admin.email });
   },
 });
 

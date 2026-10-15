@@ -6,6 +6,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **When records stop being deleted and are kept with a status instead (e.g. `cancelled`), re-check every UI filter and dismiss action that treated that status as "gone". And a state a human must settle needs a way to settle it in the app, tested end to end.**
+  *Why:* on Firebase a cancelled order was deleted, so the review panel's `status !== 'cancelled'` filter was harmless. On Convex cancels are kept, and a payment landing after a customer cancel was flagged but hidden from the panel. The panel's "Mark paid" button had also never worked: the confirm path refuses `MANUAL_REVIEW` by design, so flagged money had no resolution at all.
+
 - **A re-runnable import into a target that a rehearsal already filled must mirror the source — remove what the source deleted and replace what it changed — not only add. And guard the removal: never prune after a failed or empty read.**
   *Why:* the Firestore → Convex importer upserted by legacyId and reused each dish's stored photo, so at cutover a dish deleted in the old admin after the rehearsal (e.g. the AI Studio demo items) would have stayed on the new site, and a changed photo would have been ignored.
 

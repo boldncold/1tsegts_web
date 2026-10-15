@@ -114,7 +114,7 @@ export interface Order {
 
   // Refund fields (set by the qpay.refund action)
   refundedAt?: string;           // ISO timestamp when the refund succeeded
-  refundedVia?: 'qpay';
+  refundedVia?: 'qpay' | 'manual'; // 'manual': returned outside QPay after a review
   refundNote?: string;
 
   // Manual-review fields (set by the QPay callback when real money can't be auto-confirmed)
@@ -122,6 +122,9 @@ export interface Order {
   paymentReviewExpectedMnt?: number;   // what we billed
   paymentReviewObservedMnt?: number;   // what QPay reported as paid
   flaggedForReviewAt?: string;         // ISO timestamp
+  reviewResolution?: 'accepted' | 'refunded_manually'; // how an admin settled it
+  reviewResolvedAt?: string;
+  reviewResolvedBy?: string;           // admin email
 
   // Admin test-mode fields
   isTest?: boolean;              // placed by an admin while signed in, bypassing customer gates

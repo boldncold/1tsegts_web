@@ -214,6 +214,100 @@ describe("confirming payments", () => {
   });
 });
 
+describe("settling flagged payments", () => {
+  const flagged = (reason: string, extra: Record<string, unknown> = {}) => ({
+    paymentMethod: "qpay",
+    paymentStatus: "MANUAL_REVIEW",
+    amountMnt: 12000,
+    qpayInvoiceId: "inv-1",
+    qpayPaymentId: "pay-1",
+    paymentReviewReason: reason,
+    paymentReviewExpectedMnt: 12000,
+    paymentReviewObservedMnt: 12000,
+    ...extra,
+  });
+
+  test("accepting confirms the order so the kitchen can start, and keeps the review trail", async () => {
+    const { owner, insertOrder, get } = await setup();
+    const orderId = await insertOrder(flagged("qpay_paid_after_expiry"));
+    await owner.mutation(api.payments.acceptReviewedPayment, { orderId });
+    expect(await get(orderId)).toMatchObject({
+      paymentStatus: "CONFIRMED",
+      paidVia: "qpay",
+      paidBy: OWNER_EMAIL,
+      reviewResolution: "accepted",
+      reviewResolvedBy: OWNER_EMAIL,
+      paymentReviewReason: "qpay_paid_after_expiry",
+      status: "pending",
+    });
+    await owner.mutation(api.ordersAdmin.setStatus, { orderId, status: "preparing" });
+  });
+
+  test("accepting a payment that landed after the customer cancelled reopens the order", async () => {
+    const { owner, insertOrder, get } = await setup();
+    const orderId = await insertOrder(
+      flagged("qpay_paid_after_cancel", { status: "cancelled", cancelledBy: "customer", cancelledAt: "2026-10-15T00:00:00Z" }),
+    );
+    await owner.mutation(api.payments.acceptReviewedPayment, { orderId });
+    const order = await get(orderId);
+    expect(order).toMatchObject({ paymentStatus: "CONFIRMED", status: "pending" });
+    expect(order?.cancelledBy).toBeUndefined();
+  });
+
+  test("marking refunded by hand settles the review and leaves the kitchen status alone", async () => {
+    const { owner, insertOrder, get } = await setup();
+    const orderId = await insertOrder(flagged("qpay_amount_mismatch"));
+    await owner.mutation(api.payments.markReviewRefunded, { orderId, note: "  sent back by Khan Bank  " });
+    expect(await get(orderId)).toMatchObject({
+      paymentStatus: "REFUNDED",
+      refundedVia: "manual",
+      refundNote: "sent back by Khan Bank",
+      reviewResolution: "refunded_manually",
+      status: "pending",
+    });
+  });
+
+  test("only admins, and only orders under review", async () => {
+    const { t, owner, insertOrder } = await setup();
+    const review = await insertOrder(flagged("qpay_amount_mismatch"));
+    const awaiting = await insertOrder({ paymentMethod: "qpay", paymentStatus: "AWAITING_PAYMENT" });
+    const paid = await insertOrder({ paymentMethod: "qpay", paymentStatus: "CONFIRMED" });
+    await expect(t.mutation(api.payments.acceptReviewedPayment, { orderId: review })).rejects.toThrow(/NOT_ADMIN/);
+    await expect(t.mutation(api.payments.markReviewRefunded, { orderId: review })).rejects.toThrow(/NOT_ADMIN/);
+    for (const orderId of [awaiting, paid]) {
+      await expect(owner.mutation(api.payments.acceptReviewedPayment, { orderId })).rejects.toThrow(/NOT_IN_REVIEW/);
+      await expect(owner.mutation(api.payments.markReviewRefunded, { orderId })).rejects.toThrow(/NOT_IN_REVIEW/);
+    }
+  });
+
+  test("a restaurant cancel closes the open QPay invoice, as a customer cancel does", async () => {
+    const { t, owner, insertOrder } = await setup();
+    const calls: string[] = [];
+    for (const [k, val] of Object.entries({ QPAY_BASE_URL: "https://qpay.test", QPAY_USERNAME: "u", QPAY_PASSWORD: "p", QPAY_INVOICE_CODE: "c", QPAY_CALLBACK_TOKEN: "t" })) {
+      vi.stubEnv(k, val);
+    }
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      calls.push(`${init?.method} ${url.pathname}`);
+      if (url.pathname === "/v2/auth/token") {
+        return new Response(JSON.stringify({ access_token: "b", refresh_token: "r", expires_in: Date.now() / 1000 + 3600, refresh_expires_in: 0 }));
+      }
+      return new Response("{}");
+    });
+    vi.useFakeTimers();
+    try {
+      const awaiting = await insertOrder({ paymentMethod: "qpay", paymentStatus: "AWAITING_PAYMENT", qpayInvoiceId: "inv-9" });
+      const cash = await insertOrder({ paymentMethod: "cash" });
+      await owner.mutation(api.ordersAdmin.setStatus, { orderId: awaiting, status: "cancelled" });
+      await owner.mutation(api.ordersAdmin.setStatus, { orderId: cash, status: "cancelled" });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(calls.filter((c) => c.startsWith("DELETE"))).toEqual(["DELETE /v2/invoice/inv-9"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("bank matching", () => {
   test("amount mismatch and unknown refs are reported; the sweep matches an order that arrives later", async () => {
     const { owner, insertOrder, get, t } = await setup();
