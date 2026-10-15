@@ -9,6 +9,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 - **A `datetime-local` input holds local wall-clock time: build its default from local getters (`nowForDateTimeLocal` in `AdminDashboard.tsx`), never `toISOString().slice(0, 16)`, and convert to UTC with `new Date(value).toISOString()` only on save.**
   *Why:* the bank-history manual-entry form defaulted to the UTC string, which the input read as local time, so every `postedAt` left at the default was stored 8 hours early in Ulaanbaatar (an entry made at 20:42 local saved as 04:42Z).
 
+- **`firebase.json`'s `firestore` block must name the database (`[{ "database": "<id>", "rules": …, "indexes": … }]`). Without it, `firebase deploy --only firestore:rules` targets `(default)`, and this app lives on a named database. Verify a rules deploy by exercising a rule that changed (e.g. an anonymous read it newly allows), never by the deploy's exit code.**
+  *Why:* every rules deploy since the AI Studio days landed on an unused `(default)` database while the app's database kept older rules. Found because the live database refused anonymous reads of `settings/store`, which the repo allows. That rule shipped in the same commit (`0355861`) as `hasNoForgedPayment`, so the payment-field protections were never live either.
+
 - **Never bill or confirm against an amount the browser wrote. Every order field (`items[].price`, `total`, `amountMnt`, `adminDiscountMnt`, `quantity`) is customer input: recompute the charge server-side from the menu (`priceOrderItems` in `functions/src/orderPricing.ts`), reject any quantity that isn't a positive integer, and honour discounts only for a verified admin caller.**
   *Why:* `firestore.rules` left `amountMnt` client-settable and `createQpayInvoice` billed it verbatim, so anyone with devtools could order ₮50,000 of food, pay ₮100, and `qpayWebhook` would confirm it as exact. A `quantity: -1` line could also cancel out another item.
 
