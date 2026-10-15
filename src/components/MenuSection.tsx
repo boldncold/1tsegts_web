@@ -11,8 +11,7 @@ import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { cn, getDynamicStatus, getScheduleLabel } from '../lib/utils';
 
-const DISH_FALLBACK_BG =
-  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
 
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -266,7 +265,7 @@ export default function MenuSection() {
                     transition={{ duration: 0.25 }}
                     className={cn(
                       "group bg-[var(--espresso)] border border-white/[0.06] rounded-3xl overflow-hidden flex flex-col",
-                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[var(--shadow-belt-card)] hover:border-[rgba(212,175,55,0.30)]",
+                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[var(--shadow-belt-card)] hover:border-[var(--gold-soft-30)]",
                       !isAvailable ? "opacity-70" : ""
                     )}
                   >

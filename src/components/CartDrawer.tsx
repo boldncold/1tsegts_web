@@ -89,9 +89,9 @@ function BankPaymentPanel({ order }: { order: any }) {
   );
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-amber-400 shadow-xl">
+    <div className="rounded-2xl overflow-hidden border-2 border-[var(--warn-400)] shadow-xl">
       {/* Status banner */}
-      <div className="bg-amber-400 px-5 py-3 flex items-center gap-3">
+      <div className="bg-[var(--warn-400)] px-5 py-3 flex items-center gap-3">
         <Banknote size={22} className="text-stone-900" />
         <div className="flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-900/70">
@@ -107,9 +107,9 @@ function BankPaymentPanel({ order }: { order: any }) {
 
       {/* Instructions */}
       <div className="bg-white px-5 py-4 space-y-3">
-        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-          <Building2 size={16} className="text-amber-700 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-900 leading-snug">
+        <div className="flex items-start gap-2 p-3 bg-[var(--warn-50)] border border-[var(--warn-200)] rounded-xl">
+          <Building2 size={16} className="text-[var(--warn-700)] mt-0.5 shrink-0" />
+          <p className="text-xs text-[var(--warn-900)] leading-snug">
             {language === 'en'
               ? 'Open your Khan Bank app, transfer the exact amount below, and put the reference code in the description.'
               : 'Хаан банкны аппликейшнаа нээж, доорх дансанд яг тэгдэг дүнг шилжүүлээд, гүйлгээний утгад жишиг кодыг бичнэ үү.'}
@@ -368,15 +368,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-[var(--stone-950)] shadow-2xl flex flex-col border-l border-[rgba(212,175,55,0.15)]"
+            className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-[var(--stone-950)] shadow-2xl flex flex-col border-l border-[var(--gold-soft-15)]"
           >
             {/* Header */}
             <div className="p-6 border-b border-white/[0.06] flex justify-between items-center">
               <div className="flex items-center space-x-3">
-                <ShoppingBag className="text-[#D4AF37]" size={24} />
+                <ShoppingBag className="text-[var(--gold)]" size={24} />
                 <h2 className="text-xl font-medium text-white">{t('cart.title')}</h2>
               </div>
-              <button onClick={onClose} className="p-2 text-white/45 hover:text-[#D4AF37] transition-colors">
+              <button onClick={onClose} className="p-2 text-white/45 hover:text-[var(--gold)] transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -423,18 +423,18 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 ((pendingOrderData.paymentMethod !== 'bank_transfer' &&
                   pendingOrderData.paymentMethod !== 'qpay') ||
                  pendingOrderData.paymentStatus === 'CONFIRMED') && (
-                <div className="mb-6 rounded-2xl overflow-hidden border border-[#D4AF37]/30 shadow-lg">
+                <div className="mb-6 rounded-2xl overflow-hidden border border-[var(--gold-soft-30)] shadow-lg">
                   {/* Header bar */}
                   <div className="bg-stone-900 px-5 py-4 flex justify-between items-center">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#D4AF37] mb-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--gold)] mb-1">
                         {language === 'en' ? 'Active Order' : 'Идэвхтэй захиалга'}
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="text-3xl font-bold text-white tabular-nums">#{pendingOrderData.orderNumber}</span>
                         <span className={cn(
                           "px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-[0.06em] animate-pulse",
-                          pendingOrderData.status === 'pending' ? "bg-[#D4AF37] text-stone-900" : "bg-green-500 text-white"
+                          pendingOrderData.status === 'pending' ? "bg-[var(--gold)] text-stone-900" : "bg-green-500 text-white"
                         )}>
                           {pendingOrderData.status === 'pending'
                             ? (language === 'en' ? 'Preparing' : 'Бэлтгэж байна')
@@ -466,16 +466,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                       {pendingOrderData.items?.map((item: any, idx: number) => (
                         <div key={idx} className="flex justify-between text-xs text-white/50">
-                          <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/70"> ({item.selectedPortion.name})</span>}</span>
+                          <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[var(--gold-soft-70)]"> ({item.selectedPortion.name})</span>}</span>
                           <span className="tabular-nums text-white/70 font-medium">₮{((item.price + (item.packaging ? item.packagingPrice || 0 : 0)) * item.quantity).toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
                     <div className="pt-2 border-t border-white/[0.06] flex justify-between items-center">
                       <span className="text-xs font-semibold text-white/45 uppercase tracking-[0.06em]">{t('cart.total')}</span>
-                      <span className="text-xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                      <span className="text-xl font-bold text-[var(--gold)] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                     </div>
-                    <p className="text-sm font-bold text-[#D4AF37] text-center pt-1 tracking-wide">
+                    <p className="text-sm font-bold text-[var(--gold)] text-center pt-1 tracking-wide">
                       {paidOnline
                         ? (language === 'en'
                             ? 'Paid — show your order number when collecting your food'
@@ -511,7 +511,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       setOrderComplete(false);
                       setIsCheckingOut(false);
                     }}
-                    className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[#C5A028] transition-all"
+                    className="w-full py-3 bg-[var(--gold)] text-[var(--text-on-gold)] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[var(--gold-hover)] transition-all"
                   >
                     {language === 'en' ? 'Order again' : 'Дахин захиалах'}
                   </button>
@@ -521,8 +521,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   {/* Status icon — amber "waiting" until payment is verified,
                       green check only once the money is in (or for cash). */}
                   {awaitingOnlinePayment ? (
-                    <div className="w-20 h-20 bg-amber-500/10 border-2 border-amber-500/30 rounded-full flex items-center justify-center">
-                      <Clock size={44} className="text-amber-400 animate-pulse" />
+                    <div className="w-20 h-20 bg-[var(--warn-500-10)] border-2 border-[var(--warn-500-30)] rounded-full flex items-center justify-center">
+                      <Clock size={44} className="text-[var(--warn-400)] animate-pulse" />
                     </div>
                   ) : (
                     <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center">
@@ -584,8 +584,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       pendingOrderData?.paymentMethod === 'qpay') &&
                      pendingOrderData?.paymentStatus === 'AWAITING_PAYMENT') &&
                    (completedOrderType === 'pickup' ? (
-                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left space-y-4">
-                      <h4 className="text-base font-bold text-amber-900 text-center">
+                    <div className="w-full bg-[var(--warn-50)] border border-[var(--warn-200)] rounded-2xl p-5 text-left space-y-4">
+                      <h4 className="text-base font-bold text-[var(--warn-900)] text-center">
                         {language === 'en' ? 'What to do next' : 'Дараагийн алхмууд'}
                       </h4>
                       <div className="space-y-3">
@@ -598,14 +598,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                               : ['Кассанд очно уу', 'Захиалгын дугаараа харуулна уу', 'Төлж, хоолоо авна уу'])
                         ).map((step, i) => (
                           <div key={i} className="flex items-center gap-3">
-                            <span className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                            <p className="text-sm font-semibold text-amber-900 leading-snug">{step}</p>
+                            <span className="w-7 h-7 rounded-full bg-[var(--warn-200)] text-[var(--warn-900)] font-bold text-sm flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                            <p className="text-sm font-semibold text-[var(--warn-900)] leading-snug">{step}</p>
                           </div>
                         ))}
                       </div>
-                      <div className="pt-3 border-t border-amber-200 text-center space-y-1">
-                        <p className="text-xs text-amber-600">{language === 'en' ? 'Or call us at' : 'Эсвэл утасдана уу'}</p>
-                        <a href="tel:99138866" className="text-xl font-bold text-[#D4AF37] hover:underline">99138866</a>
+                      <div className="pt-3 border-t border-[var(--warn-200)] text-center space-y-1">
+                        <p className="text-xs text-[var(--warn-600)]">{language === 'en' ? 'Or call us at' : 'Эсвэл утасдана уу'}</p>
+                        <a href="tel:99138866" className="text-xl font-bold text-[var(--gold)] hover:underline">99138866</a>
                       </div>
                     </div>
                   ) : (
@@ -630,7 +630,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       </div>
                       <div className="pt-3 border-t border-blue-200 text-center space-y-1">
                         <p className="text-xs text-blue-600">{language === 'en' ? 'Call us at' : 'Утасны дугаар'}</p>
-                        <a href="tel:99138866" className="text-xl font-bold text-[#D4AF37] hover:underline">99138866</a>
+                        <a href="tel:99138866" className="text-xl font-bold text-[var(--gold)] hover:underline">99138866</a>
                       </div>
                     </div>
                   ))}
@@ -640,7 +640,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     <div className="w-full bg-stone-900 rounded-2xl p-6 text-center">
                       <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-400 mb-2">{t('cart.order_number')}</p>
                       <p className="font-serif font-bold leading-none tabular-nums" style={{ fontSize: '96px' }}>
-                        <span className="text-[#D4AF37]">{orderNumber[0]}</span>
+                        <span className="text-[var(--gold)]">{orderNumber[0]}</span>
                         <span className="text-white">{orderNumber.slice(1)}</span>
                       </p>
                       {pendingOrderData && (
@@ -648,14 +648,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <div className="mt-4 pt-3 border-t border-stone-700 space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar text-left">
                             {pendingOrderData.items?.map((item: any, idx: number) => (
                               <div key={idx} className="flex justify-between text-xs text-stone-400">
-                                <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[#D4AF37]/60"> ({item.selectedPortion.name})</span>}</span>
+                                <span className="flex-1 mr-2">{item.quantity}× {item.name}{item.selectedPortion?.name && <span className="text-[var(--gold-soft-60)]"> ({item.selectedPortion.name})</span>}</span>
                                 <span className="tabular-nums text-stone-300">₮{((item.price + (item.packaging ? item.packagingPrice || 0 : 0)) * item.quantity).toLocaleString()}</span>
                               </div>
                             ))}
                           </div>
                           <div className="mt-3 pt-3 border-t border-stone-700 flex justify-between items-center">
                             <span className="text-xs font-semibold text-stone-400 uppercase tracking-[0.06em]">{t('cart.total')}</span>
-                            <span className="text-2xl font-bold text-[#D4AF37] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
+                            <span className="text-2xl font-bold text-[var(--gold)] tabular-nums">₮{Math.round(pendingOrderData.total).toLocaleString()}</span>
                           </div>
                         </>
                       )}
@@ -663,8 +663,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   )}
 
                   {/* Estimated time */}
-                  <div className="flex items-center gap-2 px-5 py-2.5 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full">
-                    <span className="text-sm font-bold text-[#D4AF37]">
+                  <div className="flex items-center gap-2 px-5 py-2.5 bg-[var(--gold-soft-10)] border border-[var(--gold-soft-25)] rounded-full">
+                    <span className="text-sm font-bold text-[var(--gold)]">
                       {language === 'en' ? '⏱ Est. 15–20 mins' : '⏱ Хүлээлт: 15–20 минут'}
                     </span>
                   </div>
@@ -677,7 +677,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         setIsCheckingOut(false);
                         onClose();
                       }}
-                      className="w-full py-3 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[#C5A028] transition-all"
+                      className="w-full py-3 bg-[var(--gold)] text-[var(--text-on-gold)] font-semibold uppercase tracking-[0.06em] rounded-full hover:bg-[var(--gold-hover)] transition-all"
                     >
                       {t('cart.back_to_menu')}
                     </button>
@@ -694,11 +694,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
               ) : (cart.length === 0 && !pendingOrderId) ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <ShoppingBag className="text-[#D4AF37]/40" size={64} />
+                  <ShoppingBag className="text-[var(--gold-soft-40)]" size={64} />
                   <p className="text-white/45 italic">{t('cart.empty')}</p>
                   <button
                     onClick={onClose}
-                    className="text-[#D4AF37] font-semibold uppercase tracking-[0.06em] text-xs hover:underline"
+                    className="text-[var(--gold)] font-semibold uppercase tracking-[0.06em] text-xs hover:underline"
                   >
                     {t('cart.start_adding')}
                   </button>
@@ -717,7 +717,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           onClick={() => setFormData({ ...formData, orderType: 'pickup' })}
                           className={cn(
                             "flex-1 py-2 text-xs uppercase tracking-[0.06em] font-semibold rounded-full transition-all",
-                            formData.orderType === 'pickup' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
+                            formData.orderType === 'pickup' ? "bg-[var(--gold)] text-[var(--text-on-gold)]" : "text-white/50"
                           )}
                         >
                           {t('cart.pickup')}
@@ -727,7 +727,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           onClick={() => setFormData({ ...formData, orderType: 'kiosk' })}
                           className={cn(
                             "flex-1 py-2 text-xs uppercase tracking-[0.06em] font-semibold rounded-full transition-all",
-                            formData.orderType === 'kiosk' ? "bg-[#D4AF37] text-[#080606]" : "text-white/50"
+                            formData.orderType === 'kiosk' ? "bg-[var(--gold)] text-[var(--text-on-gold)]" : "text-white/50"
                           )}
                         >
                           {t('cart.at_mall')}
@@ -746,7 +746,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="text"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] outline-none transition-all"
                             placeholder="+976 ..."
                           />
                         </div>
@@ -758,7 +758,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             type="text"
                             value={formData.kioskNumber}
                             onChange={(e) => setFormData({ ...formData, kioskNumber: e.target.value })}
-                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-full px-5 py-3 text-white placeholder:text-white/35 focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] outline-none transition-all"
                             placeholder="e.g., Kiosk #12"
                           />
                         </div>
@@ -768,7 +768,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full bg-white/[0.04] border border-white/15 rounded-2xl px-5 py-3 text-white placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] outline-none transition-all h-24 resize-none"
+                            className="w-full bg-white/[0.04] border border-white/15 rounded-2xl px-5 py-3 text-white placeholder:text-white/35 focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)] outline-none transition-all h-24 resize-none"
                             placeholder={language === 'en' ? "e.g., No onions, extra spicy..." : "Жишээ нь: Сонгиногүй, халуун ногоотой..."}
                           />
                         </div>
@@ -776,7 +776,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     )}
                     {isAdmin && (
                       <div className="space-y-2">
-                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs uppercase tracking-[0.06em] text-amber-800 font-semibold text-center">
+                        <div className="p-2.5 rounded-xl bg-[var(--warn-50)] border border-[var(--warn-200)] text-xs uppercase tracking-[0.06em] text-[var(--warn-800)] font-semibold text-center">
                           {t('cart.admin.test_mode_hint')}
                         </div>
                         <label className="text-xs uppercase tracking-[0.06em] text-white/40 font-semibold">
@@ -789,11 +789,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           step={100}
                           value={adminDiscount}
                           onChange={(e) => setAdminDiscount(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
-                          className="w-full bg-white/[0.04] border border-amber-300/50 rounded-full px-5 py-3 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all tabular-nums"
+                          className="w-full bg-white/[0.04] border border-[var(--warn-300-50)] rounded-full px-5 py-3 text-white focus:border-[var(--warn-500)] focus:ring-1 focus:ring-[var(--warn-500)] outline-none transition-all tabular-nums"
                           placeholder="0"
                         />
                         {chargedTotal === 0 && clampedDiscount > 0 && (
-                          <p className="text-xs text-amber-700 italic px-1">
+                          <p className="text-xs text-[var(--warn-700)] italic px-1">
                             {t('cart.admin.zero_charge_hint')}
                           </p>
                         )}
@@ -815,15 +815,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           className={cn(
                             "w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 relative",
                             formData.paymentMethod === 'qpay'
-                              ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37] shadow-[var(--shadow-btn-gold)]"
-                              : "bg-white/[0.04] text-white border-[#D4AF37]/40 hover:border-[#D4AF37]"
+                              ? "bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)] shadow-[var(--shadow-btn-gold)]"
+                              : "bg-white/[0.04] text-white border-[var(--gold-soft-40)] hover:border-[var(--gold)]"
                           )}
                         >
                           <span className={cn(
                             "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                            formData.paymentMethod === 'qpay' ? "bg-[#080606]/15" : "bg-[#D4AF37]/15"
+                            formData.paymentMethod === 'qpay' ? "bg-[var(--on-gold-soft-15)]" : "bg-[var(--gold-soft-15)]"
                           )}>
-                            <QrCode size={22} className={formData.paymentMethod === 'qpay' ? 'text-[#080606]' : 'text-[#D4AF37]'} />
+                            <QrCode size={22} className={formData.paymentMethod === 'qpay' ? 'text-[var(--text-on-gold)]' : 'text-[var(--gold)]'} />
                           </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -831,22 +831,22 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                               <span className={cn(
                                 "text-xs uppercase tracking-[0.06em] font-bold px-2 py-0.5 rounded-full",
                                 formData.paymentMethod === 'qpay'
-                                  ? "bg-[#080606]/15 text-[#080606]"
-                                  : "bg-[#D4AF37] text-stone-900"
+                                  ? "bg-[var(--on-gold-soft-15)] text-[var(--text-on-gold)]"
+                                  : "bg-[var(--gold)] text-stone-900"
                               )}>
                                 {language === 'en' ? 'Recommended' : 'Санал болгож буй'}
                               </span>
                             </div>
                             <p className={cn(
                               "text-xs mt-0.5",
-                              formData.paymentMethod === 'qpay' ? "text-[#080606]/70" : "text-white/45"
+                              formData.paymentMethod === 'qpay' ? "text-[var(--on-gold-soft-70)]" : "text-white/45"
                             )}>
                               {language === 'en'
                                 ? 'One-tap pay from any bank app'
                                 : 'Аль ч банкны аппаас нэг товшилтоор'}
                             </p>
                           </div>
-                          {formData.paymentMethod === 'qpay' && <CheckCircle size={18} className="text-[#080606] shrink-0" />}
+                          {formData.paymentMethod === 'qpay' && <CheckCircle size={18} className="text-[var(--text-on-gold)] shrink-0" />}
                         </button>
                       )}
 
@@ -854,7 +854,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <button
                         type="button"
                         onClick={() => setShowOtherPaymentMethods((v) => !v)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs uppercase tracking-[0.06em] text-white/45 font-semibold hover:text-[#D4AF37] transition-colors"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs uppercase tracking-[0.06em] text-white/45 font-semibold hover:text-[var(--gold)] transition-colors"
                       >
                         <span>
                           {language === 'en' ? 'Other payment methods' : 'Бусад төлбөрийн арга'}
@@ -870,8 +870,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             className={cn(
                               "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.06em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'cash'
-                                ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
-                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
+                                ? "bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]"
+                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[var(--gold)]"
                             )}
                           >
                             <Banknote size={16} />
@@ -883,8 +883,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             className={cn(
                               "py-3 px-3 rounded-2xl border-2 text-xs font-semibold uppercase tracking-[0.06em] transition-all flex items-center justify-center gap-2",
                               formData.paymentMethod === 'bank_transfer'
-                                ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37]"
-                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[#D4AF37]"
+                                ? "bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]"
+                                : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[var(--gold)]"
                             )}
                           >
                             <Building2 size={16} />
@@ -893,8 +893,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
                       )}
                       {formData.paymentMethod === 'bank_transfer' && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mt-2">
-                          <p className="text-xs text-amber-800 leading-relaxed">
+                        <div className="p-3 bg-[var(--warn-50)] border border-[var(--warn-200)] rounded-xl mt-2">
+                          <p className="text-xs text-[var(--warn-800)] leading-relaxed">
                             {language === 'en'
                               ? `After confirming, you'll get bank details + a reference code. Transfer the exact amount to ${BANK_DETAILS.bankName.en} with the reference in the description. We confirm your order once we see the transfer.`
                               : `Захиалгаа баталгаажуулсны дараа дансны мэдээлэл болон жишиг кодыг харуулна. ${BANK_DETAILS.bankName.mn}-ны данс руу яг тэгдэг дүнг гүйлгээний утганд жишиг кодтойгоо хамт шилжүүлнэ үү. Гүйлгээг харсны дараа баталгаажуулна.`}
@@ -906,7 +906,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <button
                     type="button"
                     onClick={() => setIsCheckingOut(false)}
-                    className="w-full py-3 text-white/45 font-semibold uppercase tracking-[0.06em] text-xs hover:text-[#D4AF37] transition-colors"
+                    className="w-full py-3 text-white/45 font-semibold uppercase tracking-[0.06em] text-xs hover:text-[var(--gold)] transition-colors"
                   >
                     {t('cart.back_to_cart')}
                   </button>
@@ -930,7 +930,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <div>
                             <h4 className="text-white font-medium text-sm">{item.name}</h4>
                             {item.selectedPortion && (
-                              <p className="text-xs text-[#D4AF37] font-semibold tracking-wide">{item.selectedPortion.name}</p>
+                              <p className="text-xs text-[var(--gold)] font-semibold tracking-wide">{item.selectedPortion.name}</p>
                             )}
                           </div>
                           <button
@@ -948,26 +948,26 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             className={cn(
                               "flex items-center justify-between w-full px-3 py-2 rounded-xl border transition-all active:scale-[0.98]",
                               item.packaging
-                                ? "bg-[#D4AF37]/10 border-[#D4AF37]/50"
+                                ? "bg-[var(--gold-soft-10)] border-[var(--gold-soft-50)]"
                                 : "bg-white/[0.04] border-white/15 hover:border-white/30"
                             )}
                           >
                             <div className="flex items-center space-x-2">
                               {item.packaging ? (
-                                <CheckCircle size={16} className="text-[#D4AF37]" />
+                                <CheckCircle size={16} className="text-[var(--gold)]" />
                               ) : (
                                 <div className="w-4 h-4 rounded-full border border-white/20" />
                               )}
                               <span className={cn(
                                 "text-xs font-medium",
-                                item.packaging ? "text-[#D4AF37]" : "text-white/50"
+                                item.packaging ? "text-[var(--gold)]" : "text-white/50"
                               )}>
                                 {t('cart.packaging')}
                               </span>
                             </div>
                             <span className={cn(
                               "text-xs font-semibold tabular-nums",
-                              item.packaging ? "text-[#D4AF37]" : "text-white/40"
+                              item.packaging ? "text-[var(--gold)]" : "text-white/40"
                             )}>
                               +₮{(item.packagingPrice !== undefined ? item.packagingPrice : 0).toLocaleString()}
                             </span>
@@ -978,19 +978,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           <div className="flex items-center space-x-3 bg-[var(--espresso)] rounded-full px-2 py-1 border border-white/15">
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="p-1 text-white/50 hover:text-[#D4AF37] transition-colors"
+                              className="p-1 text-white/50 hover:text-[var(--gold)] transition-colors"
                             >
                               <Minus size={14} />
                             </button>
                             <span className="text-sm font-semibold text-white min-w-[20px] text-center tabular-nums">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="p-1 text-white/50 hover:text-[#D4AF37] transition-colors"
+                              className="p-1 text-white/50 hover:text-[var(--gold)] transition-colors"
                             >
                               <Plus size={14} />
                             </button>
                           </div>
-                          <span className="text-sm font-semibold tabular-nums text-[#D4AF37]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
+                          <span className="text-sm font-semibold tabular-nums text-[var(--gold)]">₮{(Math.round(item.selectedPortion ? item.selectedPortion.price * item.quantity : item.price * item.quantity) + (item.packaging ? (item.packagingPrice !== undefined ? item.packagingPrice : 0) * item.quantity : 0)).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -1014,10 +1014,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {isAdmin && clampedDiscount > 0 && (
                   <>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-amber-700 uppercase tracking-[0.06em] text-xs font-semibold">
+                      <span className="text-[var(--warn-700)] uppercase tracking-[0.06em] text-xs font-semibold">
                         {t('cart.admin.discount_label')}
                       </span>
-                      <span className="tabular-nums text-amber-700 font-semibold">
+                      <span className="tabular-nums text-[var(--warn-700)] font-semibold">
                         –₮{clampedDiscount.toLocaleString()}
                       </span>
                     </div>
@@ -1025,7 +1025,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <span className="text-white uppercase tracking-[0.06em] text-xs font-bold">
                         {language === 'en' ? 'Charged' : 'Төлбөр'}
                       </span>
-                      <span className="text-2xl font-bold tabular-nums text-[#D4AF37]">
+                      <span className="text-2xl font-bold tabular-nums text-[var(--gold)]">
                         ₮{Math.round(chargedTotal).toLocaleString()}
                       </span>
                     </div>
@@ -1037,8 +1037,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   </div>
                 )}
                 {pendingOrderId && !isAdmin && (
-                  <div className="p-4 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl text-center space-y-2">
-                    <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-[0.06em]">
+                  <div className="p-4 bg-[var(--gold-soft-05)] border border-[var(--gold-soft-20)] rounded-xl text-center space-y-2">
+                    <p className="text-xs text-[var(--gold)] font-semibold uppercase tracking-[0.06em]">
                       {language === 'en' ? 'Pending order must finish first' : 'Захиалга дуусахыг хүлээнэ үү'}
                     </p>
                     <p className="text-xs text-white/45 italic">
@@ -1051,7 +1051,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={handleSubmit}
                     disabled={isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))}
                     className={cn(
-                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 hover:bg-[#C5A028]",
+                      "w-full py-4 bg-[var(--gold)] text-[var(--text-on-gold)] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 hover:bg-[var(--gold-hover)]",
                       (isSubmitting || !effectiveStoreOpen || (!isAdmin && (isBlocked || !!pendingOrderId)) || (formData.orderType === 'kiosk' && (!formData.kioskNumber || !formData.phone))) && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -1069,8 +1069,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     onClick={() => setIsCheckingOut(true)}
                     disabled={!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)}
                     className={cn(
-                      "w-full py-4 bg-[#D4AF37] text-[#080606] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]",
-                      (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[#C5A028]"
+                      "w-full py-4 bg-[var(--gold)] text-[var(--text-on-gold)] font-semibold uppercase tracking-[0.06em] rounded-full flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-[var(--shadow-btn-gold)]",
+                      (!effectiveStoreOpen || (!isAdmin && !!pendingOrderId)) ? "opacity-50 cursor-not-allowed" : "hover:bg-[var(--gold-hover)]"
                     )}
                   >
                     <span>{!effectiveStoreOpen ? t('cart.closed') : t('cart.proceed')}</span>

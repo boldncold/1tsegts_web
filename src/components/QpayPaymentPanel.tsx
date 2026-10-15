@@ -34,7 +34,7 @@ interface QpayInvoiceResponse {
 const MONOGRAM_COLORS = [
   'bg-emerald-600',
   'bg-blue-600',
-  'bg-amber-600',
+  'bg-[var(--warn-600)]',
   'bg-rose-600',
   'bg-violet-600',
   'bg-cyan-700',
@@ -310,9 +310,9 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-[#D4AF37] shadow-xl">
+    <div className="rounded-2xl overflow-hidden border-2 border-[var(--gold)] shadow-xl">
       {/* Status banner */}
-      <div className="bg-[#D4AF37] px-5 py-3 flex items-center gap-3">
+      <div className="bg-[var(--gold)] px-5 py-3 flex items-center gap-3">
         <QrCode size={22} className="text-stone-900" />
         <div className="flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-900/70">
@@ -335,7 +335,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
         {isMobile && qpayLaunchUrl && (
           <a
             href={qpayLaunchUrl}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#8B0000] text-white font-bold uppercase tracking-[0.06em] text-sm hover:bg-[#6b0000] transition-all active:scale-95 shadow-lg shadow-red-900/20"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[var(--red-deep)] text-white font-bold uppercase tracking-[0.06em] text-sm hover:bg-[var(--red-deep-hover)] transition-all active:scale-95 shadow-lg shadow-red-900/20"
           >
             <Smartphone size={18} />
             {language === 'en' ? 'Pay in QPay app' : 'QPay аппаар төлөх'}

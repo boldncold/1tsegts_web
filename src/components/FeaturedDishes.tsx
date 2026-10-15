@@ -7,8 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 type Variant = 'stack' | 'marquee';
 
-const DISH_FALLBACK_BG =
-  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
 
 function useIsMobile(breakpoint = 640) {
   const [isMobile, setIsMobile] = useState(
@@ -56,7 +55,7 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
 
   return (
     <section style={{
-      background: 'var(--stone-950, #080606)',
+      background: 'var(--stone-950)',
       paddingTop: isMobile ? 44 : 40,
       paddingBottom: isMobile ? 36 : 48,
       position: 'relative',
@@ -216,13 +215,13 @@ function StackDeck({ list, onTap, language = 'en' }: { list: MenuItem[]; onTap: 
               style={{
                 position: 'absolute', inset: 0, margin: 'auto',
                 width: '100%', maxWidth: 360, aspectRatio: '3 / 4.2',
-                borderRadius: 22, overflow: 'hidden', background: '#1a1510',
+                borderRadius: 22, overflow: 'hidden', background: 'var(--surface-dish)',
                 cursor: isTop ? (drag.active ? 'grabbing' : 'grab') : 'default',
                 transform, transition,
                 opacity: isExiting ? 0.2 : 1,
                 zIndex: 10 - depth,
                 boxShadow: isTop
-                  ? '0 28px 60px -20px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.18)'
+                  ? 'var(--shadow-stack-top)'
                   : `0 ${10 + depth * 4}px ${24 + depth * 6}px -14px rgba(0,0,0,0.35)`,
                 pointerEvents: isTop ? 'auto' : 'none',
               }}
@@ -233,8 +232,8 @@ function StackDeck({ list, onTap, language = 'en' }: { list: MenuItem[]; onTap: 
                 <div style={{
                   position: 'absolute', inset: 0,
                   background: intent > 0
-                    ? `linear-gradient(90deg, transparent 50%, rgba(212,175,55,${intent * 0.35}) 100%)`
-                    : `linear-gradient(270deg, transparent 50%, rgba(139,0,0,${-intent * 0.35}) 100%)`,
+                    ? `linear-gradient(90deg, transparent 50%, color-mix(in srgb, var(--gold) ${intent * 35}%, transparent) 100%)`
+                    : `linear-gradient(270deg, transparent 50%, color-mix(in srgb, var(--red-deep) ${-intent * 35}%, transparent) 100%)`,
                   pointerEvents: 'none', transition: 'opacity 120ms',
                 }} />
               )}
@@ -442,7 +441,7 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
                 position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
                 borderRadius: 18, overflow: 'hidden',
                 background: 'linear-gradient(170deg, var(--gold) 0%, var(--gold-hover) 100%)',
-                border: '1px solid rgba(212,175,55,0.25)',
+                border: '1px solid var(--gold-soft-25)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: isMobile ? 18 : 24, textAlign: 'center', textDecoration: 'none',
                 transform: `rotate(${tilt}deg)`,
@@ -474,10 +473,10 @@ function MarqueeBelt({ list, onTap, paused = false, language = 'en' }: { list: M
                 data-dish-id={i}
                 style={{
                   position: 'relative', flex: '0 0 auto', width: cardW, aspectRatio: cardAspect,
-                  borderRadius: 18, overflow: 'hidden', background: '#1a1510',
+                  borderRadius: 18, overflow: 'hidden', background: 'var(--surface-dish)',
                   transform: `rotate(${tilt}deg)`,
                   transition: 'transform 220ms ease-out, box-shadow 220ms',
-                  boxShadow: '0 14px 32px -14px rgba(0,0,0,0.35)',
+                  boxShadow: 'var(--shadow-belt-card)',
                   cursor: 'pointer',
                 }}
               >
@@ -624,7 +623,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
       <div onClick={onBackdrop} style={{
-        position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+        position: 'absolute', inset: 0, background: 'var(--scrim)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         opacity: isVisible ? 1 : 0, transition: 'opacity 240ms ease-out',
       }} />
@@ -633,7 +632,7 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
         background: '#fcfaf5', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column',
         transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 320ms cubic-bezier(.22,.95,.36,1)',
-        boxShadow: '0 -24px 48px -12px rgba(0,0,0,0.4)',
+        boxShadow: 'var(--shadow-sheet)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <span style={{ display: 'block', width: 40, height: 4, borderRadius: 999, background: 'rgba(0,0,0,0.18)' }} />
@@ -681,14 +680,14 @@ function BottomSheet({ dish, onClose, onAdd, language }: {
             <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--stone-500)' }}>
               {language === 'en' ? 'Quantity' : 'Тоо ширхэг'}
             </span>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1510', color: '#fff', borderRadius: 999, padding: 5 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-dish)', color: '#fff', borderRadius: 999, padding: 5 }}>
               <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{
                 background: 'transparent', border: 'none', color: 'var(--gold)', width: 32, height: 32,
                 borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               }}><Minus size={14} /></button>
               <span style={{ minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: 600 }}>{qty}</span>
               <button onClick={() => setQty(q => q + 1)} style={{
-                background: 'var(--gold)', border: 'none', color: '#1a1510', width: 32, height: 32,
+                background: 'var(--gold)', border: 'none', color: 'var(--surface-dish)', width: 32, height: 32,
                 borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               }}><Plus size={14} /></button>
             </div>

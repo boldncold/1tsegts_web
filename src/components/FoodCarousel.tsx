@@ -144,7 +144,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               style={getCardStyle(relative, s)}
               tabIndex={relative === 0 ? 0 : -1}
               aria-hidden={relative !== 0}
-              className="overflow-hidden rounded-[8px] border border-[rgba(212,175,55,0.28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+              className="overflow-hidden rounded-[8px] border border-[var(--gold-soft-28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
             >
               {dish.image ? (
                 <img
@@ -179,7 +179,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             type="button"
             onClick={() => go(-1)}
             aria-label={language === 'en' ? 'Previous dish' : 'Өмнөх хоол'}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--gold-soft-35)] text-[var(--gold)] transition-colors hover:bg-white/5 active:scale-95"
           >
             <ChevronLeft size={15} />
           </button>
@@ -188,7 +188,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               <span
                 key={dish.id}
                 className={`block h-1 rounded-full transition-all ${
-                  index === active ? 'w-5 bg-[#D4AF37]' : 'w-1 bg-white/25'
+                  index === active ? 'w-5 bg-[var(--gold)]' : 'w-1 bg-white/25'
                 }`}
               />
             ))}
@@ -197,7 +197,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             type="button"
             onClick={() => go(1)}
             aria-label={language === 'en' ? 'Next dish' : 'Дараах хоол'}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--gold-soft-35)] text-[var(--gold)] transition-colors hover:bg-white/5 active:scale-95"
           >
             <ChevronRight size={15} />
           </button>

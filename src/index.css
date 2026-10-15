@@ -11,13 +11,34 @@
   /* Gold */
   --gold: #D4AF37;
   --gold-hover: #C5A028;
+  --gold-soft-05: rgba(212, 175, 55, 0.05);
   --gold-soft-10: rgba(212, 175, 55, 0.10);
   --gold-soft-15: rgba(212, 175, 55, 0.15);
+  --gold-soft-18: rgba(212, 175, 55, 0.18);
   --gold-soft-20: rgba(212, 175, 55, 0.20);
   --gold-soft-25: rgba(212, 175, 55, 0.25);
+  --gold-soft-28: rgba(212, 175, 55, 0.28);
   --gold-soft-30: rgba(212, 175, 55, 0.30);
   --gold-soft-35: rgba(212, 175, 55, 0.35);
   --gold-soft-40: rgba(212, 175, 55, 0.40);
+  --gold-soft-50: rgba(212, 175, 55, 0.50);
+  --gold-soft-60: rgba(212, 175, 55, 0.60);
+  --gold-soft-70: rgba(212, 175, 55, 0.70);
+
+  /* Warning amber (Tailwind's amber scale, same values): notices, pending
+     states, the warning confirm. Not the brand gold. */
+  --warn-50: oklch(98.7% 0.022 95.277);
+  --warn-200: oklch(92.4% 0.12 95.746);
+  --warn-300: oklch(87.9% 0.169 91.605);
+  --warn-400: oklch(82.8% 0.189 84.429);
+  --warn-500: oklch(76.9% 0.188 70.08);
+  --warn-600: oklch(66.6% 0.179 58.318);
+  --warn-700: oklch(55.5% 0.163 48.998);
+  --warn-800: oklch(47.3% 0.137 46.201);
+  --warn-900: oklch(41.4% 0.112 45.904);
+  --warn-300-50: oklch(87.9% 0.169 91.605 / 0.50);
+  --warn-500-10: oklch(76.9% 0.188 70.08 / 0.10);
+  --warn-500-30: oklch(76.9% 0.188 70.08 / 0.30);
 
   /* Reserved red: spicy, destructive, wordmark only. */
   --red-deep: #8B0000;
@@ -66,11 +87,14 @@
   --surface-card: var(--stone-900);
   --surface-light: #ffffff;
   --surface-light-alt: var(--stone-50);
+  --surface-dish: #1a1510;
 
   --text-primary: #ffffff;
   --text-secondary: var(--white-72);
   --text-muted: var(--white-45);
   --text-on-gold: var(--stone-950);
+  --on-gold-soft-15: rgba(8, 6, 6, 0.15);
+  --on-gold-soft-70: rgba(8, 6, 6, 0.70);
   --text-on-red: #ffffff;
 
   --border-subtle: var(--white-06);

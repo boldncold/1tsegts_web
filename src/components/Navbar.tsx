@@ -45,7 +45,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   };
 
   const navBg = scrolled
-    ? 'bg-[rgba(15,12,8,0.94)] border-b border-[rgba(212,175,55,0.18)]'
+    ? 'bg-[rgba(15,12,8,0.94)] border-b border-[var(--gold-soft-18)]'
     : 'bg-[rgba(15,12,8,0.60)] border-b border-transparent';
 
   const sideDrawer = typeof document !== 'undefined' && createPortal(
@@ -61,7 +61,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[var(--espresso)] shadow-2xl flex flex-col border-r border-[rgba(212,175,55,0.15)]"
+            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[var(--espresso)] shadow-2xl flex flex-col border-r border-[var(--gold-soft-15)]"
           >
             {/* Drawer header */}
             <div className="flex justify-between items-center px-6 py-6">
@@ -88,12 +88,12 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                   className={cn(
                     'flex justify-between items-center py-3.5 text-base font-medium border-b border-[var(--border-subtle)] transition-colors',
                     location.pathname === link.path
-                      ? 'text-[#D4AF37]'
-                      : 'text-white hover:text-[#D4AF37]'
+                      ? 'text-[var(--gold)]'
+                      : 'text-white hover:text-[var(--gold)]'
                   )}
                 >
                   <span>{link.name}</span>
-                  <ChevronRight size={16} className="text-[#D4AF37] opacity-60" />
+                  <ChevronRight size={16} className="text-[var(--gold)] opacity-60" />
                 </Link>
               ))}
 
@@ -108,7 +108,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'mn'
-                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
+                        ? 'bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -119,7 +119,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'en'
-                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
+                        ? 'bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -145,7 +145,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
               <Link
                 to="/admin"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 text-white/40 hover:text-[#D4AF37] transition-colors text-xs font-bold uppercase tracking-[0.06em]"
+                className="flex items-center gap-2.5 text-white/40 hover:text-[var(--gold)] transition-colors text-xs font-bold uppercase tracking-[0.06em]"
               >
                 <span>Admin</span>
               </Link>
@@ -167,7 +167,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           {/* Left: hamburger */}
           <button
             onClick={() => setIsOpen(true)}
-            className="p-1.5 text-white hover:text-[#D4AF37] transition-colors"
+            className="p-1.5 text-white hover:text-[var(--gold)] transition-colors"
             aria-label="Menu"
           >
             <MenuIcon size={22} />
@@ -187,18 +187,18 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLanguage(language === 'en' ? 'mn' : 'en')}
-              className="text-[#D4AF37] text-xs font-bold tracking-[0.06em] uppercase px-1.5 py-1 hover:text-white transition-colors"
+              className="text-[var(--gold)] text-xs font-bold tracking-[0.06em] uppercase px-1.5 py-1 hover:text-white transition-colors"
             >
               {language === 'en' ? 'EN' : 'MN'}
             </button>
             <button
               onClick={onCartOpen}
-              className="relative p-2 border border-[rgba(212,175,55,0.35)] text-[#D4AF37] rounded-full hover:border-[#D4AF37] transition-colors"
+              className="relative p-2 border border-[var(--gold-soft-35)] text-[var(--gold)] rounded-full hover:border-[var(--gold)] transition-colors"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-[#080606] text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 bg-[var(--gold)] text-[var(--text-on-gold)] text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {itemCount}
                 </span>
               )}

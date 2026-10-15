@@ -42,10 +42,10 @@ export default function ConfirmModal({
             className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl overflow-hidden"
           >
             {/* Background Accent */}
-            <div className={`absolute top-0 left-0 w-full h-1 ${variant === 'danger' ? 'bg-red-500' : 'bg-amber-500'}`} />
+            <div className={`absolute top-0 left-0 w-full h-1 ${variant === 'danger' ? 'bg-red-500' : 'bg-[var(--warn-500)]'}`} />
             
             <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+              <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-[var(--warn-500-10)] text-[var(--warn-500)]'}`}>
                 <AlertTriangle size={24} />
               </div>
               
@@ -76,7 +76,7 @@ export default function ConfirmModal({
                   onConfirm();
                   onClose();
                 }}
-                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'} text-stone-900 font-bold uppercase tracking-[0.06em] text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
+                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--warn-500)] hover:bg-[var(--warn-600)]'} text-stone-900 font-bold uppercase tracking-[0.06em] text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
               >
                 {confirmText}
               </button>

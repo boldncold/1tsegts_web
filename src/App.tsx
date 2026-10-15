@@ -33,7 +33,7 @@ function AppContent() {
   // the dashboard to browse customer pages in test mode.
 
   return (
-    <div className="bg-[var(--surface-page)] min-h-screen text-white selection:bg-[#D4AF37] selection:text-white">
+    <div className="bg-[var(--surface-page)] min-h-screen text-white selection:bg-[var(--gold)] selection:text-white">
       <ScrollToTop />
       <Toaster position="top-center" richColors theme="dark" />
       {!isAdminRoute && <Navbar onCartOpen={() => setIsCartOpen(true)} />}

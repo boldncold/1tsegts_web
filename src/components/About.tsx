@@ -115,7 +115,7 @@ export default function About() {
       {/* ── Location card ────────────────────────────────────── */}
       <section className="py-24 bg-[var(--surface-page)]">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="rounded-3xl overflow-hidden border border-[rgba(212,175,55,0.15)] shadow-xl bg-[var(--espresso)] max-w-2xl mx-auto">
+          <div className="rounded-3xl overflow-hidden border border-[var(--gold-soft-15)] shadow-xl bg-[var(--espresso)] max-w-2xl mx-auto">
             {/* Info */}
             <div className="p-10 flex flex-col justify-center space-y-6 bg-[var(--espresso)]">
               <div className="space-y-2">
