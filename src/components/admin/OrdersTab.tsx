@@ -49,7 +49,7 @@ function ElapsedChip({ timestamp }: { timestamp: string }) {
         mins >= AGE_LATE_MIN
           ? 'bg-red-500/15 text-red-400 border border-red-500/30'
           : mins >= AGE_WARN_MIN
-          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+          ? 'bg-[var(--warn-500-15)] text-[var(--warn-400)] border border-[var(--warn-500-30)]'
           : 'bg-stone-800 text-stone-400 border border-stone-700',
       )}
     >
@@ -123,7 +123,7 @@ export default function OrdersTab({
   const completed = filtered.filter((o) => o.status === 'completed');
 
   const sectionMeta: Record<keyof typeof active, { dot: string; title: string }> = {
-    pending: { dot: 'bg-amber-500', title: t('admin.orders.status.pending') },
+    pending: { dot: 'bg-[var(--warn-500)]', title: t('admin.orders.status.pending') },
     preparing: { dot: 'bg-blue-500', title: t('admin.orders.status.preparing') },
     ready: { dot: 'bg-green-500', title: t('admin.orders.status.ready') },
   };
@@ -135,7 +135,7 @@ export default function OrdersTab({
         {/* Identity row: the order number is what the customer answers to. */}
         <div className="flex justify-between items-start gap-2">
           <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-3xl font-bold text-amber-500 tabular-nums leading-none">
+            <span className="text-3xl font-bold text-[var(--admin-accent)] tabular-nums leading-none">
               {order.orderNumber ? `#${order.orderNumber}` : order.id.slice(-4)}
             </span>
             <span
@@ -143,14 +143,14 @@ export default function OrdersTab({
                 'text-[11px] uppercase font-semibold tracking-[0.15em] px-2 py-0.5 rounded-md border whitespace-nowrap',
                 order.orderType === 'pickup'
                   ? 'bg-stone-800 text-stone-400 border-stone-700'
-                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+                  : 'bg-[var(--admin-accent-soft-10)] text-[var(--admin-accent)] border-[var(--admin-accent-soft-20)]',
               )}
             >
               {order.orderType === 'pickup' ? t('admin.orders.type.pickup') : t('admin.orders.type.kiosk')}
               {order.orderType === 'kiosk' && order.kioskNumber ? ` #${order.kioskNumber}` : ''}
             </span>
             {o.isTest && (
-              <span className="text-[11px] uppercase font-bold tracking-[0.15em] px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 border border-amber-300">
+              <span className="text-[11px] uppercase font-bold tracking-[0.15em] px-2 py-0.5 rounded-md bg-[var(--warn-200)] text-[var(--warn-900)] border border-[var(--warn-300)]">
                 {t('admin.orders.test_badge')}
               </span>
             )}
@@ -190,7 +190,7 @@ export default function OrdersTab({
             <div key={idx} className="flex justify-between text-sm gap-2">
               <div className="min-w-0">
                 <span className="text-stone-300 font-medium">
-                  <span className="font-semibold tabular-nums text-amber-500 mr-1">{item.quantity}×</span>
+                  <span className="font-semibold tabular-nums text-[var(--admin-accent)] mr-1">{item.quantity}×</span>
                   {item.name}
                 </span>
                 {item.selectedPortion && (
@@ -212,7 +212,7 @@ export default function OrdersTab({
         <div className="flex justify-between items-center border-t border-stone-800 pt-3">
           <span className="text-lg font-medium tabular-nums">₮{Math.round(order.total).toLocaleString()}</span>
           {o.adminDiscountMnt > 0 && (
-            <span className="text-xs text-amber-300 tabular-nums">–₮{o.adminDiscountMnt.toLocaleString()}</span>
+            <span className="text-xs text-[var(--warn-300)] tabular-nums">–₮{o.adminDiscountMnt.toLocaleString()}</span>
           )}
           <span className="text-xs text-stone-500">
             {new Date(order.timestamp).toLocaleTimeString(language === 'en' ? 'en-US' : 'mn-MN', {
@@ -257,7 +257,7 @@ export default function OrdersTab({
           {order.status !== 'completed' && order.status !== 'cancelled' && (
             <button
               onClick={() => onUpdateStatus(order.id, 'cancelled')}
-              className="p-2.5 text-stone-500 hover:text-amber-500 transition-colors"
+              className="p-2.5 text-stone-500 hover:text-[var(--admin-accent)] transition-colors"
               title={language === 'en' ? 'Cancel order' : 'Захиалга цуцлах'}
             >
               <XCircle size={20} />
@@ -360,7 +360,7 @@ export default function OrdersTab({
               <div key={order.id} className="bg-stone-900 border border-red-500/20 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3">
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-amber-500 tabular-nums">
+                    <span className="text-xl font-bold text-[var(--admin-accent)] tabular-nums">
                       {order.orderNumber ? `#${order.orderNumber}` : order.id.slice(-6)}
                     </span>
                     <span className="text-sm text-stone-400 truncate">
@@ -422,7 +422,7 @@ export default function OrdersTab({
               className={cn(
                 'px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all',
                 selectedDate === date
-                  ? 'bg-amber-500 text-stone-900'
+                  ? 'bg-[var(--admin-accent)] text-stone-900'
                   : 'bg-stone-900 text-stone-400 hover:bg-stone-800 border border-stone-800',
               )}
             >
@@ -444,7 +444,7 @@ export default function OrdersTab({
           <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
             {t('admin.orders.stats.revenue')}
           </p>
-          <p className="text-2xl font-bold tabular-nums mt-1 text-amber-500">₮{revenue.toLocaleString()}</p>
+          <p className="text-2xl font-bold tabular-nums mt-1 text-[var(--admin-accent)]">₮{revenue.toLocaleString()}</p>
         </div>
         <div className="admin-card p-4">
           <p className="text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold">
