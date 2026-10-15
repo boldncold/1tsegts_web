@@ -15,6 +15,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 - **A `datetime-local` input holds local wall-clock time: build its default from local getters (`nowForDateTimeLocal` in `AdminDashboard.tsx`), never `toISOString().slice(0, 16)`, and convert to UTC with `new Date(value).toISOString()` only on save.**
   *Why:* the bank-history manual-entry form defaulted to the UTC string, which the input read as local time, so every `postedAt` left at the default was stored 8 hours early in Ulaanbaatar (an entry made at 20:42 local saved as 04:42Z).
 
+- **Before the server starts validating a value the client sends, grep every place the UI builds it — including placeholder values the UI invents — and test the validator with those exact values, not just the documented shape.**
+  *Why:* the server-side pricing in `createQpayInvoice` rejected the `'Default'` portion that `MenuSection` / `TraditionalMenuSection` put ahead of an item's real portions (meaning "base price"). For about two hours, a QPay order failed as "menu has changed" whenever it included one of the 30 items with portions at its default size.
+
 - **`firebase.json`'s `firestore` block must name the database (`[{ "database": "<id>", "rules": …, "indexes": … }]`). Without it, `firebase deploy --only firestore:rules` targets `(default)`, and this app lives on a named database. Verify a rules deploy by exercising a rule that changed (e.g. an anonymous read it newly allows), never by the deploy's exit code.**
   *Why:* every rules deploy since the AI Studio days landed on an unused `(default)` database while the app's database kept older rules. Found because the live database refused anonymous reads of `settings/store`, which the repo allows. That rule shipped in the same commit (`0355861`) as `hasNoForgedPayment`, so the payment-field protections were never live either.
 
