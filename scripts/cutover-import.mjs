@@ -44,6 +44,7 @@ for (const [name, r] of Object.entries(reports)) {
       (r.error ? `, ERROR ${r.error}` : ''),
   );
   for (const f of r.failed) console.log(`  ${f.id}: ${f.error}`);
+  if (r.removed?.length) console.log(`  removed (gone from Firestore): ${r.removed.join(', ')}`);
 }
 console.log(failed === 0 ? 'OK: nothing failed.' : `${failed} problem(s) above — fix and re-run.`);
 process.exit(failed === 0 ? 0 : 1);

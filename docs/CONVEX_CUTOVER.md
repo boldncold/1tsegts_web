@@ -68,7 +68,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 | 3.1 | — | Gate: 0.1 done (prod invoice created with the `www` callback), section 1 all ticked, section 2 done — 2.9 after the last `convex/` change. | — |
 | 3.2 | You | Old admin → store settings → **closed until today**. New orders stop. | Storefront shows closed. |
 | 3.3 | You | Drain: wait until no order is `AWAITING_PAYMENT` (QPay ≤ 20 min incl. expiry; bank transfers: confirm or let lapse ≤ 30 min). Finish or leave kitchen orders — they move over with their status. | Old dashboard shows none awaiting payment. |
-| 3.4 | Claude | Final import: `node scripts/cutover-import.mjs --prod` (menu, settings, the last 7 days of orders; re-runnable, works from PowerShell). Tested against dev 2026-10-15: menu 47/47, re-run left 47 rows. From now on only the **new** dashboard is used. | Ends with `OK: nothing failed.` |
+| 3.4 | Claude | Final import: `node scripts/cutover-import.mjs --prod` (menu, settings, the last 7 days of orders; re-runnable, works from PowerShell). It mirrors the menu: dishes deleted in the old admin since the rehearsal are removed, changed photos replaced. Tested against dev 2026-10-15: menu 47/47, re-run left 47 rows. From now on only the **new** dashboard is used. | Ends with `OK: nothing failed.` |
 | 3.5 | You | Merge the migration PR → Vercel deploys with the prod `VITE_CONVEX_URL`. | Site loads; menu shows. |
 | 3.6 | You | Sign in at `/admin`; re-add staff emails (Firestore `admin_emails` was not importable). | Dashboard loads. |
 | 3.7 | Both | Smoke test: cash order → mark paid; **real** QPay order for the cheapest item → CONFIRMED automatically; kitchen board updates. | — |

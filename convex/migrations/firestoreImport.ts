@@ -8,8 +8,9 @@
  * against the production Firestore quota — check counts before running.
  *
  * Re-runnable: rows are matched on legacyId (the Firestore doc id) and
- * replaced, so a second run converges instead of duplicating. Menu images are
- * uploaded to Convex storage once per item and reused on later runs.
+ * replaced, so a second run converges instead of duplicating. Uploaded menu
+ * images are reused while their bytes are unchanged and stored anew when a
+ * photo changed; dishes deleted in Firestore are removed (menu only).
  *
  * Not covered: admin_emails and bank_transactions are admin-only under the
  * Firestore rules, and the live database also refuses settings, so an
@@ -51,6 +52,8 @@ interface CollectionReport {
   failed: { id: string; error: string }[];
   /** Source field → how many docs carried it without a schema home. */
   dropped: Record<string, number>;
+  /** Menu only: names of imported dishes removed because Firestore no longer has them. */
+  removed?: string[];
 }
 
 function newReport(): CollectionReport {
@@ -65,10 +68,33 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-async function storeImage(ctx: ActionCtx, src: string): Promise<ImageRef> {
-  if (!src.startsWith("data:")) return { url: src };
-  return { storageId: await ctx.storage.store(dataUrlToBlob(src)) };
+async function sameBytes(a: Blob, b: Blob): Promise<boolean> {
+  if (a.size !== b.size) return false;
+  const [x, y] = await Promise.all([a.arrayBuffer(), b.arrayBuffer()]);
+  const left = new Uint8Array(x);
+  const right = new Uint8Array(y);
+  for (let i = 0; i < left.length; i++) if (left[i] !== right[i]) return false;
+  return true;
 }
+
+/**
+ * The image for `src`: a URL stays a URL; an uploaded (data:) image reuses one
+ * of the row's already-stored files with identical bytes, so a re-run uploads
+ * nothing, but a photo changed in Firestore since the last run is stored anew.
+ */
+async function storeImage(ctx: ActionCtx, src: string, stored: readonly ImageRef[]): Promise<ImageRef> {
+  if (!src.startsWith("data:")) return { url: src };
+  const blob = dataUrlToBlob(src);
+  for (const ref of stored) {
+    if (!("storageId" in ref)) continue;
+    const existing = await ctx.storage.get(ref.storageId);
+    if (existing && (await sameBytes(existing, blob))) return ref;
+  }
+  return { storageId: await ctx.storage.store(blob) };
+}
+
+const storageIds = (refs: readonly (ImageRef | undefined)[]) =>
+  refs.flatMap((ref) => (ref && "storageId" in ref ? [ref.storageId] : []));
 
 export const importPublicData = internalAction({
   args: {
@@ -99,12 +125,13 @@ export const importPublicData = internalAction({
             internal.migrations.firestoreImport.menuImagesByLegacyId,
             { legacyId: doc.id },
           );
-          const image =
-            existing?.image ??
-            (mapped.imageSource ? await storeImage(ctx, mapped.imageSource) : undefined);
-          const sideImages =
-            existing?.sideImages ??
-            (await Promise.all(mapped.sideImageSources.map((src) => storeImage(ctx, src))));
+          const previous = existing
+            ? [...(existing.image ? [existing.image] : []), ...(existing.sideImages ?? [])]
+            : [];
+          const image = mapped.imageSource ? await storeImage(ctx, mapped.imageSource, previous) : undefined;
+          const sideImages = await Promise.all(
+            mapped.sideImageSources.map((src) => storeImage(ctx, src, previous)),
+          );
           await ctx.runMutation(internal.migrations.firestoreImport.upsertMenuItem, {
             item: {
               ...mapped.fields,
@@ -113,10 +140,20 @@ export const importPublicData = internalAction({
               ...(sideImages.length > 0 ? { sideImages } : {}),
             } as Infer<typeof menuRow>,
           });
+          // Files the row no longer uses: a photo replaced or removed in Firestore.
+          const kept = new Set(storageIds([image, ...sideImages]));
+          for (const id of storageIds(previous)) if (!kept.has(id)) await ctx.storage.delete(id);
           report.imported += 1;
         } catch (err) {
           report.failed.push({ id: doc.id, error: errorMessage(err) });
         }
+      }
+      // Dishes deleted in Firestore since the last run. Only after a complete,
+      // non-empty read: a failed or empty read must never empty the menu.
+      if (!report.error && docs.length > 0) {
+        report.removed = await ctx.runMutation(internal.migrations.firestoreImport.pruneMenu, {
+          keepLegacyIds: docs.map((doc) => doc.id),
+        });
       }
     }
 
@@ -176,6 +213,25 @@ export const menuImagesByLegacyId = internalQuery({
       .withIndex("by_legacyId", (q) => q.eq("legacyId", legacyId))
       .unique();
     return row ? { image: row.image, sideImages: row.sideImages } : null;
+  },
+});
+
+/**
+ * Delete imported dishes (and their stored files) whose Firestore doc is gone.
+ * Rows without a legacyId were created in Convex and are never touched.
+ */
+export const pruneMenu = internalMutation({
+  args: { keepLegacyIds: v.array(v.string()) },
+  handler: async (ctx, { keepLegacyIds }) => {
+    const keep = new Set(keepLegacyIds);
+    const removed: string[] = [];
+    for (const row of await ctx.db.query("menu").collect()) {
+      if (!row.legacyId || keep.has(row.legacyId)) continue;
+      for (const id of storageIds([row.image, ...(row.sideImages ?? [])])) await ctx.storage.delete(id);
+      await ctx.db.delete(row._id);
+      removed.push(row.name);
+    }
+    return removed;
   },
 });
 

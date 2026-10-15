@@ -1,10 +1,13 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { modules } from "../test.setup";
 import { decodeFields } from "../lib/firestoreRest";
 import { dataUrlToBlob, mapMenuItem, mapOrder, mapStoreSettings } from "./firestoreMappers";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("decodeFields (Firestore REST values)", () => {
   test("decodes every value type the app stores", () => {
@@ -123,6 +126,65 @@ describe("import upserts", () => {
     const rows = await t.run((ctx) => ctx.db.query("menu").collect());
     expect(rows).toHaveLength(1);
     expect(rows[0].price).toBe(1200);
+  });
+
+  test("a re-run keeps unchanged photos, replaces changed ones, and removes deleted dishes", async () => {
+    const t = convexTest(schema, modules);
+    const source = { projectId: "p", databaseId: "d", apiKey: "k" };
+    /** Stub Firestore's runQuery to return these menu docs. */
+    const firestoreMenu = (docs: { id: string; name: string; image: string }[]) =>
+      vi.stubGlobal("fetch", async () =>
+        Response.json(
+          docs.map((d) => ({
+            document: {
+              name: `projects/p/databases/d/documents/menu/${d.id}`,
+              fields: {
+                name: { stringValue: d.name },
+                price: { integerValue: "1000" },
+                category: { stringValue: "Mongolian" },
+                available: { booleanValue: true },
+                image: { stringValue: d.image },
+              },
+            },
+          })),
+        ),
+      );
+    const run = () => t.action(internal.migrations.firestoreImport.importPublicData, { source, collections: ["menu"] });
+    const rows = () => t.run((ctx) => ctx.db.query("menu").collect());
+    const fileExists = (ref: unknown) =>
+      t.run(async (ctx) => (await ctx.storage.getUrl((ref as { storageId: Id<"_storage"> }).storageId)) !== null);
+    const native = await t.run((ctx) =>
+      ctx.db.insert("menu", { name: "Made in Convex", description: "", price: 1, category: "Drinks", tags: [], available: true }),
+    );
+
+    firestoreMenu([
+      { id: "a", name: "A", image: "data:image/png;base64,AAAA" },
+      { id: "b", name: "B", image: "data:image/png;base64,BBBB" },
+      { id: "demo", name: "Demo", image: "data:image/png;base64,CCCC" },
+    ]);
+    await run();
+    const first = new Map((await rows()).map((r) => [r.legacyId, r]));
+    expect(first.size).toBe(4);
+
+    // B's photo changed and Demo was deleted in Firestore.
+    firestoreMenu([
+      { id: "a", name: "A", image: "data:image/png;base64,AAAA" },
+      { id: "b", name: "B", image: "data:image/png;base64,DDDD" },
+    ]);
+    const report = await run();
+    expect(report.menu).toMatchObject({ read: 2, imported: 2, removed: ["Demo"] });
+    const second = new Map((await rows()).map((r) => [r.legacyId, r]));
+    expect([...second.keys()].sort()).toEqual(["a", "b", undefined].sort());
+    expect(second.get("a")?.image).toEqual(first.get("a")?.image);
+    expect(second.get("b")?.image).not.toEqual(first.get("b")?.image);
+    expect(await fileExists(first.get("b")?.image)).toBe(false);
+    expect(await fileExists(first.get("demo")?.image)).toBe(false);
+    expect(await t.run((ctx) => ctx.db.get(native))).not.toBeNull();
+
+    // A failed read prunes nothing.
+    vi.stubGlobal("fetch", async () => new Response("denied", { status: 403 }));
+    expect((await run()).menu).toMatchObject({ error: expect.stringMatching(/403/) });
+    expect(await rows()).toHaveLength(3);
   });
 
   test("the schema validator rejects a document Firestore let through", async () => {
