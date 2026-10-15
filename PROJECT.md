@@ -15,7 +15,21 @@ npm run preview    # vite preview
 npm run lint       # tsc --noEmit (typecheck is the lint)
 ```
 
-Env: `GEMINI_API_KEY`, `APP_URL` — see `.env.example`. Deployed on Firebase.
+Env: `GEMINI_API_KEY`, `APP_URL` — see `.env.example`.
+
+## Deploying
+
+Two different platforms — don't assume one covers the other:
+
+- **Frontend → Vercel**, built from GitHub `main`. Merging to `main` publishes it; there is no `hosting` block in `firebase.json` and `firebase deploy --only hosting` will fail with "no targets match".
+- **Cloud Functions + Firestore rules → Firebase**, project `ai-studio-applet-webapp-730e3` (no `.firebaserc`, so pass `--project`).
+
+Order matters when a change spans both: **functions → rules → frontend**. Rules deployed ahead of the functions they depend on will break admin payment actions in production, because the old client is still live until Vercel republishes.
+
+```bash
+firebase deploy --only functions --project ai-studio-applet-webapp-730e3
+firebase deploy --only firestore:rules --project ai-studio-applet-webapp-730e3
+```
 
 ## Architecture
 
