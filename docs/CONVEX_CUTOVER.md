@@ -32,6 +32,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 - [x] QPay order → sandbox invoice with QR; callback URL accepted (production acceptance is 0.1); missing deep links handled.
 - [x] Callback with a wrong token → 401; with the right token and no payment → 500 (QPay retries), order stays AWAITING_PAYMENT.
 - [x] Customer cancel → invoice `OPEN` → `CANCELED` at QPay.
+- [x] Storefront re-run 2026-10-15 at phone width, after the merge with `main`: menu from dev, Cola ₮3,000 → QPay → QR shown, order stored at ₮3,000 `AWAITING_PAYMENT` with its invoice; customer cancel → `cancelled` / `cancelledBy: customer`, record kept.
 - [x] Expiry cron closes a lapsed order on schedule.
 - [ ] **Paid path — not possible in the sandbox** (its short links 404 and there is no sandbox bank app). Covered by the 13 tests in `convex/qpay.test.ts` and proven for real by the small real order in step 3.7.
 
@@ -47,6 +48,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 | 2.6 | Done | Merged PR #9 (`vercel.json`): SPA fallback — fixes today's 404 on direct visits to `/menu`, `/admin` — and the callback proxy. | `curl -i https://www.1tsegts.com/api/qpay/callback/wrong/x` answered by Convex; `/menu` → 200. |
 | 2.7 | Done | Vercel → Settings → Environment Variables: `VITE_CONVEX_URL` = `https://tame-ram-325.eu-west-1.convex.cloud` (Production) and `https://moonlit-goat-443.eu-west-1.convex.cloud` (Preview). | — |
 | 2.8 | Done | Rehearsal import into prod: menu 47/47 (33 images into prod storage); settings doc doesn't exist yet (store hours never saved on the live site). | Re-run converges at cutover. |
+| 2.9 | You | `npx convex deploy` from `claude/convex-migration` (answer **y**; there is no flag to skip the prompt). Repeat after every later change under `convex/`. **Due:** production predates 255ef97 (refuse deleting invoiced orders; one bank credit per order). | Deploy output lists the changed functions; `/ping` → `ok`. |
 
 `vercel.json` (PR #9):
 
@@ -63,7 +65,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 
 | # | Who | Step | Check |
 |---|-----|------|-------|
-| 3.1 | — | Gate: 0.1 done (prod invoice created with the `www` callback), section 1 all ticked, section 2 done. | — |
+| 3.1 | — | Gate: 0.1 done (prod invoice created with the `www` callback), section 1 all ticked, section 2 done — 2.9 after the last `convex/` change. | — |
 | 3.2 | You | Old admin → store settings → **closed until today**. New orders stop. | Storefront shows closed. |
 | 3.3 | You | Drain: wait until no order is `AWAITING_PAYMENT` (QPay ≤ 20 min incl. expiry; bank transfers: confirm or let lapse ≤ 30 min). Finish or leave kitchen orders — they move over with their status. | Old dashboard shows none awaiting payment. |
 | 3.4 | Claude | Final import: `npx convex run --prod migrations/firestoreImport:importPublicData '{"source":{…firebase-applet-config…},"collections":["menu","settings","orders"],"ordersSinceDays":7}'`. From now on only the **new** dashboard is used. | All `failed: []`. |
