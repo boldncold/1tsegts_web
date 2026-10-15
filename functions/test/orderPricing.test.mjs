@@ -39,6 +39,19 @@ test('uses the live portion price, matched by name', () => {
   assert.deepEqual(r.items[0].selectedPortion, { name: 'Large', price: 15000 });
 });
 
+test("treats the menu UI's 'Default' pseudo-portion as the base price", () => {
+  // MenuSection pre-selects { name: 'Default', price: item.price } for items
+  // with portions; it is not one of the menu doc's portions.
+  const r = priceOrderItems(
+    [{ id: 'tsuivan', quantity: 2, selectedPortion: { name: 'Default', price: 1 } }],
+    menu,
+    0,
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.chargedMnt, 2 * 12000);
+  assert.deepEqual(r.items[0].selectedPortion, { name: 'Default', price: 12000 });
+});
+
 test('charges packaging only when packaging is true', () => {
   const packed = priceOrderItems([{ id: 'khuushuur', quantity: 3, packaging: true }], menu, 0);
   const notPacked = priceOrderItems(
