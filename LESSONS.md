@@ -6,6 +6,12 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **A re-runnable import into a target that a rehearsal already filled must mirror the source — remove what the source deleted and replace what it changed — not only add. And guard the removal: never prune after a failed or empty read.**
+  *Why:* the Firestore → Convex importer upserted by legacyId and reused each dish's stored photo, so at cutover a dish deleted in the old admin after the rehearsal (e.g. the AI Studio demo items) would have stayed on the new site, and a changed photo would have been ignored.
+
+- **Before allowing a record to be deleted, ask whether money can still arrive for it, not just whether it already holds money. An issued QPay invoice can be paid until QPay closes it, and closing is best-effort.**
+  *Why:* `ordersAdmin.remove` allowed deleting an unpaid order with an open invoice; a late payment would reach a callback with no order to confirm or flag — the silent money drop the webhook rule below forbids.
+
 - **A `datetime-local` input holds local wall-clock time: build its default from local getters (`nowForDateTimeLocal` in `AdminDashboard.tsx`), never `toISOString().slice(0, 16)`, and convert to UTC with `new Date(value).toISOString()` only on save.**
   *Why:* the bank-history manual-entry form defaulted to the UTC string, which the input read as local time, so every `postedAt` left at the default was stored 8 hours early in Ulaanbaatar (an entry made at 20:42 local saved as 04:42Z).
 
