@@ -313,6 +313,17 @@ function notifyNewOrder(pendingCount: number) {
   }
 }
 
+/**
+ * Now as a `datetime-local` value (YYYY-MM-DDTHH:mm). The input reads its value
+ * as browser-local time, so this can't come from toISOString() — that's UTC and
+ * would post every manual entry 8 hours early in Ulaanbaatar.
+ */
+function nowForDateTimeLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function AdminDashboard() {
   const { t, language } = useLanguage();
   const { currentUser: user, isAdmin, isAdminLoading: loading } = useAuth();
@@ -360,7 +371,7 @@ export default function AdminDashboard() {
     amountMnt: '',
     description: '',
     senderName: '',
-    postedAt: new Date().toISOString().slice(0, 16), // datetime-local format
+    postedAt: nowForDateTimeLocal(),
   });
 
   // Orders State
@@ -909,7 +920,7 @@ export default function AdminDashboard() {
         amountMnt: '',
         description: '',
         senderName: '',
-        postedAt: new Date().toISOString().slice(0, 16),
+        postedAt: nowForDateTimeLocal(),
       });
     } catch (err) {
       console.error('Add bank tx error', err);
@@ -1303,7 +1314,12 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-[var(--white-45)]">{t('admin.bank.subtitle')}</p>
                   </div>
                   <button
-                    onClick={() => setShowAddBankTx(true)}
+                    onClick={() => {
+                      // The form state is created when the dashboard mounts, so
+                      // without this the default time is however old the tab is.
+                      setBankTxForm((f) => ({ ...f, postedAt: nowForDateTimeLocal() }));
+                      setShowAddBankTx(true);
+                    }}
                     className="flex min-h-9 items-center gap-2 rounded-full bg-[var(--gold)] px-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--stone-950)] transition-colors hover:bg-[var(--gold-hover)]"
                   >
                     <Plus size={16} />
@@ -1394,10 +1410,12 @@ export default function AdminDashboard() {
                     );
                   }
 
+                  // Below md each row stacks as a card (time + amount, then
+                  // description, then match + action); from md up it's a table.
                   return (
                     <div className="admin-card admin-scrollbar overflow-x-auto">
-                      <table className="w-full min-w-[720px]">
-                        <thead className="bg-stone-950 border-b border-stone-800">
+                      <table className="block w-full md:table md:min-w-[720px]">
+                        <thead className="hidden md:table-header-group bg-stone-950 border-b border-stone-800">
                           <tr>
                             <th className="text-left text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold p-4">
                               {t('admin.bank.col.time')}
@@ -1416,13 +1434,13 @@ export default function AdminDashboard() {
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-stone-800">
+                        <tbody className="block md:table-row-group divide-y divide-stone-800">
                           {filtered.map((tx) => {
                             const m = readMatchStatus(tx);
                             const matchedOrder = m.orderId ? orders.find((o) => o.id === m.orderId) : undefined;
                             return (
-                              <tr key={tx.id} className="hover:bg-stone-800/40 transition-colors">
-                                <td className="p-4 align-top">
+                              <tr key={tx.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 p-4 md:table-row md:p-0 hover:bg-stone-800/40 transition-colors">
+                                <td className="md:p-4 align-top">
                                   <p className="text-xs text-stone-300 tabular-nums whitespace-nowrap">
                                     {new Date(tx.postedAt).toLocaleString('en-GB', {
                                       day: '2-digit', month: 'short',
@@ -1438,12 +1456,12 @@ export default function AdminDashboard() {
                                     {tx.senderName || '—'}
                                   </p>
                                 </td>
-                                <td className="p-4 align-top text-right">
+                                <td className="md:p-4 align-top text-right">
                                   <p className="text-sm font-bold text-green-400 tabular-nums whitespace-nowrap">
                                     +₮{tx.amountMnt.toLocaleString()}
                                   </p>
                                 </td>
-                                <td className="p-4 align-top max-w-[280px]">
+                                <td className="col-span-2 md:p-4 align-top md:max-w-[280px]">
                                   <p className="text-xs text-stone-400 break-words">
                                     {/* highlight ref code if present */}
                                     {tx.description?.split(/(GR-[A-Z2-9]{6})/i).map((part, i) =>
@@ -1457,7 +1475,7 @@ export default function AdminDashboard() {
                                     )}
                                   </p>
                                 </td>
-                                <td className="p-4 align-top text-right space-y-1.5">
+                                <td className="col-span-2 flex flex-wrap items-center gap-2 md:table-cell md:p-4 align-top md:text-right md:space-y-1.5">
                                   <span className={cn(
                                     "inline-block text-[9px] uppercase tracking-[0.18em] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap",
                                     m.status === 'matched' && "bg-yellow-500/15 text-yellow-400 border-yellow-500/40",
@@ -1477,7 +1495,7 @@ export default function AdminDashboard() {
                                   {m.status === 'matched' && m.orderId && (
                                     <button
                                       onClick={() => markOrderPaid(m.orderId!, tx.id)}
-                                      className="block ml-auto mt-1 px-3 py-1 bg-yellow-500 text-stone-900 text-[10px] font-bold uppercase tracking-wider rounded-full hover:bg-yellow-400 transition-all"
+                                      className="block w-full md:w-auto md:ml-auto md:mt-1 px-3 py-2 md:py-1 bg-yellow-500 text-stone-900 text-[10px] font-bold uppercase tracking-wider rounded-full hover:bg-yellow-400 transition-all"
                                     >
                                       ₮ {t('admin.bank.action.confirm_order')}
                                     </button>
