@@ -13,7 +13,7 @@ path with a 307 to it, so QPay callbacks and `SITE_URL` use `www`.
 
 | # | Who | What |
 |---|-----|------|
-| 0.1 | You | **Prove production QPay accepts the `www.1tsegts.com` callback.** We asked QPay (2026-10-14) to whitelist the host; support replied (2026-10-15) that they can't add hosts on their side and the callback is whatever the invoice-create request sends. The only `callback_url: INVALID` we've seen (2026-06) was a query-string URL, fixed by moving the token and order id into the path. Still unproven in production, so before cutover create one invoice on prod and cancel it: `npx convex run --prod orders:create '{"items":[{"menuId":"<any menu _id>","quantity":1}],"orderType":"pickup","paymentMethod":"qpay","customerName":"callback test"}'`, then `npx convex run --prod qpay:createInvoice '{"orderId":"<orderId>","skipQrImage":true}'` — an invoice back means QPay accepted the URL — then `npx convex run --prod orders:cancel '{"orderId":"<orderId>"}'` (closes the invoice at QPay). Nobody pays it; delete the test order afterwards (Convex dashboard → Data → orders) so it doesn't show on the new admin board. |
+| 0.1 | Done | **Production QPay accepts the `www.1tsegts.com` callback.** We asked QPay (2026-10-14) to whitelist the host; support replied (2026-10-15) that there is no host list on their side: the callback is whatever the invoice-create request sends. Proven 2026-10-14: a production invoice created with `https://www.1tsegts.com/api/qpay/callback/...` was accepted, then cancelled unpaid (order `kd7eqk2tkpnfx94ksghpvgezdh8g8cs0`, "Whitelist check (not a real order)"). **Delete that test order** (Convex dashboard → production → Data → orders) before reopening in 3.8, or it shows on the new admin board for 7 days. To re-check after a change to the callback URL: `npx convex run --prod orders:create` a one-item QPay order, `qpay:createInvoice` it with `skipQrImage: true` (an invoice back means accepted), `orders:cancel` it, then delete it. |
 | 0.2 | Done | **Google OAuth client** in Google Cloud project `ai-studio-applet-webapp-730e3`, with redirect URIs `https://moonlit-goat-443.eu-west-1.convex.site/api/auth/callback/google` (dev) and `https://tame-ram-325.eu-west-1.convex.site/api/auth/callback/google` (prod). `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are on dev. |
 | 0.3 | Done | **QPay sandbox env on dev** — `QPAY_BASE_URL=https://merchant-sandbox.qpay.mn` with QPay's **public test account** (`TEST_MERCHANT` / `123456`, invoice code `TEST_INVOICE`) and a generated `QPAY_CALLBACK_TOKEN`. The 1TSEGTS login is rejected by the sandbox since 2026-10 (it still works in production); don't put the real password on dev. |
 
@@ -88,8 +88,6 @@ over again. Orders placed on Convex in between must be re-entered by hand
   as a backup; delete the Cloud Functions; set Firestore rules to deny-all; remove
   `functions/`, `firestore.rules`, `firebase.json`, `scripts/test-rules.mjs` and the
   `firebase*` dependencies.
-- **Docs** (in the cutover PR or right after): PROJECT.md, STACK.md, WORKFLOW.md,
-  QPAY_INTEGRATION.md and CLAUDE.md's architecture principles still describe
-  Firebase (Firestore rules as the boundary → server-side checks in
-  `convex/lib/admin.ts`; Cloud Functions → `convex/qpay.ts` / `payments.ts`;
-  emulators → the dev deployment; `npm test` runs the Convex tests).
+- **Docs:** done in the migration PR — PROJECT.md, STACK.md, WORKFLOW.md,
+  QPAY_INTEGRATION.md and CLAUDE.md describe Convex. At decommission, drop the
+  Firebase-only lessons and the retired-backend note in PROJECT.md.
