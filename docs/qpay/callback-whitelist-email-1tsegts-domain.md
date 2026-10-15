@@ -21,6 +21,11 @@ Review the wording before sending.
 > path to it — so callbacks go to `https://www.1tsegts.com/api/qpay/callback/...`
 > and a follow-up asks QPay to whitelist `www.1tsegts.com` too.
 
+> **QPay's answer (2026-10-15, support@qpay.mn):** they can't add hosts on their
+> side; send the new callback in the invoice-create request instead. So there was
+> nothing to whitelist, and the "Why" above was an assumption. The real check is
+> one production invoice with the `www` callback — `docs/CONVEX_CUTOVER.md`, 0.1.
+
 ---
 
 ## Email body (paste this part)

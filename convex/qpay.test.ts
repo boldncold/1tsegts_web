@@ -104,7 +104,7 @@ describe("qpay.createInvoice", () => {
     expect((await order(orderId))?.qpayInvoiceId).toBe("inv-1");
   });
 
-  test("uses the whitelisted callback base when one is configured", async () => {
+  test("uses the configured callback base (our own domain) when one is set", async () => {
     vi.stubEnv("QPAY_CALLBACK_BASE_URL", "https://1tsegts.com/api/qpay/callback/");
     const { t, qpay, placeQpayOrder } = await setup();
     const orderId = await placeQpayOrder();

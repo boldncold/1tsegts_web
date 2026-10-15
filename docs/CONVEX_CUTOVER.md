@@ -7,13 +7,13 @@ Convex project `1tsegts-497d5` in **EU (Dublin)** — ~150 ms from Ulaanbaatar v
 project (`1tsegts`, US, dev `grand-stoat-248`) is retired after cutover.
 
 The site's canonical host is **`www.1tsegts.com`**: `1tsegts.com` answers every
-path with a 307 to it, so callbacks, the QPay whitelist and `SITE_URL` use `www`.
+path with a 307 to it, so QPay callbacks and `SITE_URL` use `www`.
 
 ## 0. Long-lead items — start now
 
 | # | Who | What |
 |---|-----|------|
-| 0.1 | You | **QPay callback whitelist for `www.1tsegts.com`.** Sent 2026-10-14 asking for `1tsegts.com`; a follow-up must add **`www.1tsegts.com`** (the apex only redirects). Production QPay rejects unknown callback hosts (`callback_url: INVALID`), so this must be confirmed **before** cutover. |
+| 0.1 | You | **Prove production QPay accepts the `www.1tsegts.com` callback.** We asked QPay (2026-10-14) to whitelist the host; support replied (2026-10-15) that they can't add hosts on their side and the callback is whatever the invoice-create request sends. The only `callback_url: INVALID` we've seen (2026-06) was a query-string URL, fixed by moving the token and order id into the path. Still unproven in production, so before cutover create one invoice on prod and cancel it: `npx convex run --prod orders:create '{"items":[{"menuId":"<any menu _id>","quantity":1}],"orderType":"pickup","paymentMethod":"qpay","customerName":"callback test"}'`, then `npx convex run --prod qpay:createInvoice '{"orderId":"<orderId>","skipQrImage":true}'` — an invoice back means QPay accepted the URL — then `npx convex run --prod orders:cancel '{"orderId":"<orderId>"}'` (closes the invoice at QPay). Nobody pays it; delete the test order afterwards (Convex dashboard → Data → orders) so it doesn't show on the new admin board. |
 | 0.2 | Done | **Google OAuth client** in Google Cloud project `ai-studio-applet-webapp-730e3`, with redirect URIs `https://moonlit-goat-443.eu-west-1.convex.site/api/auth/callback/google` (dev) and `https://tame-ram-325.eu-west-1.convex.site/api/auth/callback/google` (prod). `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are on dev. |
 | 0.3 | Done | **QPay sandbox env on dev** — `QPAY_BASE_URL=https://merchant-sandbox.qpay.mn` with QPay's **public test account** (`TEST_MERCHANT` / `123456`, invoice code `TEST_INVOICE`) and a generated `QPAY_CALLBACK_TOKEN`. The 1TSEGTS login is rejected by the sandbox since 2026-10 (it still works in production); don't put the real password on dev. |
 
@@ -29,7 +29,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 - [ ] Not exercised in the UI (backend tests only): image replacement, staff add/remove, store hours.
 
 **QPay sandbox** (done 2026-10-14 against the public test account):
-- [x] QPay order → sandbox invoice with QR; callback URL accepted (the sandbox does not enforce the whitelist); missing deep links handled.
+- [x] QPay order → sandbox invoice with QR; callback URL accepted (production acceptance is 0.1); missing deep links handled.
 - [x] Callback with a wrong token → 401; with the right token and no payment → 500 (QPay retries), order stays AWAITING_PAYMENT.
 - [x] Customer cancel → invoice `OPEN` → `CANCELED` at QPay.
 - [x] Expiry cron closes a lapsed order on schedule.
@@ -63,7 +63,7 @@ Run `npm run dev` locally (dev deployment, `VITE_USE_EMULATORS` is irrelevant no
 
 | # | Who | Step | Check |
 |---|-----|------|-------|
-| 3.1 | — | Gate: 0.1 confirmed by QPay, section 1 all ticked, section 2 done. | — |
+| 3.1 | — | Gate: 0.1 done (prod invoice created with the `www` callback), section 1 all ticked, section 2 done. | — |
 | 3.2 | You | Old admin → store settings → **closed until today**. New orders stop. | Storefront shows closed. |
 | 3.3 | You | Drain: wait until no order is `AWAITING_PAYMENT` (QPay ≤ 20 min incl. expiry; bank transfers: confirm or let lapse ≤ 30 min). Finish or leave kitchen orders — they move over with their status. | Old dashboard shows none awaiting payment. |
 | 3.4 | Claude | Final import: `npx convex run --prod migrations/firestoreImport:importPublicData '{"source":{…firebase-applet-config…},"collections":["menu","settings","orders"],"ordersSinceDays":7}'`. From now on only the **new** dashboard is used. | All `failed: []`. |
@@ -87,7 +87,7 @@ over again. Orders placed on Convex in between must be re-entered by hand
 - **Day 14 — decommission Firebase:** export Firestore (console → Import/Export)
   as a backup; delete the Cloud Functions; set Firestore rules to deny-all; remove
   `functions/`, `firestore.rules`, `firebase.json`, `scripts/test-rules.mjs` and the
-  `firebase*` dependencies; ask QPay to drop the old callback host.
+  `firebase*` dependencies.
 - **Docs** (in the cutover PR or right after): PROJECT.md, STACK.md, WORKFLOW.md,
   QPAY_INTEGRATION.md and CLAUDE.md's architecture principles still describe
   Firebase (Firestore rules as the boundary → server-side checks in

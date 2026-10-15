@@ -12,7 +12,7 @@
  *   QPAY_BASE_URL       https://merchant-sandbox.qpay.mn (sandbox) or https://merchant.qpay.mn
  *   QPAY_USERNAME, QPAY_PASSWORD, QPAY_INVOICE_CODE
  *   QPAY_CALLBACK_TOKEN random string; part of the callback URL, checked on every callback
- *   QPAY_CALLBACK_BASE_URL optional; production sets it to the whitelisted
+ *   QPAY_CALLBACK_BASE_URL optional; production sets it to our own domain,
  *                       https://www.1tsegts.com/api/qpay/callback (see callbackBase)
  * Without QPAY_CALLBACK_BASE_URL the callback URL derives from CONVEX_SITE_URL,
  * which Convex provides.
@@ -88,12 +88,12 @@ export interface InvoiceReply {
 }
 
 /**
- * Where QPay sends payment callbacks. QPay production only accepts callback
- * hosts on its whitelist (docs/qpay/callback-whitelist-email.md), so
- * production sets QPAY_CALLBACK_BASE_URL to a domain we own —
+ * Where QPay sends payment callbacks. QPay stores the callback_url on each
+ * invoice and calls it even after we move backends, so production sets
+ * QPAY_CALLBACK_BASE_URL to a domain we own —
  * https://www.1tsegts.com/api/qpay/callback, proxied to this deployment by a
- * Vercel rewrite — and the whitelisted host survives any backend move.
- * Without it, callbacks go straight to this deployment's own site URL.
+ * Vercel rewrite — and late callbacks follow the rewrite to whatever backend
+ * is current. Without it, callbacks go straight to this deployment's own site URL.
  */
 function callbackBase(): string {
   const configured = process.env.QPAY_CALLBACK_BASE_URL?.trim();

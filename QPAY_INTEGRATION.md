@@ -37,11 +37,14 @@ Settings → Environment Variables, or `npx convex env set [--prod] NAME value`)
 
 - The 1TSEGTS login is **production-only**: the sandbox has rejected it since
   2026-10. Never put the real password on dev.
-- **Callback whitelist.** QPay production only accepts whitelisted callback hosts
-  (`callback_url: INVALID` otherwise). Callbacks therefore go to our own domain,
-  `www.1tsegts.com`, and `vercel.json` proxies `/api/qpay/callback/*` to the Convex
-  production deployment — the whitelisted host never changes with the backend.
-  Use `www`: `1tsegts.com` 307-redirects every path, and QPay won't follow it.
+- **Callback URL.** QPay calls whatever `callback_url` the invoice was created with;
+  support said (2026-10-15) there is no host list on their side to add us to.
+  Callbacks go to our own domain, `www.1tsegts.com`, and `vercel.json` proxies
+  `/api/qpay/callback/*` to the Convex production deployment. Each invoice keeps
+  the URL it was created with, so on a future backend move late callbacks still
+  reach us and only the rewrite changes. Use `www`: `1tsegts.com` 307-redirects
+  every path, and QPay won't follow it. Production acceptance of this URL is
+  checked before cutover (`docs/CONVEX_CUTOVER.md`, 0.1).
 - Secrets are read once per call; changing a variable needs no redeploy.
 
 ---
@@ -113,7 +116,7 @@ with the expected and observed amounts; an admin reconciles it.
 |---|---|---|
 | Customer sees "QPay unavailable" (`QPAY_UNAVAILABLE`) | QPay auth or invoice call failed | Convex logs for `qpay.createInvoice`; check the variables above. |
 | QPay error `NO_CREDENDIALS` | Credentials rejected (`NO_CREDENTIALS`, spelled right, means none were sent) | Re-copy `QPAY_PASSWORD` (Secret Manager version 1 for production). |
-| `callback_url: INVALID` | Callback host not whitelisted | Confirm with QPay that `www.1tsegts.com` is whitelisted. |
+| `callback_url: INVALID` | Malformed callback URL. Seen once (2026-06) with a query string; the token and order id now go in path segments | Check `QPAY_CALLBACK_BASE_URL` is an absolute `https://` URL with no query string. If it still fails, send QPay support the exact URL from the Convex logs. |
 | Callback hits but order stays `AWAITING_PAYMENT` | Payment not visible yet (QPay retries), or wrong `QPAY_CALLBACK_TOKEN` (401 in logs) | Logs for `qpayCallback`. |
 | Order in `MANUAL_REVIEW` | Real money that couldn't be auto-confirmed | Check the expected vs observed amount in the dashboard; refund or settle by hand. |
 
