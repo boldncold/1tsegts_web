@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { useEscapeKey } from '../lib/useEscapeKey';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
 
   // Stop the page behind the sidebar from scrolling along on mobile.
   useBodyScrollLock(isOpen);
+  useEscapeKey(isOpen, () => setIsOpen(false));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -45,7 +47,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   };
 
   const navBg = scrolled
-    ? 'bg-[rgba(15,12,8,0.94)] border-b border-[rgba(212,175,55,0.18)]'
+    ? 'bg-[rgba(15,12,8,0.94)] border-b border-[var(--gold-soft-18)]'
     : 'bg-[rgba(15,12,8,0.60)] border-b border-transparent';
 
   const sideDrawer = typeof document !== 'undefined' && createPortal(
@@ -61,18 +63,18 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[var(--espresso)] shadow-2xl flex flex-col border-r border-[rgba(212,175,55,0.15)]"
+            className="fixed top-0 left-0 bottom-0 z-[101] w-[280px] bg-[var(--espresso)] shadow-2xl flex flex-col border-r border-[var(--gold-soft-15)]"
           >
             {/* Drawer header */}
             <div className="flex justify-between items-center px-6 py-6">
-              <span className="font-serif font-bold text-lg tracking-tighter flex items-baseline">
-                <span className="text-[#D4AF37] text-2xl leading-none mr-0.5">1</span>
-                <span className="text-[#8B0000]">ЦЭГЦ</span>
+              <span className="brand-wordmark text-lg">
+                <span className="one">1</span>
+                <span className="word">ЦЭГЦ</span>
               </span>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-white/60 hover:text-white transition-colors"
-                aria-label="Close"
+                className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                aria-label={t('common.close')}
               >
                 <X size={20} />
               </button>
@@ -86,20 +88,20 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                   to={link.path}
                   onClick={() => handleLinkClick(link.path)}
                   className={cn(
-                    'flex justify-between items-center py-[14px] font-serif text-[17px] border-b border-white/[0.06] transition-colors',
+                    'flex justify-between items-center py-3.5 text-base font-medium border-b border-[var(--border-subtle)] transition-colors',
                     location.pathname === link.path
-                      ? 'text-[#D4AF37]'
-                      : 'text-white hover:text-[#D4AF37]'
+                      ? 'text-[var(--gold)]'
+                      : 'text-white hover:text-[var(--gold)]'
                   )}
                 >
                   <span>{link.name}</span>
-                  <ChevronRight size={16} className="text-[#D4AF37] opacity-60" />
+                  <ChevronRight size={16} className="text-[var(--gold)] opacity-60" />
                 </Link>
               ))}
 
               {/* Language switcher */}
               <div className="mt-8 pt-6 border-t border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-bold mb-3">
+                <p className="text-xs uppercase tracking-[0.06em] text-white/40 font-bold mb-3">
                   {language === 'en' ? 'Language' : 'Хэл'}
                 </p>
                 <div className="flex gap-2">
@@ -108,7 +110,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'mn'
-                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
+                        ? 'bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -119,7 +121,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border',
                       language === 'en'
-                        ? 'bg-[#D4AF37] text-[#080606] border-[#D4AF37]'
+                        ? 'bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]'
                         : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
                     )}
                   >
@@ -132,7 +134,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                 <div className="mt-6">
                   <button
                     onClick={() => { setIsOpen(false); setShowCancelConfirm(true); }}
-                    className="w-full px-6 py-3.5 bg-red-900/30 text-red-400 border border-red-900/40 font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                    className="w-full px-6 py-3.5 bg-red-900/30 text-red-400 border border-red-900/40 font-bold uppercase tracking-[0.06em] text-xs rounded-xl hover:bg-red-600 hover:text-white transition-all"
                   >
                     {language === 'en' ? 'Cancel Current Order' : 'Захиалга цуцлах'}
                   </button>
@@ -145,7 +147,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
               <Link
                 to="/admin"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 text-white/40 hover:text-[#D4AF37] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
+                className="flex items-center gap-2.5 text-white/40 hover:text-[var(--gold)] transition-colors text-xs font-bold uppercase tracking-[0.06em]"
               >
                 <span>Admin</span>
               </Link>
@@ -167,7 +169,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           {/* Left: hamburger */}
           <button
             onClick={() => setIsOpen(true)}
-            className="p-1.5 text-white hover:text-[#D4AF37] transition-colors"
+            className="w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-white hover:text-[var(--gold)] transition-colors"
             aria-label="Menu"
           >
             <MenuIcon size={22} />
@@ -177,35 +179,37 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
           <Link
             to="/"
             onClick={() => handleLinkClick('/')}
-            className="font-serif font-bold tracking-tighter flex items-baseline leading-none"
+            className="brand-wordmark text-lg"
           >
-            <span className="text-[#D4AF37] text-[36px] leading-none mr-0.5">1</span>
-            <span className="text-[#8B0000] text-[18px]">ЦЭГЦ</span>
+            <span className="one">1</span>
+            <span className="word">ЦЭГЦ</span>
           </Link>
 
           {/* Right: lang toggle + cart */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLanguage(language === 'en' ? 'mn' : 'en')}
-              className="text-[#D4AF37] text-[11px] font-bold tracking-[0.18em] uppercase px-1.5 py-1 hover:text-white transition-colors"
+              className="text-[var(--gold)] text-xs font-bold tracking-[0.06em] uppercase h-11 px-2 hover:text-white transition-colors"
             >
               {language === 'en' ? 'EN' : 'MN'}
             </button>
             <button
               onClick={onCartOpen}
-              className="relative p-2 border border-[rgba(212,175,55,0.35)] text-[#D4AF37] rounded-full hover:border-[#D4AF37] transition-colors"
+              className="relative w-11 h-11 flex items-center justify-center border border-[var(--gold-soft-35)] text-[var(--gold)] rounded-full hover:border-[var(--gold)] transition-colors"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-[#080606] text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 bg-[var(--gold)] text-[var(--text-on-gold)] text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {itemCount}
                 </span>
               )}
               {pendingOrderId && (
-                <span className="absolute -bottom-1 -right-1 bg-[#D4AF37] text-[#1a1510] text-[7px] font-bold px-1 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">
-                  {language === 'en' ? 'Active' : 'Идэвхтэй'}
-                </span>
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[var(--gold)] border-2 border-[var(--espresso)] animate-pulse"
+                  role="status"
+                  aria-label={language === 'en' ? 'Order in progress' : 'Захиалга хийгдэж байна'}
+                />
               )}
             </button>
           </div>

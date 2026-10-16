@@ -1,85 +1,73 @@
-import { motion } from 'motion/react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Gem } from 'lucide-react';
-import { Category } from '../types';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Category, MenuItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { getDynamicStatus } from '../lib/utils';
 
-const categories: { name: Category; image: string; translationKey: string; descKey: string }[] = [
-  { name: 'European', image: 'https://picsum.photos/seed/european/800/600', translationKey: 'menu.european', descKey: 'menu.european_desc' },
-  { name: 'Asian', image: 'https://picsum.photos/seed/asian/800/600', translationKey: 'menu.asian', descKey: 'menu.asian_desc' },
-  { name: 'Mongolian', image: 'https://picsum.photos/seed/mongolian/800/600', translationKey: 'menu.mongolian', descKey: 'menu.mongolian_desc' },
-  { name: 'Drinks', image: 'https://picsum.photos/seed/drinks/800/600', translationKey: 'menu.drinks', descKey: 'menu.drinks_desc' },
+const categories: { name: Category; translationKey: string }[] = [
+  { name: 'European', translationKey: 'menu.european' },
+  { name: 'Asian', translationKey: 'menu.asian' },
+  { name: 'Mongolian', translationKey: 'menu.mongolian' },
+  { name: 'Drinks', translationKey: 'menu.drinks' },
 ];
+
+/** Each tile shows a real dish from its category: featured first, then most ordered. */
+function pickCover(items: MenuItem[]): string | undefined {
+  return [...items]
+    .filter((item) => item.image)
+    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.orderCount ?? 0) - (a.orderCount ?? 0))[0]?.image;
+}
 
 export default function CategoryQuickNav() {
   const { t } = useLanguage();
+  const menu = useQuery(api.menu.list);
+
+  const tiles = useMemo(() => {
+    const visible = ((menu ?? []) as MenuItem[]).filter(
+      (item) => item.pool !== 'specials' && getDynamicStatus(item).isVisible
+    );
+    return categories.map((cat) => {
+      const items = visible.filter((item) => item.category === cat.name);
+      return { ...cat, count: items.length, cover: pickCover(items) };
+    });
+  }, [menu]);
 
   return (
-    <section id="categories" className="py-24 bg-stone-950">
+    <section id="categories" className="pt-12 md:pt-16 bg-[var(--surface-page)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section header with gem ornament */}
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-4"
-          >
-            {/* Gem ornament divider */}
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="block w-8 h-px bg-[rgba(212,175,55,0.4)]" />
-              <Gem size={14} className="text-[#D4AF37]" />
-              <span className="block w-8 h-px bg-[rgba(212,175,55,0.4)]" />
-            </div>
-            <span className="block eyebrow">
-              {t('menu.explore') || 'Explore Our World'}
-            </span>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-100">
-              {t('menu.select_cuisine')}
-            </h2>
-          </motion.div>
-        </div>
+        <h2 className="mb-6">{t('menu.select_cuisine')}</h2>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {categories.map((cat, idx) => (
-            <motion.div
-              key={cat.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              className="group relative h-40 sm:h-80 overflow-hidden rounded-2xl sm:rounded-3xl border border-stone-800 hover:border-[rgba(212,175,55,0.5)] transition-colors duration-500"
+          {tiles.map((tile) => (
+            <Link
+              key={tile.name}
+              to={`/menu?category=${tile.name}`}
+              className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-[var(--border-subtle)] hover:border-[var(--border-gold-strong)] transition-colors"
+              style={tile.cover ? undefined : { background: 'var(--dish-fallback-bg)' }}
             >
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 sm:opacity-80 group-hover:opacity-100"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-transparent opacity-80" />
-
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-3 sm:p-6 text-center">
-                <h3 className="text-xl sm:text-3xl font-serif font-bold text-stone-100 sm:mb-2 group-hover:text-[#D4AF37] transition-colors">
-                  {t(cat.translationKey)}
+              {tile.cover && (
+                <img
+                  src={tile.cover}
+                  alt=""
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5">
+                <h3 className="text-white group-hover:text-[var(--gold)] transition-colors">
+                  {t(tile.translationKey)}
                 </h3>
-                <p className="hidden sm:block text-xs text-stone-400 font-light uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  {t(cat.descKey)}
-                </p>
-                {/* Mobile tap overlay */}
-                <Link
-                  to={`/menu?category=${cat.name}`}
-                  className="absolute inset-0 z-10 sm:hidden"
-                >
-                  <span className="sr-only">View {t(cat.translationKey)}</span>
-                </Link>
-                <Link
-                  to={`/menu?category=${cat.name}`}
-                  className="hidden sm:inline-flex items-center gap-1.5 mt-6 px-6 py-2 bg-[#D4AF37] text-stone-900 text-[10px] font-bold uppercase tracking-widest rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 hover:bg-[#C5A028] relative z-20"
-                >
-                  View Items
-                </Link>
+                {menu !== undefined && (
+                  <p className="text-[var(--text-secondary)] mt-1">
+                    {tile.count} {t(tile.count === 1 ? 'menu.dish' : 'menu.dishes')}
+                  </p>
+                )}
               </div>
-            </motion.div>
+            </Link>
           ))}
         </div>
       </div>

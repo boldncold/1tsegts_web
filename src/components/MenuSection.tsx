@@ -1,29 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingCart, Star, Filter, Search, Flame, Users, Gem, Clock, ShieldCheck } from 'lucide-react';
+import { Plus, Check, Search, Flame, Clock, ShieldCheck, TrendingUp, Star, UtensilsCrossed, Users } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { MenuItem, Category, Portion } from '../types';
+import { MenuItem, Category } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { cn, getDynamicStatus, getScheduleLabel } from '../lib/utils';
+import { cn, getDynamicStatus, getSchedule, nextOpening } from '../lib/utils';
+import PortionSheet from './PortionSheet';
 
-const DISH_FALLBACK_BG =
-  'radial-gradient(ellipse 55% 35% at 50% 24%, rgba(232,200,90,0.28), transparent 70%), radial-gradient(ellipse 95% 65% at 50% 30%, rgba(212,175,55,0.22), transparent 65%), radial-gradient(ellipse 70% 45% at 50% 100%, rgba(212,175,55,0.10), transparent 70%), linear-gradient(180deg, #17120a 0%, #0a0806 100%)';
+const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
 
 export default function MenuSection() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'All' | 'Specials'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedPortions, setSelectedPortions] = useState<Record<string, Portion>>({});
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [sheetItem, setSheetItem] = useState<MenuItem | null>(null);
+  const [addedId, setAddedId] = useState<string | null>(null);
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const listRef = useRef<HTMLDivElement>(null);
   const { addToCart } = useCart();
   const { t } = useLanguage();
-  const { storeOpen } = useStoreSettings();
+  const { settings, storeOpen } = useStoreSettings();
   const { isAdmin } = useAuth();
   const location = useLocation();
   const effectiveStoreOpen = storeOpen || isAdmin;
@@ -69,16 +71,6 @@ export default function MenuSection() {
       portions: item.portions ? item.portions.filter(p => p.available !== false) : []
     })) as MenuItem[];
     setItems(menuItems);
-
-    // Initialize selected portions for items that have them
-    const initialPortions: Record<string, Portion> = {};
-    menuItems.forEach(item => {
-      if (item.portions && item.portions.length > 0) {
-        initialPortions[item.id] = { name: 'Default', price: item.price };
-      }
-    });
-    setSelectedPortions(initialPortions);
-
     setLoading(false);
   }, [menu]);
 
@@ -108,16 +100,52 @@ export default function MenuSection() {
     }
   };
 
-  const handlePortionSelect = (itemId: string, portion: Portion) => {
-    setSelectedPortions(prev => ({ ...prev, [itemId]: portion }));
+  // Picking a category deep in the list jumps back to its first dish.
+  const selectCategory = (cat: Category | 'All' | 'Specials') => {
+    setActiveCategory(cat);
+    const list = listRef.current;
+    if (list && list.getBoundingClientRect().top < 130) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleQuantityChange = (itemId: string, delta: number) => {
-    setQuantities(prev => ({
-      ...prev,
-      [itemId]: Math.max(1, (prev[itemId] || 1) + delta)
-    }));
+  // Adding gave no feedback beyond the navbar count; the button shows a check briefly.
+  const flashAdded = (id: string) => {
+    setAddedId(id);
+    clearTimeout(addedTimer.current);
+    addedTimer.current = setTimeout(() => setAddedId(null), 1200);
   };
+
+  // Dishes with sizes open the size sheet; the rest go straight into the cart.
+  const handleAdd = (item: MenuItem) => {
+    if (item.portions?.length) {
+      setSheetItem(item);
+      return;
+    }
+    addToCart(item, undefined, 1);
+    flashAdded(item.id);
+  };
+
+  const scheduleKeyword = (item: MenuItem) => {
+    const schedule = getSchedule(item);
+    if (!schedule) return null;
+    switch (schedule.kind) {
+      case 'today': return t('menu.badge_today');
+      case 'weekends': return t('menu.badge_weekends');
+      case 'weekdays': return t('menu.badge_weekdays');
+      case 'days':
+        return schedule.days.length === 1
+          ? t('menu.badge_only_day').replace('{day}', t(`day.${schedule.days[0]}`))
+          : schedule.days.map((d) => t(`day_short.${d}`)).join(' · ');
+    }
+  };
+
+  const opening = storeOpen ? null : nextOpening(settings);
+  const openingLabel = (() => {
+    if (!opening) return null;
+    const time = `${String(opening.hour).padStart(2, '0')}:00`;
+    if (opening.daysAhead === 0) return t('menu.opens_today').replace('{time}', time);
+    if (opening.daysAhead === 1) return t('menu.opens_tomorrow').replace('{time}', time);
+    return t('menu.opens_on').replace('{day}', t(`day.${opening.weekday}`)).replace('{time}', time);
+  })();
 
   // Pre-calculate thresholds for dynamic keywords (Excluding Drinks)
   const foodItems = items.filter(i => i.category !== 'Drinks');
@@ -188,259 +216,153 @@ export default function MenuSection() {
   });
 
   return (
-    <section id="menu-section" className="py-24 bg-[var(--surface-page)] min-h-screen">
+    <section id="menu-section" className="pt-12 md:pt-16 pb-16 md:pb-24 bg-[var(--surface-page)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-4"
-          >
-            <span className="eyebrow">{t('menu.selection')}</span>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-2">
+          <div className="flex flex-col items-start gap-3">
             {isAdmin && (
-              <span className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full border border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--gold)]">
-                <ShieldCheck size={13} />
+              <span className="label inline-flex items-center gap-1.5 rounded-full border border-[var(--gold-soft-30)] bg-[var(--gold-soft-10)] px-3 py-1.5">
+                <ShieldCheck size={14} />
                 {t('cart.admin.test_mode_hint')}
               </span>
             )}
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white">{t('menu.title')}</h2>
-            <div className="w-16 h-px bg-[#D4AF37] mx-auto mt-2 opacity-60"></div>
-          </motion.div>
+            <h2>{t('menu.title')}</h2>
+          </div>
+          <div className="relative w-full md:w-80">
+            <input
+              type="search"
+              placeholder={t('menu.search')}
+              aria-label={t('menu.search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 bg-[var(--white-04)] border border-[var(--white-15)] rounded-full pl-11 pr-4 text-sm text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--gold)] transition-colors"
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} aria-hidden />
+          </div>
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
-          {/* Category Filter */}
-          <div className="flex flex-wrap justify-center md:justify-start gap-3">
+        {/* Pinned under the navbar so every category stays one tap away in a long menu. */}
+        <div className="sticky top-14 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 py-3 mb-4 bg-[var(--surface-page)] border-b border-[var(--border-subtle)]">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] md:[mask-image:none]">
             {categoriesWithItems.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => selectCategory(cat)}
+                aria-pressed={activeCategory === cat}
                 className={cn(
-                  "px-5 py-2.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 border",
+                  "shrink-0 h-10 px-4 rounded-full text-sm font-medium transition-colors border",
                   activeCategory === cat
-                    ? "bg-[#D4AF37] text-[#080606] border-[#D4AF37] font-semibold shadow-[var(--shadow-btn-gold)]"
-                    : "bg-transparent text-white/50 border-white/15 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:bg-white/[0.04]"
+                    ? "bg-[var(--gold)] text-[var(--text-on-gold)] border-[var(--gold)]"
+                    : "bg-transparent text-[var(--text-secondary)] border-[var(--white-15)] hover:border-[var(--gold)] hover:text-[var(--gold)]"
                 )}
               >
                 {getCategoryLabel(cat)}
               </button>
             ))}
           </div>
-
-          {/* Search Input */}
-          <div className="relative w-full md:w-80">
-            <input
-              type="text"
-              placeholder={t('menu.search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/15 rounded-full px-12 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
-          </div>
         </div>
 
-        {/* Menu Grid */}
+        {!storeOpen && (
+          <div role="status" className="flex items-center gap-3 mb-4 px-4 py-3 rounded-[var(--radius-control)] border border-[var(--gold-soft-25)] bg-[var(--gold-soft-10)]">
+            <Clock size={18} className="shrink-0 text-[var(--gold)]" aria-hidden />
+            <p className="text-sm text-white">
+              {t('menu.closed_now')}
+              {openingLabel && <> · <span className="text-[var(--gold)]">{openingLabel}</span></>}
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-[var(--gold)] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grid-flow-row-dense">
+          <div ref={listRef} className="scroll-mt-32 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
             <AnimatePresence mode="popLayout">
               {sortedItems.map((item) => {
-                const currentPortion = selectedPortions[item.id] || (item.portions && item.portions.length > 0 ? { name: 'Default', price: item.price } : undefined);
-                const displayPrice = currentPortion ? currentPortion.price : item.price;
-                const hasManyPortions = item.portions && item.portions.length >= 2;
                 const { isAvailable } = getDynamicStatus(item);
                 const canOrder = isAdmin || (isAvailable && effectiveStoreOpen);
-
+                const sizeCount = item.portions?.length ? item.portions.length + 1 : 0;
                 const isDrink = item.category === 'Drinks';
-                const isPopular = !isDrink && popularThreshold !== Infinity && item.orderCount !== undefined && item.orderCount > 0 && item.orderCount >= popularThreshold;
-                const minPrice = Math.min(item.price, ...(item.portions?.map(p => p.price) || []));
-                const isLuxury = !isDrink && minPrice > 20000;
-                const isForGroups = hasManyPortions;
-                const scheduleLabel = getScheduleLabel(item);
-                const isSpicy = item.tags?.includes('spicy');
-                const qty = quantities[item.id] || 1;
+                const added = addedId === item.id;
+                const schedule = scheduleKeyword(item);
+                // Featured, top-15 seller, spicy, set meal (free tea, salads and
+                // refills; ticked in admin), several sizes, a weekly schedule.
+                const badges = [
+                  item.featured && { icon: Star, label: t('menu.badge_featured') },
+                  !isDrink && (item.orderCount ?? 0) > 0 && (item.orderCount ?? 0) >= popularThreshold && { icon: TrendingUp, label: t('menu.badge_popular') },
+                  item.tags?.includes('spicy') && { icon: Flame, label: t('menu.badge_spicy') },
+                  item.tags?.includes('set') && { icon: UtensilsCrossed, label: t('menu.badge_set') },
+                  (item.portions?.length ?? 0) >= 2 && { icon: Users, label: t('menu.badge_groups') },
+                  schedule && { icon: Clock, label: schedule },
+                ].filter((b): b is { icon: typeof Clock; label: string } => !!b);
+                const buttonLabel = isAdmin
+                  ? t('menu.add_to_cart')
+                  : !effectiveStoreOpen ? t('menu.closed') : isAvailable ? t('menu.add_to_cart') : t('menu.sold_out');
 
                 return (
-                  <motion.div
+                  <motion.article
                     key={item.id}
                     layout
-                    initial={{ opacity: 0, y: 16 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    transition={{ duration: 0.25 }}
-                    className={cn(
-                      "group bg-[var(--espresso)] border border-white/[0.06] rounded-3xl overflow-hidden flex flex-col",
-                      "transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[var(--shadow-belt-card)] hover:border-[rgba(212,175,55,0.30)]",
-                      !isAvailable ? "opacity-70" : ""
-                    )}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex md:flex-col gap-3 md:gap-0 p-3 md:p-0 rounded-[var(--radius-card)] overflow-hidden bg-[var(--espresso)] border border-[var(--border-subtle)] md:hover:border-[var(--gold-soft-30)] transition-colors"
                   >
-                    {/* Image — 4:3 aspect ratio */}
-                    <div className="relative aspect-[4/3] overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div
-                          className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
-                          style={{ background: DISH_FALLBACK_BG }}
-                        />
+                    <div
+                      className="relative w-24 h-24 md:w-full md:h-auto md:aspect-[4/3] shrink-0 overflow-hidden rounded-[var(--radius-control)] md:rounded-none bg-[var(--surface-dish)]"
+                      style={item.image ? undefined : { background: DISH_FALLBACK_BG }}
+                    >
+                      {item.image && (
+                        <img src={item.image} alt="" loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       )}
-
-                      {/* Sold out overlay */}
                       {!isAvailable && (
-                        <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] flex items-center justify-center z-10">
-                          <span className="bg-white text-stone-900 px-5 py-1.5 rounded-full font-bold tracking-[0.18em] uppercase text-[11px] shadow-xl">
-                            {t('menu.sold_out')}
-                          </span>
+                        <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
+                          <span className="text-xs md:text-sm font-semibold text-white">{t('menu.sold_out')}</span>
                         </div>
                       )}
-
-                      {/* Badges — top left, stacked */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-20">
-                        {item.featured && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(212,175,55,0.92)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Star size={9} className="fill-white" /> Featured
-                          </span>
-                        )}
-                        {isPopular && (
-                          <span className="inline-flex items-center gap-1 bg-orange-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Flame size={9} className="fill-white" /> Popular
-                          </span>
-                        )}
-                        {isSpicy && (
-                          <span className="inline-flex items-center gap-1 bg-[rgba(139,0,0,0.9)] backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Flame size={9} /> Spicy
-                          </span>
-                        )}
-                        {isLuxury && (
-                          <span className="inline-flex items-center gap-1 bg-purple-600/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Gem size={9} className="fill-white" /> Luxury
-                          </span>
-                        )}
-                        {isForGroups && (
-                          <span className="inline-flex items-center gap-1 bg-blue-500/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Users size={9} /> Groups
-                          </span>
-                        )}
-                        {scheduleLabel && (
-                          <span className="inline-flex items-center gap-1 bg-stone-900/90 backdrop-blur-sm px-2.5 py-[5px] rounded-full text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
-                            <Clock size={9} /> {scheduleLabel}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Price pill — top right */}
-                      <div className="absolute top-3 right-3 z-20 bg-[rgba(21,16,10,0.85)] backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-[rgba(212,175,55,0.25)]">
-                        <span className="font-bold text-[13px] text-[#D4AF37] tabular-nums">₮{Math.round(displayPrice).toLocaleString()}</span>
-                      </div>
                     </div>
 
-                    {/* Body */}
-                    <div className="p-[18px_20px_20px] flex flex-col flex-1" style={{ padding: '18px 20px 20px' }}>
-                      {/* Category */}
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-1">
-                        {getCategoryLabel(item.pool === 'specials' ? 'Specials' : item.category)}
-                      </p>
-                      {/* Name */}
-                      <h3 className="font-serif font-bold text-[17px] leading-snug text-white mb-2 group-hover:text-[#D4AF37] transition-colors" style={{ letterSpacing: '-0.005em' }}>
-                        {item.name}
-                      </h3>
-                      {/* Description */}
-                      <p className={cn(
-                        "text-white/45 font-light leading-[1.55] mb-3 flex-1",
-                        "line-clamp-2"
-                      )} style={{ fontSize: '13px' }}>
-                        {item.description}
-                      </p>
-
-                      {/* Portion selector */}
-                      {item.portions && item.portions.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold mb-2">Select Portion</p>
-                          <div className="grid gap-1.5 grid-cols-1">
-                            {[{ name: 'Default', price: item.price }, ...item.portions].map((portion, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => handlePortionSelect(item.id, portion)}
-                                className={cn(
-                                  "flex justify-between items-center px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all border",
-                                  currentPortion?.name === portion.name
-                                    ? "bg-[rgba(212,175,55,0.1)] text-[#D4AF37] border-[rgba(212,175,55,0.5)]"
-                                    : "bg-white/[0.04] text-white/50 border-white/15 hover:border-[rgba(212,175,55,0.35)] hover:text-white/70"
-                                )}
-                              >
-                                <span>{portion.name}</span>
-                                <span className="tabular-nums font-bold">₮{portion.price.toLocaleString()}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                    <div className="flex flex-col flex-1 min-w-0 md:p-5">
+                      {badges.length > 0 && (
+                        <p className="flex flex-wrap gap-x-3 gap-y-1 mb-1 text-xs font-medium text-[var(--gold)]">
+                          {badges.map(({ icon: Icon, label }) => (
+                            <span key={label} className="inline-flex items-center gap-1">
+                              <Icon size={12} aria-hidden /> {label}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                      <h3 className="line-clamp-2">{item.name}</h3>
+                      {item.description && (
+                        <p className="text-sm text-[var(--text-muted)] mt-1 line-clamp-1 md:line-clamp-2">{item.description}</p>
                       )}
 
-                      {/* Bottom row: price + qty stepper / add button */}
-                      <div className="flex items-center justify-between pt-3.5 border-t border-white/[0.06] mt-auto gap-3">
-                        {/* Price (bottom left) */}
-                        <span className="font-serif font-bold text-[#D4AF37] text-[17px] tabular-nums leading-none">
-                          ₮{Math.round(displayPrice).toLocaleString()}
-                        </span>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* Qty stepper — only for single-portion items */}
-                          {(!item.portions || item.portions.length === 0) && canOrder && (
-                            <div className="inline-flex items-center gap-1 bg-[#1a1510] rounded-full p-1">
-                              <button
-                                onClick={() => handleQuantityChange(item.id, -1)}
-                                className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[#D4AF37] hover:bg-white/10 transition-colors"
-                              >
-                                <Minus size={11} />
-                              </button>
-                              <span className="min-w-[18px] text-center text-[13px] font-bold text-white tabular-nums">{qty}</span>
-                              <button
-                                onClick={() => handleQuantityChange(item.id, 1)}
-                                className="w-[26px] h-[26px] rounded-full bg-[#D4AF37] flex items-center justify-center text-[#1a1510] hover:bg-[#C5A028] transition-colors"
-                              >
-                                <Plus size={11} />
-                              </button>
-                            </div>
+                      <div className="flex items-center justify-between gap-3 mt-auto pt-3 md:pt-4">
+                        <p className="text-xs text-[var(--text-muted)]">
+                          <span className="text-base md:text-xl font-semibold tabular-nums text-[var(--gold)]">
+                            ₮{Math.round(item.price).toLocaleString()}
+                          </span>
+                          {sizeCount > 0 && <> · {sizeCount} {t('menu.sizes')}</>}
+                        </p>
+                        <button
+                          onClick={() => handleAdd(item)}
+                          disabled={!canOrder}
+                          aria-label={`${buttonLabel}: ${item.name}`}
+                          className={cn(
+                            "shrink-0 h-10 min-w-10 md:px-4 inline-flex items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors active:scale-95",
+                            canOrder
+                              ? "bg-[var(--gold)] text-[var(--text-on-gold)] hover:bg-[var(--gold-hover)]"
+                              : "bg-[var(--white-06)] text-[var(--text-muted)] cursor-not-allowed"
                           )}
-
-                          {/* Add / disabled button */}
-                          <button
-                            onClick={() => {
-                              addToCart(item, currentPortion, quantities[item.id] || 1);
-                              setQuantities(prev => ({ ...prev, [item.id]: 1 }));
-                            }}
-                            disabled={!canOrder}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] transition-all active:scale-95",
-                              canOrder
-                                ? "bg-[#D4AF37] text-[#080606] hover:bg-[#C5A028] shadow-sm"
-                                : "bg-white/[0.06] text-white/40 cursor-not-allowed"
-                            )}
-                          >
-                            <Plus size={12} />
-                            {isAdmin
-                              ? t('menu.add_to_cart')
-                              : !effectiveStoreOpen
-                                ? t('menu.closed')
-                                : isAvailable
-                                  ? t('menu.add_to_cart')
-                                  : t('menu.sold_out')}
-                          </button>
-                        </div>
+                        >
+                          {added ? <Check size={18} aria-hidden /> : <Plus size={18} aria-hidden />}
+                          <span className="hidden md:inline">{added ? t('menu.added') : buttonLabel}</span>
+                        </button>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.article>
                 );
               })}
             </AnimatePresence>
@@ -449,10 +371,20 @@ export default function MenuSection() {
 
         {!loading && filteredItems.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-white/45 text-lg italic">{t('menu.no_items')}</p>
+            <p className="text-[var(--text-muted)]">{t('menu.no_items')}</p>
           </div>
         )}
       </div>
+
+      <PortionSheet
+        item={sheetItem}
+        canOrder={!!sheetItem && (isAdmin || (getDynamicStatus(sheetItem).isAvailable && effectiveStoreOpen))}
+        onClose={() => setSheetItem(null)}
+        onAdd={(item, portion, qty) => {
+          addToCart(item, portion, qty);
+          flashAdded(item.id);
+        }}
+      />
     </section>
   );
 }

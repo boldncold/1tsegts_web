@@ -95,14 +95,16 @@ function MenuItemCard({
   if (currentStatus === 'daily_special') statusColorClass = "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/40";
 
   return (
-    <div className="group relative h-56 bg-stone-950 border border-stone-800 rounded-3xl overflow-hidden hover:border-amber-500/50 transition-all shadow-lg flex flex-col">
+    <div className="group relative h-56 bg-stone-950 border border-stone-800 rounded-3xl overflow-hidden hover:border-[var(--admin-accent-soft-50)] transition-all shadow-lg flex flex-col">
       {/* Background Image */}
-      <img 
-        src={item.image || `https://picsum.photos/seed/${item.name}/400/300`} 
-        alt={item.name} 
-        className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" 
-        referrerPolicy="no-referrer" 
-      />
+      {item.image && (
+        <img
+          src={item.image}
+          alt={item.name}
+          className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+          referrerPolicy="no-referrer"
+        />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/60 to-stone-950/20" />
 
       {/* Top Controls */}
@@ -124,22 +126,22 @@ function MenuItemCard({
           className={cn(
             "p-2 rounded-full transition-colors backdrop-blur-md border shadow-lg",
             item.featured 
-              ? "bg-amber-500/20 text-amber-400 border-amber-500/50 hover:bg-amber-500/30" 
-              : "bg-stone-900/50 text-stone-500 border-stone-800 hover:text-amber-400 hover:border-amber-500/30"
+              ? "bg-[var(--admin-accent-soft-20)] text-[var(--admin-accent-text)] border-[var(--admin-accent-soft-50)] hover:bg-[var(--admin-accent-soft-30)]" 
+              : "bg-stone-900/50 text-stone-500 border-stone-800 hover:text-[var(--admin-accent-hover)] hover:border-[var(--admin-accent-soft-30)]"
           )}
         >
-          <Star size={16} className={item.featured ? "fill-amber-400" : ""} />
+          <Star size={16} className={item.featured ? "fill-[var(--admin-accent-text)]" : ""} />
         </button>
       </div>
 
       {/* Content */}
       <div className="relative flex-1 flex flex-col items-center justify-center text-center px-6 mt-4">
         <p className="text-lg font-bold text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">{item.name}</p>
-        <p className="text-xs text-amber-400 font-bold uppercase tracking-[0.2em] tabular-nums mt-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+        <p className="text-xs text-[var(--admin-accent-text)] font-bold uppercase tracking-[0.2em] tabular-nums mt-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
           ₮{Math.round(item.price).toLocaleString()}
         </p>
         {scheduleLabel && (
-          <span className="mt-2 inline-flex items-center gap-1 bg-stone-900/80 backdrop-blur-sm border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest text-amber-400">
+          <span className="mt-2 inline-flex items-center gap-1 bg-stone-900/80 backdrop-blur-sm border border-[var(--admin-accent-soft-30)] px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest text-[var(--admin-accent-text)]">
             <Clock size={8} /> {scheduleLabel}
           </span>
         )}
@@ -158,8 +160,8 @@ function MenuItemCard({
               className={cn(
                 "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-colors border",
                 item.todayOnly
-                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                  : "bg-stone-800 text-stone-500 border-stone-700 hover:border-amber-500/30 hover:text-stone-300"
+                  ? "bg-[var(--admin-accent-soft-20)] text-[var(--admin-accent-text)] border-[var(--admin-accent-soft-40)]"
+                  : "bg-stone-800 text-stone-500 border-stone-700 hover:border-[var(--admin-accent-soft-30)] hover:text-stone-300"
               )}
             >
               Today
@@ -178,8 +180,8 @@ function MenuItemCard({
                   className={cn(
                     "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-colors border",
                     selected
-                      ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                      : "bg-stone-800 text-stone-500 border-stone-700 hover:border-amber-500/30 hover:text-stone-300"
+                      ? "bg-[var(--admin-accent-soft-20)] text-[var(--admin-accent-text)] border-[var(--admin-accent-soft-40)]"
+                      : "bg-stone-800 text-stone-500 border-stone-700 hover:border-[var(--admin-accent-soft-30)] hover:text-stone-300"
                   )}
                 >
                   {day}
@@ -193,7 +195,7 @@ function MenuItemCard({
           <select
             value={item.pool === 'specials' ? 'Specials' : item.category}
             onChange={(e) => onChangeCategory(item, e.target.value)}
-            className="bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-300 focus:border-amber-500 outline-none flex-1"
+            className="bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-300 focus:border-[var(--admin-accent)] outline-none flex-1"
           >
             <option value="Draft">{t('admin.menu.pool.master') || 'Draft Pool'}</option>
             <option value="Specials">{t('menu.specials')}</option>
@@ -205,7 +207,7 @@ function MenuItemCard({
           <div className="flex gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-              className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-amber-500 transition-colors border border-stone-700 hover:border-amber-500/50"
+              className="p-1.5 bg-stone-800 rounded-lg text-stone-300 hover:text-[var(--admin-accent)] transition-colors border border-stone-700 hover:border-[var(--admin-accent-soft-50)]"
               title="Edit"
             >
               <Edit2 size={14} />
@@ -577,7 +579,8 @@ export default function AdminDashboard() {
         const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
         return { storageId };
       };
-      const image = await resolveImage(editForm.image || `https://picsum.photos/seed/${editForm.name}/800/600`);
+      // No photo means no image: the menu shows its own fallback. Never invent one.
+      const image = editForm.image ? await resolveImage(editForm.image) : undefined;
       const sideImages = await Promise.all((editForm.sideImages || []).map(resolveImage));
 
       await saveMenuItem({
@@ -1213,7 +1216,7 @@ export default function AdminDashboard() {
                           className={cn(
                             "px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap",
                             menuFilterCategory === cat 
-                              ? "bg-amber-500 text-stone-900 shadow-md" 
+                              ? "bg-[var(--admin-accent)] text-stone-900 shadow-md" 
                               : "text-stone-400 hover:text-stone-200 hover:bg-stone-800"
                           )}
                         >
@@ -1233,40 +1236,12 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 items-stretch w-full sm:w-auto">
                       <button
-                        onClick={async () => {
-                          const initialItems = [
-                            { name: 'Truffle Carbonara', description: 'Creamy pasta with black truffle oil, pancetta, and parmesan.', price: 18.99, category: 'European', available: true, image: 'https://picsum.photos/seed/pasta/800/600' },
-                            { name: 'Sushi Platter', description: 'Assorted fresh nigiri and maki rolls with wasabi and ginger.', price: 24.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/sushi/800/600' },
-                            { name: 'Beef Bourguignon', description: 'Slow-cooked beef in red wine sauce with carrots and onions.', price: 22.50, category: 'European', available: true, image: 'https://picsum.photos/seed/beef/800/600' },
-                            { name: 'Pad Thai', description: 'Classic Thai rice noodles with shrimp, tofu, and peanuts.', price: 16.99, category: 'Asian', available: true, image: 'https://picsum.photos/seed/padthai/800/600' },
-                            { name: 'Matcha Latte', description: 'Premium Japanese matcha with steamed milk.', price: 5.50, category: 'Drinks', available: true, image: 'https://picsum.photos/seed/matcha/800/600' },
-                            { name: 'Buuz', description: 'Traditional Mongolian steamed dumplings.', price: 15.00, category: 'Mongolian', available: true, image: 'https://picsum.photos/seed/buuz/800/600' }
-                          ];
-                          for (const { image, ...item } of initialItems) {
-                            await saveMenuItem({
-                              item: {
-                                ...item,
-                                category: item.category as Category,
-                                tags: [], status: 'available', statusUntil: null, scheduledDays: [],
-                                todayOnly: false, featured: false, packagingPrice: 0, portions: [], pool: null,
-                              },
-                              image: { url: image },
-                              sideImages: [],
-                            });
-                          }
-                          toast.success('Seed data added!');
-                        }}
-                        className="w-full sm:w-auto text-xs text-stone-600 hover:text-amber-500 transition-colors"
-                      >
-                        Seed Data
-                      </button>
-                      <button
                         onClick={() => {
                           setIsAdding(true);
                           setIsEditing(null);
                           setEditForm({ category: 'Draft', available: false, status: 'hidden' });
                         }}
-                        className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95"
+                        className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-[var(--admin-accent)] text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[var(--admin-accent-hover)] transition-all active:scale-95"
                       >
                         <Plus size={18} />
                         <span>{t('admin.menu.add')}</span>
@@ -1416,7 +1391,7 @@ export default function AdminDashboard() {
                       className={cn(
                         "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all",
                         bankFilter === f
-                          ? "bg-amber-500 text-stone-900"
+                          ? "bg-[var(--admin-accent)] text-stone-900"
                           : "text-stone-400 hover:text-stone-200"
                       )}
                     >
@@ -1499,7 +1474,7 @@ export default function AdminDashboard() {
                                     {/* highlight ref code if present */}
                                     {tx.description?.split(/(GR-[A-Z2-9]{6})/i).map((part, i) =>
                                       /^GR-[A-Z2-9]{6}$/i.test(part) ? (
-                                        <span key={i} className="inline-block px-1.5 py-0.5 bg-amber-500/15 text-amber-400 rounded font-bold tabular-nums">
+                                        <span key={i} className="inline-block px-1.5 py-0.5 bg-[var(--admin-accent-soft-15)] text-[var(--admin-accent-text)] rounded font-bold tabular-nums">
                                           {part.toUpperCase()}
                                         </span>
                                       ) : (
@@ -1577,7 +1552,7 @@ export default function AdminDashboard() {
                             type="text"
                             value={bankTxForm.description}
                             onChange={(e) => setBankTxForm({ ...bankTxForm, description: e.target.value })}
-                            className="admin-control mt-1 w-full px-3 py-2.5 font-mono text-sm"
+                            className="admin-control mt-1 w-full px-3 py-2.5 text-sm"
                             placeholder="GR-K7P3M9"
                           />
                           <p className="text-[10px] text-stone-500 mt-1">
@@ -1610,7 +1585,7 @@ export default function AdminDashboard() {
                       </div>
                       <button
                         onClick={handleAddBankTransaction}
-                        className="w-full py-3 bg-amber-500 text-stone-900 font-bold uppercase tracking-widest text-xs rounded-full hover:bg-amber-400 transition-all"
+                        className="w-full py-3 bg-[var(--admin-accent)] text-stone-900 font-bold uppercase tracking-widest text-xs rounded-full hover:bg-[var(--admin-accent-hover)] transition-all"
                       >
                         {t('admin.bank.modal.save')}
                       </button>
@@ -1682,7 +1657,7 @@ export default function AdminDashboard() {
                                 "px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors border",
                                 isClosed
                                   ? "bg-red-500/20 text-red-400 border-red-500/40"
-                                  : "bg-stone-800 text-stone-400 border-stone-700 hover:border-amber-500/30 hover:text-stone-200"
+                                  : "bg-stone-800 text-stone-400 border-stone-700 hover:border-[var(--admin-accent-soft-30)] hover:text-stone-200"
                               )}
                             >
                               {day}
@@ -1852,7 +1827,7 @@ export default function AdminDashboard() {
               <div className="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl pointer-events-auto overflow-hidden">
                 <div className="p-4 sm:p-6 border-b border-stone-800 flex justify-between items-center shrink-0">
                   <h3 className="text-xl font-bold">{isEditing ? t('admin.modal.edit.title') : t('admin.modal.add.title')}</h3>
-                  <button onClick={() => { setIsEditing(null); setIsAdding(false); }} className="p-2 text-stone-500 hover:text-amber-500 transition-colors">
+                  <button onClick={() => { setIsEditing(null); setIsAdding(false); }} className="p-2 text-stone-500 hover:text-[var(--admin-accent)] transition-colors">
                     <X size={24} />
                   </button>
                 </div>
@@ -1866,7 +1841,7 @@ export default function AdminDashboard() {
                         type="text"
                         value={editForm.name || ''}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors"
                         placeholder="e.g., Truffle Pasta"
                       />
                     </div>
@@ -1875,7 +1850,7 @@ export default function AdminDashboard() {
                       <select
                         value={editForm.category || 'Draft'}
                         onChange={(e) => setEditForm({ ...editForm, category: e.target.value as Category })}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors appearance-none"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors appearance-none"
                       >
                         <option value="Draft">{t('admin.menu.pool.master')}</option>
                         <option value="Specials">{t('menu.specials')}</option>
@@ -1898,7 +1873,7 @@ export default function AdminDashboard() {
                             statusUntil: newStatus === 'sold_out_today' ? getMidnightTonight() : (editForm.todayOnly ? editForm.statusUntil : null)
                           });
                         }}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors appearance-none"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors appearance-none"
                       >
                         <option value="available">Available</option>
                         <option value="sold_out_today">Sold Out (Resets Tomorrow)</option>
@@ -1925,7 +1900,7 @@ export default function AdminDashboard() {
                           }}
                           className={cn(
                             "w-10 h-5 rounded-full transition-colors relative flex-shrink-0",
-                            editForm.todayOnly ? "bg-amber-500" : "bg-stone-700"
+                            editForm.todayOnly ? "bg-[var(--admin-accent)]" : "bg-stone-700"
                           )}
                         >
                           <div className={cn(
@@ -1956,7 +1931,7 @@ export default function AdminDashboard() {
                                   }}
                                   className={cn(
                                     "px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors",
-                                    selected ? "bg-amber-500 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700"
+                                    selected ? "bg-[var(--admin-accent)] text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700"
                                   )}
                                 >
                                   {day}
@@ -1974,7 +1949,7 @@ export default function AdminDashboard() {
                         type="number"
                         value={editForm.price || ''}
                         onChange={(e) => setEditForm({ ...editForm, price: Math.round(Number(e.target.value)) })}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors"
                         placeholder="12000"
                       />
                     </div>
@@ -1985,7 +1960,7 @@ export default function AdminDashboard() {
                         type="number"
                         value={editForm.packagingPrice !== undefined ? editForm.packagingPrice : 0}
                         onChange={(e) => setEditForm({ ...editForm, packagingPrice: Math.round(Number(e.target.value)) })}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors"
                         placeholder="1000"
                       />
                     </div>
@@ -2002,7 +1977,7 @@ export default function AdminDashboard() {
                         />
                         <label
                           htmlFor="image-upload"
-                          className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 pl-10 text-stone-100 focus:border-amber-500 outline-none transition-colors cursor-pointer flex items-center gap-2 hover:border-amber-500/50"
+                          className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 pl-10 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors cursor-pointer flex items-center gap-2 hover:border-[var(--admin-accent-soft-50)]"
                         >
                           <ImageIcon className="text-stone-600" size={18} />
                           <span className="text-sm text-stone-400 truncate">
@@ -2011,13 +1986,13 @@ export default function AdminDashboard() {
                         </label>
                         <div className="mt-2 flex gap-2 overflow-x-auto">
                           {editForm.image && (
-                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-amber-500 flex-shrink-0 group">
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[var(--admin-accent)] flex-shrink-0 group">
                               <img src={editForm.image} alt="Main Preview" className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                 <span className="text-[10px] font-bold text-white bg-black/50 px-2 py-1 rounded">Change</span>
                               </div>
                               <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-0" onChange={(e) => handleReplaceImage(-1, e)} title="Change Main Image" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-amber-500/80 text-[8px] text-center font-bold text-stone-900 uppercase pointer-events-none">Main</div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-[var(--admin-accent-soft-80)] text-[8px] text-center font-bold text-stone-900 uppercase pointer-events-none">Main</div>
                               <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); setEditForm({ ...editForm, image: editForm.sideImages?.[0] || '', sideImages: editForm.sideImages?.slice(1) || [] }); }}
@@ -2051,7 +2026,7 @@ export default function AdminDashboard() {
                                     sideImages: [prev.image, ...(prev.sideImages?.filter((_, i) => i !== idx) || [])].filter(Boolean) as string[]
                                   }));
                                 }}
-                                className="absolute bottom-0 left-0 bg-amber-500 text-stone-900 p-0.5 rounded-tr-lg text-[8px] font-bold px-1.5 z-10 hover:bg-amber-400"
+                                className="absolute bottom-0 left-0 bg-[var(--admin-accent)] text-stone-900 p-0.5 rounded-tr-lg text-[8px] font-bold px-1.5 z-10 hover:bg-[var(--admin-accent-hover)]"
                               >
                                 Make Main
                               </button>
@@ -2067,7 +2042,7 @@ export default function AdminDashboard() {
                       required
                       value={editForm.description || ''}
                       onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-amber-500 outline-none transition-colors h-24 resize-none"
+                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-stone-100 focus:border-[var(--admin-accent)] outline-none transition-colors h-24 resize-none"
                       placeholder="Describe the dish..."
                     />
                   </div>
@@ -2082,7 +2057,7 @@ export default function AdminDashboard() {
                           ...editForm,
                           portions: [...(editForm.portions || []), { name: '', price: editForm.price || 0 }]
                         })}
-                        className="text-xs text-amber-500 hover:text-amber-400 font-bold flex items-center gap-1"
+                        className="text-xs text-[var(--admin-accent)] hover:text-[var(--admin-accent-hover)] font-bold flex items-center gap-1"
                       >
                         <Plus size={12} /> Add Portion
                       </button>
@@ -2118,7 +2093,7 @@ export default function AdminDashboard() {
                                 setEditForm({ ...editForm, portions: newPortions });
                               }}
                               placeholder="e.g., Half, 2-Person"
-                              className="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-stone-100 focus:border-amber-500 outline-none"
+                              className="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-stone-100 focus:border-[var(--admin-accent)] outline-none"
                             />
                             <input
                               type="number"
@@ -2129,7 +2104,7 @@ export default function AdminDashboard() {
                                 setEditForm({ ...editForm, portions: newPortions });
                               }}
                               placeholder="Price"
-                              className="w-24 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-stone-100 focus:border-amber-500 outline-none"
+                              className="w-24 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-stone-100 focus:border-[var(--admin-accent)] outline-none"
                             />
                             <button
                               type="button"
@@ -2154,7 +2129,7 @@ export default function AdminDashboard() {
                         onClick={() => setEditForm({ ...editForm, available: !editForm.available })}
                         className={cn(
                           "w-12 h-6 rounded-full transition-colors relative",
-                          editForm.available ? "bg-amber-500" : "bg-stone-800"
+                          editForm.available ? "bg-[var(--admin-accent)]" : "bg-stone-800"
                         )}
                       >
                         <div className={cn(
@@ -2170,7 +2145,7 @@ export default function AdminDashboard() {
                         onClick={() => setEditForm({ ...editForm, featured: !editForm.featured })}
                         className={cn(
                           "w-12 h-6 rounded-full transition-colors relative",
-                          editForm.featured ? "bg-amber-500" : "bg-stone-800"
+                          editForm.featured ? "bg-[var(--admin-accent)]" : "bg-stone-800"
                         )}
                       >
                         <div className={cn(
@@ -2179,6 +2154,26 @@ export default function AdminDashboard() {
                         )} />
                       </div>
                       <span className="text-sm text-stone-300 font-bold uppercase tracking-widest">{t('admin.modal.form.featured')}</span>
+                    </label>
+
+                    {/* Set meals (free tea, salads, refills) carry a 'set' tag; the menu shows it as a keyword. */}
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <div
+                        onClick={() => {
+                          const tags = editForm.tags || [];
+                          setEditForm({ ...editForm, tags: tags.includes('set') ? tags.filter(tag => tag !== 'set') : [...tags, 'set'] });
+                        }}
+                        className={cn(
+                          "w-12 h-6 rounded-full transition-colors relative",
+                          editForm.tags?.includes('set') ? "bg-[var(--admin-accent)]" : "bg-stone-800"
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                          editForm.tags?.includes('set') ? "left-7" : "left-1"
+                        )} />
+                      </div>
+                      <span className="text-sm text-stone-300 font-bold uppercase tracking-widest">{t('admin.modal.form.set')}</span>
                     </label>
                   </div>
                   <div className="flex justify-end space-x-4 pt-4">
@@ -2191,7 +2186,7 @@ export default function AdminDashboard() {
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center space-x-2 px-8 py-3 bg-amber-500 text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-amber-400 transition-all active:scale-95 shadow-lg shadow-amber-500/20"
+                      className="flex items-center space-x-2 px-8 py-3 bg-[var(--admin-accent)] text-stone-900 font-semibold uppercase tracking-[0.15em] rounded-full hover:bg-[var(--admin-accent-hover)] transition-all active:scale-95 shadow-lg shadow-[color:var(--admin-accent-soft-20)]"
                     >
                       <Save size={18} />
                       <span>{t('admin.modal.form.save')}</span>
@@ -2237,7 +2232,7 @@ export default function AdminDashboard() {
                 <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-stone-800 p-6 md:p-8 lg:overflow-y-auto custom-scrollbar bg-stone-950/30 shrink-0">
                   <div className="space-y-8">
                     <div className="space-y-4">
-                      <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-amber-500">Service Type</h4>
+                      <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-[var(--admin-accent)]">Service Type</h4>
                       <div className="grid grid-cols-2 gap-3">
                         {['pickup', 'kiosk'].map((type) => (
                           <button
@@ -2247,7 +2242,7 @@ export default function AdminDashboard() {
                             className={cn(
                               "py-3 md:py-4 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all flex flex-col items-center gap-2",
                               adminOrderForm.orderType === type
-                                ? "bg-amber-500 text-stone-900 border-amber-500 shadow-lg shadow-amber-500/20"
+                                ? "bg-[var(--admin-accent)] text-stone-900 border-[var(--admin-accent)] shadow-lg shadow-[color:var(--admin-accent-soft-20)]"
                                 : "bg-stone-950 text-stone-500 border-stone-800 hover:border-stone-600"
                             )}
                           >
@@ -2265,7 +2260,7 @@ export default function AdminDashboard() {
                           type="text"
                           value={adminOrderForm.kioskNumber}
                           onChange={(e) => setAdminOrderForm({ ...adminOrderForm, kioskNumber: e.target.value })}
-                          className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-4 md:px-5 py-3 md:py-4 text-sm md:text-base focus:border-amber-500 outline-none transition-all focus:ring-1 focus:ring-amber-500/20"
+                          className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-4 md:px-5 py-3 md:py-4 text-sm md:text-base focus:border-[var(--admin-accent)] outline-none transition-all focus:ring-1 focus:ring-[var(--admin-accent-soft-20)]"
                           placeholder="Table 12"
                         />
                       </div>
@@ -2280,7 +2275,7 @@ export default function AdminDashboard() {
                       <input
                         type="text"
                         placeholder="Search menu items..."
-                        className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-10 md:px-12 py-3 md:py-4 text-sm md:text-base focus:border-amber-500 outline-none transition-all"
+                        className="w-full bg-stone-950 border border-stone-800 rounded-2xl px-10 md:px-12 py-3 md:py-4 text-sm md:text-base focus:border-[var(--admin-accent)] outline-none transition-all"
                         onChange={(e) => {
                           setMenuSearchQuery(e.target.value);
                         }}
@@ -2301,21 +2296,21 @@ export default function AdminDashboard() {
                       return (
                         <div key={cat} className="space-y-4">
                           <div className="flex items-center gap-4">
-                            <h5 className="text-xs md:text-sm uppercase tracking-[0.3em] font-bold text-amber-500">{t(`menu.${cat.toLowerCase()}`)}</h5>
+                            <h5 className="text-xs md:text-sm uppercase tracking-[0.3em] font-bold text-[var(--admin-accent)]">{t(`menu.${cat.toLowerCase()}`)}</h5>
                             <div className="flex-1 h-px bg-stone-800"></div>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                             {catItems.map((item) => (
-                              <div key={item.id} className="group bg-stone-950 border border-stone-800 rounded-2xl p-3 md:p-4 space-y-3 md:space-y-4 hover:border-amber-500/50 transition-all">
+                              <div key={item.id} className="group bg-stone-950 border border-stone-800 rounded-2xl p-3 md:p-4 space-y-3 md:space-y-4 hover:border-[var(--admin-accent-soft-50)] transition-all">
                                 <div className="flex justify-between items-start gap-3 md:gap-4">
                                   <div className="space-y-1">
-                                    <span className="text-sm md:text-base font-bold block group-hover:text-amber-500 transition-colors">{item.name}</span>
+                                    <span className="text-sm md:text-base font-bold block group-hover:text-[var(--admin-accent)] transition-colors">{item.name}</span>
                                     <p className="text-[10px] md:text-xs text-stone-500 line-clamp-2">{item.description}</p>
                                   </div>
                                   {!item.portions || item.portions.length === 0 ? (
                                     <button
                                       onClick={() => addToAdminOrder(item)}
-                                      className="p-2 md:p-3 bg-amber-500 text-stone-900 rounded-xl hover:bg-amber-400 transition-all active:scale-90 shadow-lg shadow-amber-500/10 shrink-0"
+                                      className="p-2 md:p-3 bg-[var(--admin-accent)] text-stone-900 rounded-xl hover:bg-[var(--admin-accent-hover)] transition-all active:scale-90 shadow-lg shadow-[color:var(--admin-accent-soft-10)] shrink-0"
                                     >
                                       <Plus size={18} className="md:w-5 md:h-5" />
                                     </button>
@@ -2327,10 +2322,10 @@ export default function AdminDashboard() {
                                       <button
                                         key={idx}
                                         onClick={() => addToAdminOrder(item, p)}
-                                        className="flex justify-between items-center px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs hover:border-amber-500 transition-all group/btn"
+                                        className="flex justify-between items-center px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs hover:border-[var(--admin-accent)] transition-all group/btn"
                                       >
                                         <span className="text-stone-400 group-hover/btn:text-stone-200 truncate pr-2">{p.name}</span>
-                                        <span className="font-bold text-amber-500 shrink-0">₮{p.price.toLocaleString()}</span>
+                                        <span className="font-bold text-[var(--admin-accent)] shrink-0">₮{p.price.toLocaleString()}</span>
                                       </button>
                                     ))}
                                   </div>
@@ -2347,7 +2342,7 @@ export default function AdminDashboard() {
                 {/* Right Column: Order Summary (1/4) */}
                 <div className="w-full lg:w-1/4 flex flex-col bg-stone-950/50 shrink-0 lg:shrink h-[40vh] lg:h-auto">
                   <div className="p-4 md:p-8 border-b border-stone-800 bg-stone-900/30 shrink-0">
-                    <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-amber-500">Order Summary</h4>
+                    <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-[var(--admin-accent)]">Order Summary</h4>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
                     {adminOrderItems.length === 0 ? (
@@ -2362,7 +2357,7 @@ export default function AdminDashboard() {
                             <div className="space-y-1 min-w-0">
                               <span className="text-xs md:text-sm font-bold block truncate">{item.item.name}</span>
                               {item.selectedPortion && (
-                                <span className="text-[10px] text-amber-500/70 uppercase tracking-widest font-bold block truncate">
+                                <span className="text-[10px] text-[var(--admin-accent-soft-70)] uppercase tracking-widest font-bold block truncate">
                                   {item.selectedPortion.name}
                                 </span>
                               )}
@@ -2373,11 +2368,11 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-stone-800/50">
                             <div className="flex items-center gap-3 md:gap-4 bg-stone-950 rounded-xl px-2 md:px-3 py-1.5 md:py-2 border border-stone-800">
-                              <button onClick={() => removeFromAdminOrder(item.item.id, item.selectedPortion?.name)} className="text-stone-500 hover:text-amber-500 transition-colors p-1">
+                              <button onClick={() => removeFromAdminOrder(item.item.id, item.selectedPortion?.name)} className="text-stone-500 hover:text-[var(--admin-accent)] transition-colors p-1">
                                 <Minus size={14} className="md:w-4 md:h-4" />
                               </button>
                               <span className="text-xs md:text-sm font-bold w-4 md:w-6 text-center tabular-nums">{item.quantity}</span>
-                              <button onClick={() => addToAdminOrder(item.item, item.selectedPortion)} className="text-stone-500 hover:text-amber-500 transition-colors p-1">
+                              <button onClick={() => addToAdminOrder(item.item, item.selectedPortion)} className="text-stone-500 hover:text-[var(--admin-accent)] transition-colors p-1">
                                 <Plus size={14} className="md:w-4 md:h-4" />
                               </button>
                             </div>
@@ -2399,7 +2394,7 @@ export default function AdminDashboard() {
                     <div className="space-y-4 md:space-y-6">
                       <div className="flex justify-between items-end">
                         <span className="text-[10px] md:text-xs text-stone-500 uppercase tracking-[0.2em] font-bold">Total Amount</span>
-                        <span className="text-xl md:text-3xl font-bold tabular-nums text-amber-500">
+                        <span className="text-xl md:text-3xl font-bold tabular-nums text-[var(--admin-accent)]">
                           ₮{adminOrderItems.reduce((acc, curr) => acc + ((curr.selectedPortion ? curr.selectedPortion.price : curr.item.price) * curr.quantity), 0).toLocaleString()}
                         </span>
                       </div>
@@ -2407,9 +2402,9 @@ export default function AdminDashboard() {
                         onClick={handleCreateAdminOrder}
                         disabled={adminOrderItems.length === 0}
                         className={cn(
-                          "w-full py-4 md:py-5 rounded-2xl text-sm md:text-base font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-500/10",
+                          "w-full py-4 md:py-5 rounded-2xl text-sm md:text-base font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-[color:var(--admin-accent-soft-10)]",
                           adminOrderItems.length > 0
-                            ? "bg-amber-500 text-stone-900 hover:bg-amber-400 active:scale-95"
+                            ? "bg-[var(--admin-accent)] text-stone-900 hover:bg-[var(--admin-accent-hover)] active:scale-95"
                             : "bg-stone-800 text-stone-600 cursor-not-allowed"
                         )}
                       >

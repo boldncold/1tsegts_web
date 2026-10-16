@@ -34,7 +34,7 @@ interface QpayInvoiceResponse {
 const MONOGRAM_COLORS = [
   'bg-emerald-600',
   'bg-blue-600',
-  'bg-amber-600',
+  'bg-[var(--warn-600)]',
   'bg-rose-600',
   'bg-violet-600',
   'bg-cyan-700',
@@ -69,7 +69,7 @@ function BankIcon({
         src={logo}
         alt={name}
         referrerPolicy="no-referrer"
-        className={cn(className, 'rounded-lg object-contain bg-white p-0.5')}
+        className={cn(className, 'rounded-xl object-contain bg-white p-0.5')}
         onError={() => setFailed(true)}
       />
     );
@@ -88,7 +88,7 @@ function BankIcon({
       className={cn(
         className,
         color,
-        'rounded-lg text-white flex items-center justify-center text-xs font-bold shrink-0',
+        'rounded-xl text-white flex items-center justify-center text-xs font-bold shrink-0',
       )}
     >
       {initials}
@@ -253,7 +253,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
       <div className="rounded-2xl border-2 border-stone-300 bg-stone-50 p-5 space-y-2">
         <div className="flex items-center gap-2 text-stone-700">
           <Clock size={18} />
-          <p className="font-bold text-sm uppercase tracking-widest">
+          <p className="font-bold text-sm uppercase tracking-[0.06em]">
             {language === 'en' ? 'Payment window expired' : 'Төлбөрийн хугацаа дууссан'}
           </p>
         </div>
@@ -270,7 +270,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
     return (
       <div className="rounded-2xl border-2 border-stone-200 bg-white p-8 flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-900 rounded-full animate-spin" />
-        <p className="text-xs uppercase tracking-widest text-stone-500 font-semibold">
+        <p className="text-xs uppercase tracking-[0.06em] text-stone-500 font-semibold">
           {isMobile
             ? (language === 'en' ? 'Preparing payment…' : 'Төлбөр бэлтгэж байна…')
             : (language === 'en' ? 'Generating QR…' : 'QR үүсгэж байна…')}
@@ -287,7 +287,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
       <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-5 space-y-2">
         <div className="flex items-center gap-2 text-red-700">
           <AlertCircle size={18} />
-          <p className="font-bold text-sm uppercase tracking-widest">
+          <p className="font-bold text-sm uppercase tracking-[0.06em]">
             {notPayable
               ? (language === 'en' ? 'Payment window closed' : 'Төлбөрийн хугацаа дууссан')
               : (language === 'en' ? 'QPay unavailable' : 'QPay ажиллахгүй байна')}
@@ -303,19 +303,19 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
               : 'QPay-тэй холбогдох боломжгүй байна. Захиалгаа цуцалж, бэлэн мөнгө эсвэл данс шилжүүлгээр дахин оролдоно уу.')}
         </p>
         {error && (
-          <p className="text-[10px] text-red-700/60 font-mono break-words">{error}</p>
+          <p className="text-xs text-red-700/60 break-words">{error}</p>
         )}
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-[#D4AF37] shadow-xl">
+    <div className="rounded-2xl overflow-hidden border-2 border-[var(--gold)] shadow-xl">
       {/* Status banner */}
-      <div className="bg-[#D4AF37] px-5 py-3 flex items-center gap-3">
+      <div className="bg-[var(--gold)] px-5 py-3 flex items-center gap-3">
         <QrCode size={22} className="text-stone-900" />
         <div className="flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900/70">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-stone-900/70">
             {language === 'en' ? 'Awaiting QPay payment' : 'QPay төлбөр хүлээгдэж байна'}
           </p>
           <p className="text-sm font-bold text-stone-900">
@@ -335,7 +335,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
         {isMobile && qpayLaunchUrl && (
           <a
             href={qpayLaunchUrl}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#8B0000] text-white font-bold uppercase tracking-[0.15em] text-sm hover:bg-[#6b0000] transition-all active:scale-95 shadow-lg shadow-red-900/20"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[var(--red-deep)] text-white font-bold uppercase tracking-[0.06em] text-sm hover:bg-[var(--red-deep-hover)] transition-all active:scale-95 shadow-lg shadow-red-900/20"
           >
             <Smartphone size={18} />
             {language === 'en' ? 'Pay in QPay app' : 'QPay аппаар төлөх'}
@@ -347,7 +347,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
             link when the customer's bank is in the list. */}
         {isMobile && sortedBanks.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-semibold mb-2">
+            <p className="text-xs uppercase tracking-[0.06em] text-stone-500 font-semibold mb-2">
               {language === 'en' ? 'Or open your bank' : 'Эсвэл банкаа сонгоно уу'}
             </p>
             <div className="grid grid-cols-3 gap-2">
@@ -358,7 +358,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
                   className="flex flex-col items-center gap-1 p-2 rounded-xl border border-stone-200 hover:border-stone-900 hover:bg-stone-50 transition-all active:scale-95"
                 >
                   <BankIcon name={bank.name} logo={bank.logo} />
-                  <span className="text-[10px] text-stone-700 font-semibold truncate w-full text-center">
+                  <span className="text-xs text-stone-700 font-semibold truncate w-full text-center">
                     {language === 'en' ? bank.name : bank.description || bank.name}
                   </span>
                 </a>
@@ -374,7 +374,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
           <button
             type="button"
             onClick={() => setShowQr((v) => !v)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-stone-500 font-semibold hover:text-stone-900 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs uppercase tracking-[0.06em] text-stone-500 font-semibold hover:text-stone-900 transition-colors"
           >
             {showQr
               ? (language === 'en' ? 'Hide QR code' : 'QR кодыг нуух')
@@ -423,7 +423,7 @@ export default function QpayPaymentPanel({ order }: { order: any }) {
                 : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-900 hover:text-white hover:border-stone-900',
             )}
           >
-            <span className="text-[10px] uppercase tracking-widest font-bold">
+            <span className="text-xs uppercase tracking-[0.06em] font-bold">
               {language === 'en' ? 'Share link' : 'Линк хуваалцах'}
             </span>
             <span className="flex items-center gap-1.5 text-xs font-semibold truncate max-w-[180px]">

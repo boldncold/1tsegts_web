@@ -103,7 +103,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
   if (count === 0) {
     return (
       <div className="h-[176px] w-full" aria-hidden="true">
-        <div className="mx-auto h-[142px] w-[226px] animate-pulse rounded-[8px] border border-white/10 bg-white/5" />
+        <div className="mx-auto h-[142px] w-[226px] animate-pulse rounded-xl border border-white/10 bg-white/5" />
       </div>
     );
   }
@@ -111,7 +111,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
   return (
     <section aria-label={t('featured.title')} className="relative w-full overflow-hidden">
       <div className="mb-3 flex items-center justify-between px-1">
-        <span className="eyebrow !text-[9px]">{t('featured.title')}</span>
+        <span className="label">{t('featured.title')}</span>
         <span className="micro-label !text-white/45" aria-live="polite">
           {String(active + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
         </span>
@@ -144,7 +144,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               style={getCardStyle(relative, s)}
               tabIndex={relative === 0 ? 0 : -1}
               aria-hidden={relative !== 0}
-              className="overflow-hidden rounded-[8px] border border-[rgba(212,175,55,0.28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+              className="overflow-hidden rounded-xl border border-[var(--gold-soft-28)] bg-[#0a0806] text-left shadow-[0_18px_38px_-18px_rgba(0,0,0,0.9)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
             >
               {dish.image ? (
                 <img
@@ -158,13 +158,13 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
               <div className="absolute inset-y-0 left-0 flex w-[72%] flex-col justify-end p-3.5 md:p-5">
-                <span className="micro-label mb-1 !text-[7px] !text-[#D4AF37] md:!text-[9px]">
-                  {dish.category}
+                <span className="label mb-1">
+                  {dish.pool === 'specials' ? t('menu.specials') : t(`menu.${dish.category.toLowerCase()}`)}
                 </span>
-                <h2 className="line-clamp-2 font-serif text-[17px] font-bold leading-[1.08] text-white md:text-[23px]">
+                <h3 className="line-clamp-2 leading-[1.1] text-white md:text-[28px]">
                   {dish.name}
-                </h2>
-                <span className="mt-1.5 font-serif text-[14px] font-bold text-[#D4AF37] md:text-[17px]">
+                </h3>
+                <span className="mt-1.5 text-base font-semibold tabular-nums text-[var(--gold)] md:text-xl">
                   ₮{minPrice.toLocaleString()}
                 </span>
               </div>
@@ -179,7 +179,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             type="button"
             onClick={() => go(-1)}
             aria-label={language === 'en' ? 'Previous dish' : 'Өмнөх хоол'}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--gold-soft-35)] text-[var(--gold)] transition-colors hover:bg-white/5 active:scale-95"
           >
             <ChevronLeft size={15} />
           </button>
@@ -188,7 +188,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
               <span
                 key={dish.id}
                 className={`block h-1 rounded-full transition-all ${
-                  index === active ? 'w-5 bg-[#D4AF37]' : 'w-1 bg-white/25'
+                  index === active ? 'w-5 bg-[var(--gold)]' : 'w-1 bg-white/25'
                 }`}
               />
             ))}
@@ -197,7 +197,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             type="button"
             onClick={() => go(1)}
             aria-label={language === 'en' ? 'Next dish' : 'Дараах хоол'}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] text-[#D4AF37] transition-colors hover:bg-white/5 active:scale-95"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--gold-soft-35)] text-[var(--gold)] transition-colors hover:bg-white/5 active:scale-95"
           >
             <ChevronRight size={15} />
           </button>

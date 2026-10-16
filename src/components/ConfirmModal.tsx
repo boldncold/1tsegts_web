@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function ConfirmModal({
   cancelText,
   variant = 'danger'
 }: ConfirmModalProps) {
+  useEscapeKey(isOpen, onClose);
   return (
     <AnimatePresence>
       {isOpen && (
@@ -39,19 +41,19 @@ export default function ConfirmModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl overflow-hidden"
           >
             {/* Background Accent */}
-            <div className={`absolute top-0 left-0 w-full h-1 ${variant === 'danger' ? 'bg-red-500' : 'bg-amber-500'}`} />
+            <div className={`absolute top-0 left-0 w-full h-1 ${variant === 'danger' ? 'bg-red-500' : 'bg-[var(--warn-500)]'}`} />
             
             <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+              <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-[var(--warn-500-10)] text-[var(--warn-500)]'}`}>
                 <AlertTriangle size={24} />
               </div>
               
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-stone-100 mb-2">{title}</h3>
-                <p className="text-stone-400 font-light leading-relaxed">
+                <p className="text-stone-400 leading-relaxed">
                   {message}
                 </p>
               </div>
@@ -67,7 +69,7 @@ export default function ConfirmModal({
             <div className="mt-8 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-stone-800 text-stone-300 font-semibold uppercase tracking-widest text-xs rounded-xl hover:bg-stone-700 transition-all"
+                className="flex-1 py-3 px-4 bg-stone-800 text-stone-300 font-semibold uppercase tracking-[0.06em] text-xs rounded-xl hover:bg-stone-700 transition-all"
               >
                 {cancelText}
               </button>
@@ -76,7 +78,7 @@ export default function ConfirmModal({
                   onConfirm();
                   onClose();
                 }}
-                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'} text-stone-900 font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
+                className={`flex-1 py-3 px-4 ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--warn-500)] hover:bg-[var(--warn-600)]'} text-stone-900 font-bold uppercase tracking-[0.06em] text-xs rounded-xl transition-all shadow-lg shadow-black/20`}
               >
                 {confirmText}
               </button>

@@ -32,8 +32,8 @@ export const portion = v.object({
 });
 
 /**
- * A menu image: an uploaded file in Convex storage, or an external URL (the
- * admin form falls back to a picsum placeholder). Firestore stored uploads as
+ * A menu image: an uploaded file in Convex storage, or an external URL (items
+ * imported from Firestore can carry one). Firestore stored uploads as
  * base64 data URLs inside the document — moved to storage on import, because
  * every reactive re-run of the menu query would otherwise re-read megabytes.
  */
