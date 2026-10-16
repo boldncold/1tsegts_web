@@ -2155,6 +2155,26 @@ export default function AdminDashboard() {
                       </div>
                       <span className="text-sm text-stone-300 font-bold uppercase tracking-widest">{t('admin.modal.form.featured')}</span>
                     </label>
+
+                    {/* Set meals (free tea, salads, refills) carry a 'set' tag; the menu shows it as a keyword. */}
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <div
+                        onClick={() => {
+                          const tags = editForm.tags || [];
+                          setEditForm({ ...editForm, tags: tags.includes('set') ? tags.filter(tag => tag !== 'set') : [...tags, 'set'] });
+                        }}
+                        className={cn(
+                          "w-12 h-6 rounded-full transition-colors relative",
+                          editForm.tags?.includes('set') ? "bg-[var(--admin-accent)]" : "bg-stone-800"
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                          editForm.tags?.includes('set') ? "left-7" : "left-1"
+                        )} />
+                      </div>
+                      <span className="text-sm text-stone-300 font-bold uppercase tracking-widest">{t('admin.modal.form.set')}</span>
+                    </label>
                   </div>
                   <div className="flex justify-end space-x-4 pt-4">
                     <button

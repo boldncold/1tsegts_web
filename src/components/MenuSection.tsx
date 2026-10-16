@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Check, Search, Flame, Clock, ShieldCheck, TrendingUp } from 'lucide-react';
+import { Plus, Check, Search, Flame, Clock, ShieldCheck, TrendingUp, Star, UtensilsCrossed, Users } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { MenuItem, Category } from '../types';
@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { cn, getDynamicStatus, getScheduleLabel, nextOpening } from '../lib/utils';
+import { cn, getDynamicStatus, getSchedule, nextOpening } from '../lib/utils';
 import PortionSheet from './PortionSheet';
 
 const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
@@ -124,6 +124,20 @@ export default function MenuSection() {
     flashAdded(item.id);
   };
 
+  const scheduleKeyword = (item: MenuItem) => {
+    const schedule = getSchedule(item);
+    if (!schedule) return null;
+    switch (schedule.kind) {
+      case 'today': return t('menu.badge_today');
+      case 'weekends': return t('menu.badge_weekends');
+      case 'weekdays': return t('menu.badge_weekdays');
+      case 'days':
+        return schedule.days.length === 1
+          ? t('menu.badge_only_day').replace('{day}', t(`day.${schedule.days[0]}`))
+          : schedule.days.map((d) => t(`day_short.${d}`)).join(' · ');
+    }
+  };
+
   const opening = storeOpen ? null : nextOpening(settings);
   const openingLabel = (() => {
     if (!opening) return null;
@@ -141,9 +155,6 @@ export default function MenuSection() {
     .sort((a, b) => b - a)
     .slice(0, 15);
   const popularThreshold = top15OrderCounts.length > 0 ? top15OrderCounts[top15OrderCounts.length - 1] : Infinity;
-  // The badge is stricter than the sort boost: on a ~40-dish menu, "top 15" would
-  // label a third of the cards, and a badge on everything means nothing.
-  const badgeThreshold = top15OrderCounts.length >= 5 ? top15OrderCounts[4] : Infinity;
 
   // Smart Sorting Algorithm using Point System
   const sortedItems = [...filteredItems].sort((a, b) => {
@@ -274,11 +285,16 @@ export default function MenuSection() {
                 const sizeCount = item.portions?.length ? item.portions.length + 1 : 0;
                 const isDrink = item.category === 'Drinks';
                 const added = addedId === item.id;
-                // Only facts a customer can act on: today-only, spicy, genuinely top sellers.
+                const schedule = scheduleKeyword(item);
+                // Featured, top-15 seller, spicy, set meal (free tea, salads and
+                // refills; ticked in admin), several sizes, a weekly schedule.
                 const badges = [
-                  getScheduleLabel(item) === 'Today Only' && { icon: Clock, label: t('menu.badge_today') },
+                  item.featured && { icon: Star, label: t('menu.badge_featured') },
+                  !isDrink && (item.orderCount ?? 0) > 0 && (item.orderCount ?? 0) >= popularThreshold && { icon: TrendingUp, label: t('menu.badge_popular') },
                   item.tags?.includes('spicy') && { icon: Flame, label: t('menu.badge_spicy') },
-                  !isDrink && (item.orderCount ?? 0) > 0 && (item.orderCount ?? 0) >= badgeThreshold && { icon: TrendingUp, label: t('menu.badge_popular') },
+                  item.tags?.includes('set') && { icon: UtensilsCrossed, label: t('menu.badge_set') },
+                  (item.portions?.length ?? 0) >= 2 && { icon: Users, label: t('menu.badge_groups') },
+                  schedule && { icon: Clock, label: schedule },
                 ].filter((b): b is { icon: typeof Clock; label: string } => !!b);
                 const buttonLabel = isAdmin
                   ? t('menu.add_to_cart')
