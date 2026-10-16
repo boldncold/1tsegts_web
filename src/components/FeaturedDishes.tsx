@@ -13,17 +13,22 @@ type Variant = 'stack' | 'marquee';
 
 const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
 
-function useIsMobile(breakpoint = 640) {
+// Must mirror Tailwind's `md` (min-width: 48rem): the hero's compact carousel
+// is `md:hidden`, so this strip takes over at exactly that width. With its own
+// 640px breakpoint both carousels showed between 640 and 767px.
+const DESKTOP_QUERY = '(min-width: 48rem)';
+
+function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= breakpoint : false
+    () => typeof window !== 'undefined' && !window.matchMedia(DESKTOP_QUERY).matches
   );
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const handler = () => setIsMobile(mq.matches);
+    const mq = window.matchMedia(DESKTOP_QUERY);
+    const handler = () => setIsMobile(!mq.matches);
     handler();
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, [breakpoint]);
+  }, []);
   return isMobile;
 }
 
