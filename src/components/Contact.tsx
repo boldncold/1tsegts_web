@@ -13,7 +13,7 @@ export default function Contact() {
 
   return (
     <div className="pt-32 pb-24 bg-[var(--surface-page)] min-h-screen">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4">
         <h1 className="mb-3">{t('contact.title')}</h1>
         <p className="mb-10">{t('contact.subtitle')}</p>
 

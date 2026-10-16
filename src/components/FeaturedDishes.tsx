@@ -63,10 +63,7 @@ export default function FeaturedDishes({ dishes, variant = 'marquee' }: Featured
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <div style={{
-        padding: isMobile ? '0 18px 20px' : '0 20px 28px',
-        maxWidth: 1100,
-        margin: '0 auto',
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pb-7" style={{
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'space-between',

@@ -37,10 +37,11 @@ export default function Hero({ dishes }: HeroProps) {
       <div className="absolute inset-x-0 bottom-0 h-[90px] bg-gradient-to-b from-transparent to-[var(--surface-page)] pointer-events-none" />
 
       {/* pt clears the fixed navbar (56px). */}
-      <div className="relative max-w-[720px] mx-auto px-6 pt-[96px] pb-8 md:pb-16 text-center flex flex-col items-center">
+      <div className="relative max-w-[720px] mx-auto px-3 sm:px-4 pt-[96px] pb-8 md:pb-16 text-center flex flex-col items-center">
         {/* The wordmark is the page's only heading; no slogan copy here. */}
-        <motion.h1 {...fadeUp} transition={step(0)} className="mb-8">
-          <span className="brand-wordmark" style={{ fontSize: 'clamp(40px, 9vw, 48px)' }}>
+        <motion.h1 {...fadeUp} transition={step(0)} className="mb-6 sm:mb-8">
+          {/* Scales with the screen: 28px base on a 375px phone, 48px from 640px up. */}
+          <span className="brand-wordmark" style={{ fontSize: 'clamp(28px, 7.5vw, 48px)' }}>
             <span className="one">1</span>
             <span className="word">ЦЭГЦ</span>
           </span>

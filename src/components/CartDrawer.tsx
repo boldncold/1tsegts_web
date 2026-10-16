@@ -374,7 +374,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-[var(--stone-950)] shadow-2xl flex flex-col border-l border-[var(--gold-soft-15)]"
           >
             {/* Header */}
-            <div className="p-6 border-b border-white/[0.06] flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-white/[0.06] flex justify-between items-center">
               <div className="flex items-center space-x-3">
                 <ShoppingBag className="text-[var(--gold)]" size={24} />
                 <h2 className="text-xl font-medium text-white">{t('cart.title')}</h2>
@@ -389,7 +389,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto overscroll-contain p-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
               {/* QPay order awaiting payment: show QR + bank deeplinks. */}
               {pendingOrderId && pendingOrderData && !orderComplete &&
                 pendingOrderData.paymentMethod === 'qpay' &&
@@ -1005,7 +1005,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
             {/* Footer */}
             {!orderComplete && cart.length > 0 && (
-              <div className="p-6 border-t border-white/[0.06] bg-[var(--espresso)] space-y-4">
+              <div className="p-4 sm:p-6 border-t border-white/[0.06] bg-[var(--espresso)] space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-white/45 uppercase tracking-[0.06em] text-xs font-semibold">{t('cart.subtotal')}</span>
                   <span className={cn(

@@ -36,7 +36,7 @@ export default function CategoryQuickNav() {
 
   return (
     <section id="categories" className="pt-12 md:pt-16 bg-[var(--surface-page)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <h2 className="mb-6">{t('menu.select_cuisine')}</h2>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">

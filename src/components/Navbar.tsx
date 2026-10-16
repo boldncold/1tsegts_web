@@ -165,7 +165,7 @@ export default function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
         'fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-all duration-250',
         navBg
       )}>
-        <div className="max-w-[1280px] mx-auto px-5 h-[56px] flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 h-[56px] flex items-center justify-between">
           {/* Left: hamburger */}
           <button
             onClick={() => setIsOpen(true)}
