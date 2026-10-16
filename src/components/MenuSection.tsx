@@ -217,7 +217,7 @@ export default function MenuSection() {
 
   return (
     <section id="menu-section" className="pt-12 md:pt-16 pb-16 md:pb-24 bg-[var(--surface-page)] min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-2">
           <div className="flex flex-col items-start gap-3">
             {isAdmin && (
@@ -242,7 +242,7 @@ export default function MenuSection() {
         </div>
 
         {/* Pinned under the navbar so every category stays one tap away in a long menu. */}
-        <div className="sticky top-14 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 py-3 mb-4 bg-[var(--surface-page)] border-b border-[var(--border-subtle)]">
+        <div className="sticky top-14 z-30 -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-8 py-3 mb-4 bg-[var(--surface-page)] border-b border-[var(--border-subtle)]">
           <div className="no-scrollbar flex gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] md:[mask-image:none]">
             {categoriesWithItems.map((cat) => (
               <button

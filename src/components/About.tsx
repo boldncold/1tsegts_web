@@ -41,7 +41,7 @@ export default function About() {
       >
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--glow-hero)' }} />
 
-        <div className="relative max-w-5xl mx-auto px-6 w-full">
+        <div className="relative max-w-5xl mx-auto px-3 sm:px-4 lg:px-8 w-full">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -73,7 +73,7 @@ export default function About() {
 
       {/* ── Story ───────────────────────────────────────────── */}
       <section className="py-12 md:py-16 bg-[var(--surface-page)]">
-        <div className="max-w-3xl mx-auto px-6">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -114,10 +114,10 @@ export default function About() {
 
       {/* ── Location card ────────────────────────────────────── */}
       <section className="py-12 md:py-16 bg-[var(--surface-page)]">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="rounded-2xl overflow-hidden border border-[var(--gold-soft-15)] shadow-xl bg-[var(--espresso)] max-w-2xl mx-auto">
             {/* Info */}
-            <div className="p-10 flex flex-col justify-center space-y-6 bg-[var(--espresso)]">
+            <div className="p-5 sm:p-10 flex flex-col justify-center space-y-6 bg-[var(--espresso)]">
               <div className="space-y-2">
                 <span className="label">{both('about.location_label')}</span>
                 <h3>

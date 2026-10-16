@@ -21,7 +21,7 @@ export default function Footer() {
 
   return (
     <footer className="bg-[var(--espresso)] text-white pt-14 pb-7">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           <div className="space-y-4">
             <Link to="/" onClick={() => handleLinkClick('/')} className="brand-wordmark text-2xl">
