@@ -151,6 +151,11 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
                   src={dish.image}
                   alt={dish.name}
                   referrerPolicy="no-referrer"
+                  // The first card is the hero image on phones: fetch it ahead
+                  // of everything else. The rest wait until they're near view.
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={index === 0 ? 'high' : 'auto'}
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (

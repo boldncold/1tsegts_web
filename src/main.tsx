@@ -12,6 +12,23 @@ if (!convexUrl) {
 }
 const convex = new ConvexReactClient(convexUrl);
 
+// Pages split into their own files (see App.tsx) have hashed names that
+// change on every deploy. A tab opened before a deploy can ask for a file
+// that no longer exists; reload once to pick up the new version instead of
+// showing a blank page. The session flag stops a reload loop if the file is
+// missing for some other reason.
+window.addEventListener('vite:preloadError', (event) => {
+  const key = 'reloaded-after-deploy';
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Convex Auth: admin sign-in only; customers never sign in. */}

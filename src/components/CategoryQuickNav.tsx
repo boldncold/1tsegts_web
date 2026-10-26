@@ -51,7 +51,10 @@ export default function CategoryQuickNav() {
                 <img
                   src={tile.cover}
                   alt=""
-                  loading="lazy"
+                  // Not lazy: on phones these tiles are in the first screen and
+                  // one of them is usually the page's largest image, which
+                  // lazy loading would hold back until after layout.
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />

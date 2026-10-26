@@ -14,7 +14,12 @@
          letters to a fallback mid-word. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..800;1,400..800&family=Golos+Text:wght@400..700&display=swap" />
+    <!-- Loaded without blocking the first paint: a plain stylesheet link here
+         held the whole page blank for ~1s on mobile while Google answered.
+         The page paints in the fallback fonts and swaps (display=swap) when
+         these arrive. noscript keeps the fonts for visitors without JS. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..800;1,400..800&family=Golos+Text:wght@400..700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..800;1,400..800&family=Golos+Text:wght@400..700&display=swap" /></noscript>
     <script>
       // Prevent libraries from trying to polyfill fetch if it already exists
       // This fixes "Uncaught TypeError: Cannot set property fetch of #<Window> which has only a getter"

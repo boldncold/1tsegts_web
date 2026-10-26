@@ -516,6 +516,7 @@ function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number
           src={dish.image}
           alt={dish.name}
           referrerPolicy="no-referrer"
+          decoding="async"
           // Native image drag-and-drop hijacks the pointer stream and kills the
           // carousel's drag on any bare part of the image (the top of the card).
           draggable={false}
