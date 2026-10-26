@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Check, Search, Flame, Clock, ShieldCheck, TrendingUp, Star, UtensilsCrossed, Users } from 'lucide-react';
-import { useQuery } from 'convex/react';
+import { useCachedQuery } from '../lib/useCachedQuery';
 import { api } from '../../convex/_generated/api';
 import { MenuItem, Category } from '../types';
 import { useCart } from '../context/CartContext';
@@ -60,7 +60,8 @@ export default function MenuSection() {
     }
   }, [location.search]);
 
-  const menu = useQuery(api.menu.list);
+  // Shows the last menu this device saw until the live one arrives.
+  const menu = useCachedQuery(api.menu.list);
 
   useEffect(() => {
     if (menu === undefined) return; // still loading

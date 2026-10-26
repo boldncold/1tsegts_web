@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from 'convex/react';
+import { useCachedQuery } from '../lib/useCachedQuery';
 import { api } from '../../convex/_generated/api';
 import { Category, MenuItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -22,7 +22,7 @@ function pickCover(items: MenuItem[]): string | undefined {
 
 export default function CategoryQuickNav() {
   const { t } = useLanguage();
-  const menu = useQuery(api.menu.list);
+  const menu = useCachedQuery(api.menu.list);
 
   const tiles = useMemo(() => {
     const visible = ((menu ?? []) as MenuItem[]).filter(
