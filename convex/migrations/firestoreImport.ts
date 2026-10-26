@@ -228,6 +228,7 @@ export const pruneMenu = internalMutation({
     for (const row of await ctx.db.query("menu").collect()) {
       if (!row.legacyId || keep.has(row.legacyId)) continue;
       for (const id of storageIds([row.image, ...(row.sideImages ?? [])])) await ctx.storage.delete(id);
+      if (row.thumb) await ctx.storage.delete(row.thumb);
       await ctx.db.delete(row._id);
       removed.push(row.name);
     }

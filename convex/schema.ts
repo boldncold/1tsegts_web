@@ -22,6 +22,10 @@ export const menuFields = {
   price: v.number(),
   image: v.optional(imageRef),
   sideImages: v.optional(v.array(imageRef)),
+  // A ~480px copy of `image` for tiles, cards and list rows; convex/menu.ts
+  // serves it as `thumb`. Made by the admin dashboard when a photo is
+  // uploaded. Dishes without one fall back to the full photo.
+  thumb: v.optional(v.id("_storage")),
   category,
   tags: v.array(v.string()),
   available: v.boolean(), // legacy flag, kept alongside `status`

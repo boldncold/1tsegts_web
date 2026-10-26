@@ -19,6 +19,7 @@ import MenuItemRow from './admin/MenuItemRow';
 import OverviewTab from './admin/OverviewTab';
 import OrdersTab from './admin/OrdersTab';
 import { getUBDateString } from './admin/orderUtils';
+import { resizeImage } from '../lib/imageResize';
 import { cn, getMidnightTonight, getScheduleLabel, getDynamicStatus, DEFAULT_STORE_SETTINGS, isStoreOpen } from '../lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -343,6 +344,7 @@ export default function AdminDashboard() {
   const saveMenuItem = useMutation(api.menuAdmin.save);
   const updateMenuItem = useMutation(api.menuAdmin.update);
   const removeMenuItem = useMutation(api.menuAdmin.remove);
+  const setMenuThumb = useMutation(api.menuAdmin.setThumb);
   const setOrderStatus = useMutation(api.ordersAdmin.setStatus);
   const removeOrder = useMutation(api.ordersAdmin.remove);
   const createCounterOrder = useMutation(api.ordersAdmin.createCounterOrder);
@@ -550,6 +552,60 @@ export default function AdminDashboard() {
   };
 
   // Menu Actions
+  /** Upload a file to Convex storage and return its id. */
+  const uploadBlob = async (blob: Blob): Promise<Id<'_storage'>> => {
+    const res = await fetch(await generateUploadUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type },
+      body: blob,
+    });
+    if (!res.ok) throw new Error(`Image upload failed: HTTP ${res.status}`);
+    return ((await res.json()) as { storageId: Id<'_storage'> }).storageId;
+  };
+
+  /**
+   * The small copy to save with the form's main photo: the existing one when
+   * the photo is unchanged, a new one for a fresh upload, none otherwise.
+   * Making it never blocks a save: on failure the dish just uses its full
+   * photo until "Make small photos" fills it in.
+   */
+  const thumbFor = async (
+    src: string | undefined,
+    editing: { image: string; thumbRef: Id<'_storage'> | null } | undefined,
+  ): Promise<Id<'_storage'> | undefined> => {
+    if (!src) return undefined;
+    if (editing && src === editing.image) return editing.thumbRef ?? undefined;
+    if (!src.startsWith('data:')) return undefined;
+    try {
+      return await uploadBlob(await resizeImage(src));
+    } catch (error) {
+      console.error('Small photo failed; saving without it:', error);
+      return undefined;
+    }
+  };
+
+  // One-time backfill for dishes saved before small copies existed.
+  const [thumbProgress, setThumbProgress] = useState<{ done: number; total: number } | null>(null);
+  const missingThumbs = (adminMenu ?? []).filter((m) => m.imageRef && m.image && !m.thumbRef);
+  const makeMissingThumbs = async () => {
+    const todo = missingThumbs;
+    let failed = 0;
+    setThumbProgress({ done: 0, total: todo.length });
+    for (const [i, item] of todo.entries()) {
+      try {
+        const thumb = await uploadBlob(await resizeImage(item.image));
+        await setMenuThumb({ id: item.id, forImage: item.imageRef!, thumb });
+      } catch (error) {
+        failed++;
+        console.error(`Small photo failed for ${item.name}:`, error);
+      }
+      setThumbProgress({ done: i + 1, total: todo.length });
+    }
+    setThumbProgress(null);
+    if (failed) toast.error(`${failed} of ${todo.length} small photos failed. See the console, then try again.`);
+    else toast.success(`Made ${todo.length} small photos.`);
+  };
+
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -570,18 +626,12 @@ export default function AdminDashboard() {
         if (existing) return existing;
         if (!src.startsWith('data:')) return { url: src };
         const blob = await (await fetch(src)).blob();
-        const res = await fetch(await generateUploadUrl(), {
-          method: 'POST',
-          headers: { 'Content-Type': blob.type },
-          body: blob,
-        });
-        if (!res.ok) throw new Error(`Image upload failed: HTTP ${res.status}`);
-        const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
-        return { storageId };
+        return { storageId: await uploadBlob(blob) };
       };
       // No photo means no image: the menu shows its own fallback. Never invent one.
       const image = editForm.image ? await resolveImage(editForm.image) : undefined;
       const sideImages = await Promise.all((editForm.sideImages || []).map(resolveImage));
+      const thumb = await thumbFor(editForm.image, editing);
 
       await saveMenuItem({
         ...(isEditing ? { id: isEditing as Id<'menu'> } : {}),
@@ -606,6 +656,7 @@ export default function AdminDashboard() {
           })),
         },
         image,
+        thumb,
         sideImages,
       });
       toast.success(isEditing ? 'Item updated!' : 'Item added to Draft Pool!');
@@ -1235,6 +1286,27 @@ export default function AdminDashboard() {
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={16} />
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 items-stretch w-full sm:w-auto">
+                      {/* Shown only while some dishes lack a small photo, i.e.
+                          once after this feature ships, or after a failure. */}
+                      {(missingThumbs.length > 0 || thumbProgress) && (
+                        <button
+                          onClick={makeMissingThumbs}
+                          disabled={!!thumbProgress}
+                          title={language === 'en'
+                            ? 'Make small copies of dish photos so the menu loads faster on phones'
+                            : 'Утсан дээр цэс хурдан ачаалагдахаар хоолны зургийн жижиг хувилбар үүсгэнэ'}
+                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-3 border border-[var(--admin-accent)] text-[var(--admin-accent)] font-semibold rounded-full hover:bg-[var(--white-06)] transition-all disabled:opacity-60"
+                        >
+                          <ImageIcon size={16} />
+                          <span>
+                            {thumbProgress
+                              ? `${thumbProgress.done}/${thumbProgress.total}`
+                              : language === 'en'
+                                ? `Make small photos (${missingThumbs.length})`
+                                : `Жижиг зураг үүсгэх (${missingThumbs.length})`}
+                          </span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setIsAdding(true);

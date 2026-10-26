@@ -513,7 +513,7 @@ function DishImage({ dish, parallaxX = 0 }: { dish: MenuItem; parallaxX?: number
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {hasImage ? (
         <img
-          src={dish.image}
+          src={dish.thumb || dish.image}
           alt={dish.name}
           referrerPolicy="no-referrer"
           decoding="async"

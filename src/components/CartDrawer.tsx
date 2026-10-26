@@ -922,7 +922,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <div className="w-24 h-24 md:w-20 md:h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-white/[0.06] shadow-sm bg-[var(--dish-fallback-bg)]">
                         {item.image && (
                           <img
-                            src={item.image}
+                            src={item.thumb || item.image}
                             alt={item.name}
                             className="w-full h-full object-cover transition-transform group-hover:scale-110"
                             referrerPolicy="no-referrer"

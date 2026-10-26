@@ -148,7 +148,7 @@ export default function FoodCarousel({ dishes }: FoodCarouselProps) {
             >
               {dish.image ? (
                 <img
-                  src={dish.image}
+                  src={dish.thumb || dish.image}
                   alt={dish.name}
                   referrerPolicy="no-referrer"
                   // The first card is the hero image on phones: fetch it ahead

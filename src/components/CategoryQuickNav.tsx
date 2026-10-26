@@ -17,7 +17,8 @@ const categories: { name: Category; translationKey: string }[] = [
 function pickCover(items: MenuItem[]): string | undefined {
   return [...items]
     .filter((item) => item.image)
-    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.orderCount ?? 0) - (a.orderCount ?? 0))[0]?.image;
+    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.orderCount ?? 0) - (a.orderCount ?? 0))
+    .map((item) => item.thumb || item.image)[0];
 }
 
 export default function CategoryQuickNav() {

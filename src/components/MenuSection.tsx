@@ -316,7 +316,7 @@ export default function MenuSection() {
                       style={item.image ? undefined : { background: DISH_FALLBACK_BG }}
                     >
                       {item.image && (
-                        <img src={item.image} alt="" loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={item.thumb || item.image} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       )}
                       {!isAvailable && (
                         <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
