@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Check, Search, Flame, Clock, ShieldCheck, TrendingUp, Star, UtensilsCrossed, Users } from 'lucide-react';
-import { useQuery } from 'convex/react';
+import { useCachedQuery } from '../lib/useCachedQuery';
 import { api } from '../../convex/_generated/api';
 import { MenuItem, Category } from '../types';
 import { useCart } from '../context/CartContext';
@@ -60,7 +60,8 @@ export default function MenuSection() {
     }
   }, [location.search]);
 
-  const menu = useQuery(api.menu.list);
+  // Shows the last menu this device saw until the live one arrives.
+  const menu = useCachedQuery(api.menu.list);
 
   useEffect(() => {
     if (menu === undefined) return; // still loading
@@ -315,7 +316,7 @@ export default function MenuSection() {
                       style={item.image ? undefined : { background: DISH_FALLBACK_BG }}
                     >
                       {item.image && (
-                        <img src={item.image} alt="" loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={item.thumb || item.image} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       )}
                       {!isAvailable && (
                         <div className="absolute inset-0 bg-black/55 flex items-center justify-center">

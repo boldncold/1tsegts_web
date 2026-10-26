@@ -26,7 +26,7 @@ export interface MappedMenuItem extends Mapped {
 }
 
 const MENU_KEYS = Object.keys(menuFields).filter(
-  (k) => !["image", "sideImages", "legacyId"].includes(k),
+  (k) => !["image", "sideImages", "thumb", "legacyId"].includes(k),
 );
 const ORDER_KEYS = Object.keys(orderFields).filter(
   (k) => !["items", "qpayDeeplinks", "legacyId"].includes(k),

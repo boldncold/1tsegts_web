@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from 'convex/react';
+import { useCachedQuery } from '../lib/useCachedQuery';
 import { api } from '../../convex/_generated/api';
 import { Category, MenuItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -17,12 +17,13 @@ const categories: { name: Category; translationKey: string }[] = [
 function pickCover(items: MenuItem[]): string | undefined {
   return [...items]
     .filter((item) => item.image)
-    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.orderCount ?? 0) - (a.orderCount ?? 0))[0]?.image;
+    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.orderCount ?? 0) - (a.orderCount ?? 0))
+    .map((item) => item.thumb || item.image)[0];
 }
 
 export default function CategoryQuickNav() {
   const { t } = useLanguage();
-  const menu = useQuery(api.menu.list);
+  const menu = useCachedQuery(api.menu.list);
 
   const tiles = useMemo(() => {
     const visible = ((menu ?? []) as MenuItem[]).filter(
@@ -51,7 +52,10 @@ export default function CategoryQuickNav() {
                 <img
                   src={tile.cover}
                   alt=""
-                  loading="lazy"
+                  // Not lazy: on phones these tiles are in the first screen and
+                  // one of them is usually the page's largest image, which
+                  // lazy loading would hold back until after layout.
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />

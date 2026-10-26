@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useCachedQuery } from './useCachedQuery';
 import { api } from '../../convex/_generated/api';
 import { MenuItem } from '../types';
 
 export function useFeaturedDishes() {
   // Featured picks, or the most-ordered dishes when none are featured —
   // the fallback now lives server-side in convex/menu.ts.
-  const dishes = useQuery(api.menu.featured);
+  const dishes = useCachedQuery(api.menu.featured);
 
   return useMemo(() => {
     // The schema's category also admits legacy 'Specials'; the UI groups

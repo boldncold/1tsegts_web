@@ -23,6 +23,7 @@ export const list = query({
       items.map(async (item) => ({
         ...(await toMenuItem(ctx, item)),
         imageRef: item.image ?? null,
+        thumbRef: item.thumb ?? null,
         sideImageRefs: item.sideImages ?? [],
       })),
     );
@@ -86,8 +87,9 @@ export const clearPlaceholderImages = internalMutation({
       const sideImages = before.filter((ref) => !isPlaceholder(ref));
       const dropMain = isPlaceholder(item.image);
       if (!dropMain && sideImages.length === before.length) continue;
+      if (dropMain && item.thumb) await ctx.storage.delete(item.thumb);
       await ctx.db.patch(item._id, {
-        ...(dropMain ? { image: undefined } : {}),
+        ...(dropMain ? { image: undefined, thumb: undefined } : {}),
         sideImages: sideImages.length > 0 ? sideImages : undefined,
       });
       cleared.push(item.name);
@@ -97,31 +99,45 @@ export const clearPlaceholderImages = internalMutation({
   },
 });
 
-/** Delete stored files the item no longer references. */
+/** Delete stored files (photos and the small copy) the item no longer references. */
 async function dropUnusedImages(ctx: MutationCtx, before: Doc<"menu">, keep: Set<Id<"_storage">>) {
-  for (const id of storageIds([before.image, ...(before.sideImages ?? [])])) {
+  const files = storageIds([before.image, ...(before.sideImages ?? [])]);
+  if (before.thumb) files.add(before.thumb);
+  for (const id of files) {
     if (!keep.has(id)) await ctx.storage.delete(id);
   }
 }
 
-/** Create (no id) or replace an item from the admin form. */
+const sameImage = (a: ImageRef | undefined, b: ImageRef) =>
+  !!a && ("storageId" in a ? "storageId" in b && a.storageId === b.storageId : "url" in b && a.url === b.url);
+
+/**
+ * Create (no id) or replace an item from the admin form. `thumb` is the small
+ * copy of `image`; the dashboard sends the existing one back when the photo
+ * is unchanged, a new one with a new photo, and none when there is no photo.
+ */
 export const save = mutation({
   args: {
     id: v.optional(v.id("menu")),
     item: editable,
     image: v.optional(imageRef),
+    thumb: v.optional(v.id("_storage")),
     sideImages: v.array(imageRef),
   },
-  handler: async (ctx, { id, item, image, sideImages }) => {
+  handler: async (ctx, { id, item, image, thumb, sideImages }) => {
     await requireAdmin(ctx);
     validate(item);
     const { statusUntil, pool, ...rest } = item;
+    // A small copy without the photo it was made from would show a photo the
+    // admin removed.
+    const keptThumb = image ? thumb : undefined;
     const row = {
       ...rest,
       name: item.name.trim(),
       ...(statusUntil !== null ? { statusUntil } : {}),
       ...(pool !== null ? { pool } : {}),
       ...(image ? { image } : {}),
+      ...(keptThumb ? { thumb: keptThumb } : {}),
       ...(sideImages.length > 0 ? { sideImages } : {}),
     };
 
@@ -129,7 +145,9 @@ export const save = mutation({
 
     const existing = await ctx.db.get(id);
     if (!existing) throw new ConvexError({ code: "NOT_FOUND" });
-    await dropUnusedImages(ctx, existing, storageIds([image, ...sideImages]));
+    const keep = storageIds([image, ...sideImages]);
+    if (keptThumb) keep.add(keptThumb);
+    await dropUnusedImages(ctx, existing, keep);
     // Popularity and import bookkeeping are not form fields; carry them over.
     await ctx.db.replace(id, {
       ...row,
@@ -164,6 +182,32 @@ export const update = mutation({
       ...(statusUntil !== undefined ? { statusUntil: statusUntil ?? undefined } : {}),
       ...(pool !== undefined ? { pool: pool ?? undefined } : {}),
     });
+  },
+});
+
+/**
+ * Attach a small copy to a dish's current photo: the dashboard's one-time
+ * backfill for dishes saved before small copies existed. `forImage` is the
+ * photo the copy was made from; if the dish's photo changed in the meantime,
+ * the copy is discarded rather than paired with the wrong photo.
+ */
+export const setThumb = mutation({
+  args: { id: v.id("menu"), forImage: imageRef, thumb: v.id("_storage") },
+  handler: async (ctx, { id, forImage, thumb }) => {
+    await requireAdmin(ctx);
+    const item = await ctx.db.get(id);
+    // Never accept one of the dish's own photos as its copy: replacing or
+    // discarding the copy later would delete that photo.
+    if (item && storageIds([item.image, ...(item.sideImages ?? [])]).has(thumb)) {
+      throw new ConvexError({ code: "INVALID_THUMB" });
+    }
+    if (!item || !sameImage(item.image, forImage)) {
+      await ctx.storage.delete(thumb);
+      return { saved: false };
+    }
+    if (item.thumb && item.thumb !== thumb) await ctx.storage.delete(item.thumb);
+    await ctx.db.patch(id, { thumb });
+    return { saved: true };
   },
 });
 

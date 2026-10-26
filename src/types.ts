@@ -13,6 +13,9 @@ export interface MenuItem {
   description: string;
   price: number;
   image: string;
+  // ~480px copy of `image` for tiles, cards and list rows; "" or missing
+  // until the admin dashboard has made one. Use `item.thumb || item.image`.
+  thumb?: string;
   sideImages?: string[];
   category: Category;
   tags: string[];

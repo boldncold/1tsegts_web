@@ -14,14 +14,16 @@ async function imageUrl(
 
 /**
  * The client's MenuItem shape (src/types.ts): `id` instead of `_id`, images
- * resolved to URLs, import bookkeeping left out.
+ * resolved to URLs, import bookkeeping left out. `thumb` is "" when the dish
+ * has no small copy yet; the client falls back to `image`.
  */
 export async function toMenuItem(ctx: QueryCtx, item: Doc<"menu">) {
-  const { _id, _creationTime, legacyId, image, sideImages, ...rest } = item;
+  const { _id, _creationTime, legacyId, image, sideImages, thumb, ...rest } = item;
   return {
     ...rest,
     id: _id,
     image: await imageUrl(ctx, image),
+    thumb: thumb ? ((await ctx.storage.getUrl(thumb)) ?? "") : "",
     sideImages: await Promise.all((sideImages ?? []).map((ref) => imageUrl(ctx, ref))),
   };
 }

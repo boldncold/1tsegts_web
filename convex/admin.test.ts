@@ -102,6 +102,64 @@ describe("menu admin", () => {
     expect(await t.run((ctx) => ctx.storage.getUrl(second))).toBeNull();
   });
 
+  test("the small copy is saved with its photo and deleted when the photo is replaced or removed", async () => {
+    const { t, owner, get } = await setup();
+    const store = () => t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+    const exists = async (id: Id<"_storage">) => (await t.run((ctx) => ctx.storage.getUrl(id))) !== null;
+    const [photo, thumb] = [await store(), await store()];
+
+    const id = await owner.mutation(api.menuAdmin.save, { item: form, image: { storageId: photo }, thumb, sideImages: [] });
+    expect(await get(id)).toMatchObject({ thumb });
+    const [served] = (await t.query(api.menu.list, {})).filter((i) => i.id === id);
+    expect(served.thumb).toMatch(/^https?:\/\//);
+
+    // Unchanged photo, copy sent back: both kept.
+    await owner.mutation(api.menuAdmin.save, { id, item: form, image: { storageId: photo }, thumb, sideImages: [] });
+    expect(await exists(thumb)).toBe(true);
+
+    // New photo without a copy: the old copy goes with the old photo.
+    const newPhoto = await store();
+    await owner.mutation(api.menuAdmin.save, { id, item: form, image: { storageId: newPhoto }, sideImages: [] });
+    expect((await get(id))?.thumb).toBeUndefined();
+    expect(await exists(thumb)).toBe(false);
+
+    // A copy sent without a photo is not stored.
+    const orphan = await store();
+    await owner.mutation(api.menuAdmin.save, { id, item: form, thumb: orphan, sideImages: [] });
+    expect((await get(id))?.thumb).toBeUndefined();
+  });
+
+  test("setThumb: admins only, never one of the dish's photos, and only for the photo it was made from", async () => {
+    const { t, owner, get } = await setup();
+    const store = () => t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+    const exists = async (id: Id<"_storage">) => (await t.run((ctx) => ctx.storage.getUrl(id))) !== null;
+    const photo = await store();
+    const id = await owner.mutation(api.menuAdmin.save, { item: form, image: { storageId: photo }, sideImages: [] });
+    const forImage = { storageId: photo };
+
+    const first = await store();
+    await expect(t.mutation(api.menuAdmin.setThumb, { id, forImage, thumb: first })).rejects.toThrow(/NOT_ADMIN/);
+    await expect(owner.mutation(api.menuAdmin.setThumb, { id, forImage, thumb: photo })).rejects.toThrow(/INVALID_THUMB/);
+    expect(await exists(photo)).toBe(true);
+
+    expect(await owner.mutation(api.menuAdmin.setThumb, { id, forImage, thumb: first })).toEqual({ saved: true });
+    expect(await get(id)).toMatchObject({ thumb: first });
+
+    // A second backfill replaces the first copy and deletes it.
+    const second = await store();
+    await owner.mutation(api.menuAdmin.setThumb, { id, forImage, thumb: second });
+    expect(await exists(first)).toBe(false);
+
+    // Made from a photo the dish no longer has: discarded, current copy kept.
+    const stale = await store();
+    expect(await owner.mutation(api.menuAdmin.setThumb, { id, forImage: { url: "https://old.example/a.jpg" }, thumb: stale })).toEqual({ saved: false });
+    expect(await exists(stale)).toBe(false);
+    expect(await get(id)).toMatchObject({ thumb: second });
+
+    await owner.mutation(api.menuAdmin.remove, { id });
+    expect(await exists(second)).toBe(false);
+  });
+
   test("quick updates clear fields with null; invalid items are refused", async () => {
     const { owner, menuId, get } = await setup();
     await owner.mutation(api.menuAdmin.update, { id: menuId, changes: { pool: "specials", statusUntil: 123 } });

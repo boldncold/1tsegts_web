@@ -45,6 +45,9 @@ describe("menu.list", () => {
     expect(withImages.sideImages).toEqual(["https://picsum.photos/seed/a/800/600"]);
     expect(without.image).toBe("");
     expect(without.sideImages).toEqual([]);
+    // No small copy yet: an empty thumb, and the internal storage id never leaks.
+    expect(withImages.thumb).toBe("");
+    expect(without.thumb).toBe("");
   });
 });
 
