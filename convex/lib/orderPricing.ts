@@ -11,6 +11,7 @@ import type { Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import type { orderItem } from "../validators";
+import { dishAvailability, isPublished } from "./availability";
 
 /** The base-price choice the menu UI shows ahead of an item's real portions. */
 const DEFAULT_PORTION = "Default";
@@ -29,10 +30,19 @@ export type PricingResult =
   | { ok: true; items: PricedItem[]; chargedMnt: number }
   | { ok: false; reason: string };
 
-/** Price cart lines against menu rows keyed by the line's menuId. Pure. */
+/**
+ * Price cart lines against menu rows keyed by the line's menuId. Pure.
+ *
+ * With `availableAt`, a dish that can't be ordered at that moment (hidden,
+ * sold out, off its schedule: convex/lib/availability.ts) or a portion the
+ * admin switched off is refused. Customer orders pass it; staff orders
+ * (counter orders, admin test orders) don't, so the counter can still ring
+ * up a dish the website shows as sold out.
+ */
 export function priceCart(
   lines: readonly CartLine[],
   menu: ReadonlyMap<string, Doc<"menu">>,
+  { availableAt }: { availableAt?: Date } = {},
 ): PricingResult {
   if (lines.length === 0) return { ok: false, reason: "no_items" };
 
@@ -46,11 +56,17 @@ export function priceCart(
     }
     const row = menu.get(line.menuId);
     if (!row) return { ok: false, reason: `unknown_item:${line.menuId}` };
+    if (availableAt && (!isPublished(row) || !dishAvailability(row, availableAt).isAvailable)) {
+      return { ok: false, reason: `unavailable_item:${line.menuId}` };
+    }
 
     let unitPrice = row.price;
     let selectedPortion: PricedItem["selectedPortion"];
     if (line.portionName !== undefined) {
       const portion = row.portions?.find((p) => p.name === line.portionName);
+      if (portion && availableAt && portion.available === false) {
+        return { ok: false, reason: `unavailable_portion:${line.menuId}` };
+      }
       if (portion) {
         unitPrice = portion.price;
         selectedPortion = { name: portion.name, price: portion.price };

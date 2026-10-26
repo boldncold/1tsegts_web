@@ -1,7 +1,9 @@
 # Plan: refuse unavailable dishes on the server
 
-Status: **proposed, not implemented.** Touches order creation, so per CLAUDE.md
-it gets a plan and a review before code.
+Status: **implemented** on branch `claude/server-availability`. Rules in
+`convex/lib/availability.ts`, enforced in `priceCart` and `orders.create`,
+tests in `convex/orders.test.ts` and `convex/admin.test.ts`. Kept as the
+record of why and how.
 
 ## The gap
 

@@ -5,6 +5,7 @@ import type { Doc } from "./_generated/dataModel";
 import { orderType, paymentMethod } from "./validators";
 import { loadMenuFor, priceCart } from "./lib/orderPricing";
 import { getAdmin } from "./lib/admin";
+import { DEFAULT_STORE_SETTINGS, isStoreOpen, type StoreHours } from "./lib/availability";
 import { markPaid } from "./payments";
 
 // Payment windows. The server owns expiry now; the client copies in
@@ -25,6 +26,14 @@ const CUSTOMER_CANCELLABLE_PAYMENT = new Set<Doc<"orders">["paymentStatus"]>([
   "AWAITING_PAYMENT",
   "EXPIRED",
 ]);
+
+/** The saved store hours over the defaults, as the client's StoreSettingsContext merges them. */
+async function storeHours(ctx: QueryCtx): Promise<StoreHours> {
+  const row = await ctx.db.query("storeSettings").first();
+  if (!row) return DEFAULT_STORE_SETTINGS;
+  const { _id, _creationTime, ...saved } = row;
+  return { ...DEFAULT_STORE_SETTINGS, ...saved };
+}
 
 function invalid(reason: string): never {
   throw new ConvexError({ code: "INVALID_ORDER", reason });
@@ -101,13 +110,22 @@ export const create = mutation({
     if ((args.kioskNumber?.length ?? 0) >= MAX_KIOSK) invalid("kiosk_too_long");
     if ((args.notes?.length ?? 0) >= MAX_NOTES) invalid("notes_too_long");
 
-    const pricing = priceCart(args.items, await loadMenuFor(ctx, args.items));
+    // Admins test the storefront flow: their orders are marked isTest, they
+    // skip the opening-hours and dish-availability gates (as the menu and
+    // cart already let them), and only they may discount, clamped to the
+    // subtotal as CartDrawer does.
+    const admin = await getAdmin(ctx);
+    const placedAt = new Date();
+    if (!admin && !isStoreOpen(await storeHours(ctx), placedAt)) {
+      throw new ConvexError({ code: "STORE_CLOSED" });
+    }
+
+    const pricing = priceCart(args.items, await loadMenuFor(ctx, args.items), {
+      availableAt: admin ? undefined : placedAt,
+    });
     if (pricing.ok === false) {
       throw new ConvexError({ code: "ORDER_UNPRICEABLE", reason: pricing.reason });
     }
-    // Admins test the storefront flow: their orders are marked isTest, and
-    // only they may discount — clamped to the subtotal as CartDrawer does.
-    const admin = await getAdmin(ctx);
     if (args.adminDiscountMnt !== undefined && !admin) {
       throw new ConvexError({ code: "NOT_ADMIN" });
     }

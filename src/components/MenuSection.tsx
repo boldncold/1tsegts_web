@@ -10,6 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useStoreSettings } from '../context/StoreSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { cn, getDynamicStatus, getSchedule, nextOpening } from '../lib/utils';
+import { isPublished } from '../../convex/lib/availability';
 import PortionSheet from './PortionSheet';
 
 const DISH_FALLBACK_BG = 'var(--dish-fallback-bg)';
@@ -34,7 +35,7 @@ export default function MenuSection() {
   // Admins (test mode) see items even if sold out / out of schedule, so the visibility
   // gate is skipped for them. Drafts stay hidden — they're truly unpublished.
   const visibleItems = items.filter(item => {
-    if (item.category === 'Draft' && item.pool !== 'specials') return false;
+    if (!isPublished(item)) return false;
     if (isAdmin) return true;
     const { isVisible } = getDynamicStatus(item);
     return isVisible;

@@ -67,6 +67,10 @@ afterEach(() => {
 async function setup() {
   const t = convexTest(schema, modules);
   const qpay = fakeQpay();
+  // Open around the clock: these tests are about payments, not opening hours.
+  await t.run((ctx) =>
+    ctx.db.insert("storeSettings", { openHour: 0, closeHour: 24, closedDays: [], closedUntil: null, noClosedDayUntil: null }),
+  );
   const menuId = await t.run((ctx) =>
     ctx.db.insert("menu", { name: "Бууз", description: "", price: 12000, category: "Mongolian", tags: [], available: true }),
   );
