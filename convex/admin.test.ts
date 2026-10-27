@@ -21,6 +21,10 @@ async function setup() {
     return t.withIdentity({ subject: `${userId}|session` });
   };
   const owner = await as(OWNER_EMAIL);
+  // Open around the clock, so storefront orders in these tests pass at any hour.
+  await t.run((ctx) =>
+    ctx.db.insert("storeSettings", { openHour: 0, closeHour: 24, closedDays: [], closedUntil: null, noClosedDayUntil: null }),
+  );
   const menuId = await t.run((ctx) => ctx.db.insert("menu", { ...dish, name: "Бууз", price: 12000 }));
   const insertOrder = (fields: Record<string, unknown> = {}) =>
     t.run((ctx) =>
@@ -380,6 +384,33 @@ describe("bank matching", () => {
     const later = await insertOrder({ paymentMethod: "bank_transfer", paymentStatus: "AWAITING_PAYMENT", amountMnt: 5000, referenceCode: "GR-LATER2" });
     await t.mutation(internal.bank.sweep, {});
     expect(await get(early)).toMatchObject({ matchStatus: "matched", matchedOrderId: later });
+  });
+});
+
+describe("staff skip the customer availability gates", () => {
+  const closedAllWeek = { openHour: 11, closeHour: 19, closedDays: [0, 1, 2, 3, 4, 5, 6], closedUntil: null, noClosedDayUntil: null };
+
+  test("an admin's storefront order for a sold-out dish goes through while the store is closed; a customer's doesn't", async () => {
+    const { t, owner, get } = await setup();
+    const soldOut = await t.run(async (ctx) => {
+      const row = await ctx.db.query("storeSettings").first();
+      await ctx.db.replace(row!._id, closedAllWeek);
+      return ctx.db.insert("menu", { ...dish, name: "Дууссан", price: 5000, status: "sold_out_today", statusUntil: Date.now() + 3_600_000 });
+    });
+    const order = { orderType: "pickup" as const, paymentMethod: "cash" as const, items: [{ menuId: soldOut, quantity: 1 }] };
+    await expect(t.mutation(api.orders.create, order)).rejects.toThrow(/STORE_CLOSED/);
+    const { orderId } = await owner.mutation(api.orders.create, order);
+    expect(await get(orderId)).toMatchObject({ isTest: true, total: 5000 });
+  });
+
+  test("a counter order can ring up a dish hidden from the website", async () => {
+    const { t, owner, get } = await setup();
+    const hidden = await t.run((ctx) => ctx.db.insert("menu", { ...dish, name: "Нууц", price: 7000, status: "hidden" }));
+    const { orderId } = await owner.mutation(api.ordersAdmin.createCounterOrder, {
+      orderType: "pickup",
+      items: [{ menuId: hidden, quantity: 1 }],
+    });
+    expect(await get(orderId)).toMatchObject({ total: 7000 });
   });
 });
 

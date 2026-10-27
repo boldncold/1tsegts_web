@@ -1,9 +1,10 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { modules } from "./test.setup";
+import type { StoreHours } from "./lib/availability";
 
 const base = {
   description: "",
@@ -12,8 +13,12 @@ const base = {
   available: true,
 };
 
+/** Open around the clock, so tests that aren't about opening hours pass at any time of day. */
+const ALWAYS_OPEN: StoreHours = { openHour: 0, closeHour: 24, closedDays: [], closedUntil: null, noClosedDayUntil: null };
+
 async function setup() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => ctx.db.insert("storeSettings", ALWAYS_OPEN));
   const ids = await t.run(async (ctx) => ({
     khuushuur: await ctx.db.insert("menu", {
       ...base,
@@ -173,6 +178,119 @@ describe("orders.create", () => {
         t.mutation(api.orders.create, { ...pickup, paymentMethod: "cash", items }),
       ).rejects.toThrow(/ORDER_UNPRICEABLE/);
     }
+  });
+});
+
+describe("orders.create refuses what the menu wouldn't let a customer order", () => {
+  afterEach(() => vi.useRealTimers());
+
+  // Ulaanbaatar is UTC+8 all year. 2026-10-19 is a Monday (closed by
+  // default), 2026-10-20 a Tuesday.
+  const ub = (iso: string) => new Date(`${iso}+08:00`);
+  const at = (iso: string) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(ub(iso));
+  };
+  const HOUR = 3_600_000;
+
+  async function withDish(fields: Record<string, unknown>) {
+    const { t, ids } = await setup();
+    const dishId = await t.run((ctx) =>
+      ctx.db.insert("menu", { ...base, name: "Тест", price: 5000, ...fields }),
+    );
+    const order = (extra: Record<string, unknown> = {}) =>
+      t.mutation(api.orders.create, { ...pickup, paymentMethod: "cash", items: [{ menuId: dishId, quantity: 1, ...extra }] });
+    const setHours = (hours: Partial<typeof ALWAYS_OPEN>) =>
+      t.run(async (ctx) => {
+        const row = await ctx.db.query("storeSettings").first();
+        await ctx.db.patch(row!._id, hours);
+      });
+    return { t, ids, dishId, order, setHours };
+  }
+
+  test("hidden: refused; available: accepted", async () => {
+    at("2026-10-20T12:00");
+    await expect((await withDish({ status: "hidden" })).order()).rejects.toThrow(/unavailable_item/);
+    await expect((await withDish({ status: "available" })).order()).resolves.toHaveProperty("orderId");
+  });
+
+  test("sold out today: refused until statusUntil, accepted after", async () => {
+    at("2026-10-20T12:00");
+    const until = ub("2026-10-21T00:00").getTime();
+    const { order } = await withDish({ status: "sold_out_today", statusUntil: until });
+    await expect(order()).rejects.toThrow(/unavailable_item/);
+    at("2026-10-21T12:00");
+    await expect(order()).resolves.toHaveProperty("orderId");
+  });
+
+  test("today only: accepted until statusUntil, refused after", async () => {
+    at("2026-10-20T12:00");
+    const { order } = await withDish({ todayOnly: true, statusUntil: Date.now() + HOUR });
+    await expect(order()).resolves.toHaveProperty("orderId");
+    at("2026-10-20T14:00");
+    await expect(order()).rejects.toThrow(/unavailable_item/);
+  });
+
+  test("the legacy available=false flag is honoured when there is no status", async () => {
+    at("2026-10-20T12:00");
+    await expect((await withDish({ available: false })).order()).rejects.toThrow(/unavailable_item/);
+  });
+
+  test("weekly schedule uses Ulaanbaatar's day, not the server's (UTC)", async () => {
+    // A Tuesday-only dish. 07:59 Tuesday in UB is still Monday in UTC.
+    at("2026-10-20T07:59");
+    const { order } = await withDish({ scheduledDays: [2] });
+    await expect(order()).resolves.toHaveProperty("orderId");
+    // 00:30 Wednesday in UB is still Tuesday in UTC: a UTC clock would let it through.
+    at("2026-10-21T00:30");
+    await expect(order()).rejects.toThrow(/unavailable_item/);
+  });
+
+  test("a portion switched off is refused; the dish's other portions are not", async () => {
+    at("2026-10-20T12:00");
+    const { order } = await withDish({
+      portions: [
+        { name: "Small", price: 4000, available: false },
+        { name: "Large", price: 6000 },
+      ],
+    });
+    await expect(order({ portionName: "Small" })).rejects.toThrow(/unavailable_portion/);
+    await expect(order({ portionName: "Large" })).resolves.toHaveProperty("orderId");
+  });
+
+  test("an unpublished draft is refused; a published special in the Draft category is not", async () => {
+    at("2026-10-20T12:00");
+    await expect((await withDish({ category: "Draft" })).order()).rejects.toThrow(/unavailable_item/);
+    await expect((await withDish({ category: "Draft", pool: "specials" })).order()).resolves.toHaveProperty("orderId");
+  });
+
+  test("opening hours: closed before opening, on the closed day and during a forced closure", async () => {
+    const { order, setHours } = await withDish({});
+    await setHours({ openHour: 11, closeHour: 19, closedDays: [1] });
+
+    at("2026-10-20T10:59");
+    await expect(order()).rejects.toThrow(/STORE_CLOSED/);
+    at("2026-10-20T11:00");
+    await expect(order()).resolves.toHaveProperty("orderId");
+    at("2026-10-20T19:00");
+    await expect(order()).rejects.toThrow(/STORE_CLOSED/);
+    at("2026-10-19T12:00"); // Monday
+    await expect(order()).rejects.toThrow(/STORE_CLOSED/);
+
+    await setHours({ closedUntil: "2026-10-20" });
+    at("2026-10-20T12:00");
+    await expect(order()).rejects.toThrow(/STORE_CLOSED/);
+  });
+
+  test("with no saved hours, the defaults apply (11:00–19:00, closed Mondays)", async () => {
+    const { t, order } = await withDish({});
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("storeSettings").collect()) await ctx.db.delete(row._id);
+    });
+    at("2026-10-20T12:00");
+    await expect(order()).resolves.toHaveProperty("orderId");
+    at("2026-10-20T20:00");
+    await expect(order()).rejects.toThrow(/STORE_CLOSED/);
   });
 });
 

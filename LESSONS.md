@@ -6,6 +6,9 @@ Format: **Rule** first (what to do differently), then *Why* (what went wrong). N
 
 ## Lessons
 
+- **A rule the UI enforces (a disabled button, a hidden dish, "closed" on the cart) is a suggestion until the server function enforces it too. Keep such rules in one pure module both sides import (`convex/lib/availability.ts`), and run calendar rules on Ulaanbaatar time explicitly, never the machine's clock settings.**
+  *Why:* sold-out, hidden, off-schedule and draft dishes, switched-off portions and closed-store orders were only blocked in the browser; `orders.create` accepted all of them. The client's schedule check also used `new Date().getDay()`, which on a UTC server would call 00:00–08:00 Ulaanbaatar time "yesterday".
+
 - **Every font that sets Mongolian text must ship the `cyrillic-ext` subset — that is where Ө ө Ү ү live. Check the subset list in the Google Fonts CSS (`/* cyrillic-ext */` blocks), not the "Cyrillic" label on the font page.**
   *Why:* Playfair Display, the heading font since the AI Studio scaffold, has `cyrillic` but not `cyrillic-ext`, so every ө and ү in a heading ("төгс", "Үхрийн") was drawn by a fallback serif mid-word. It read as "lots of uneven fonts" and nobody could say why.
 

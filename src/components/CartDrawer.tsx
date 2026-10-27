@@ -315,14 +315,33 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       }
     } catch (error) {
       console.error('Order failed:', error);
-      const code = error instanceof ConvexError ? (error.data as { code?: string }).code : undefined;
-      toast.error(code === 'ORDER_UNPRICEABLE'
-        ? (language === 'en'
+      const data = error instanceof ConvexError ? (error.data as { code?: string; reason?: string }) : {};
+      // The server re-checks hours and availability (convex/lib/availability.ts),
+      // so a dish that sold out, or a store that closed, while the customer
+      // was filling in the cart is refused here.
+      const [reasonKind, menuId] = (data.reason ?? '').split(':');
+      const dishName = cart.find((item) => item.id === menuId)?.name;
+      if (data.code === 'STORE_CLOSED') {
+        toast.error(t('cart.closed'));
+      } else if (data.code === 'ORDER_UNPRICEABLE' && reasonKind === 'unavailable_item' && dishName) {
+        // Nothing to choose instead, so take it out for them.
+        cart.filter((item) => item.id === menuId).forEach((item) => removeFromCart(item.cartItemId));
+        toast.error(language === 'en'
+          ? `${dishName} can't be ordered right now, so we removed it from your cart. Please check your order and try again.`
+          : `«${dishName}» одоогоор захиалах боломжгүй тул сагснаас хаслаа. Захиалгаа шалгаад дахин оролдоно уу.`);
+      } else if (data.code === 'ORDER_UNPRICEABLE' && reasonKind === 'unavailable_portion' && dishName) {
+        toast.error(language === 'en'
+          ? `That size of ${dishName} is sold out. Please remove it and pick another size.`
+          : `«${dishName}»-ийн сонгосон хэмжээ дууссан байна. Хасаад өөр хэмжээ сонгоно уу.`);
+      } else if (data.code === 'ORDER_UNPRICEABLE') {
+        toast.error(language === 'en'
           ? 'An item in your cart is no longer on the menu. Please remove it and try again.'
-          : 'Таны сагсан дахь нэг бүтээгдэхүүн цэснээс хасагдсан байна. Түүнийг хасаад дахин оролдоно уу.')
-        : (language === 'en'
+          : 'Таны сагсан дахь нэг бүтээгдэхүүн цэснээс хасагдсан байна. Түүнийг хасаад дахин оролдоно уу.');
+      } else {
+        toast.error(language === 'en'
           ? 'Could not place your order. Please try again.'
-          : 'Захиалга өгч чадсангүй. Дахин оролдоно уу.'));
+          : 'Захиалга өгч чадсангүй. Дахин оролдоно уу.');
+      }
     } finally {
       setIsSubmitting(false);
     }
