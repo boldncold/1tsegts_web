@@ -13,6 +13,7 @@ import type * as bank from "../bank.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_admin from "../lib/admin.js";
+import type * as lib_availability from "../lib/availability.js";
 import type * as lib_firestoreRest from "../lib/firestoreRest.js";
 import type * as lib_orderPricing from "../lib/orderPricing.js";
 import type * as lib_qpayClient from "../lib/qpayClient.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/admin": typeof lib_admin;
+  "lib/availability": typeof lib_availability;
   "lib/firestoreRest": typeof lib_firestoreRest;
   "lib/orderPricing": typeof lib_orderPricing;
   "lib/qpayClient": typeof lib_qpayClient;
