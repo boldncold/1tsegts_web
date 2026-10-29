@@ -1,5 +1,10 @@
 # MonPay Deep-Link Integration — design doc (follow-on to v0)
 
+> **Written for the Firebase backend, retired 2026-10.** The flow still applies, but the code
+> sketches below (`functions/src/…`, `firebase.json`) map onto Convex now: an action like
+> `convex/qpay.ts` `createInvoice`, an HTTP action routed in `convex/http.ts` for the webhook,
+> and `markPaid` in `convex/payments.ts` for the confirmation.
+
 This builds on top of the v0 manual bank-transfer flow already shipped (see `BANK_RECONCILIATION_DESIGN.md` for the original architecture and the actual v0 code under `src/lib/referenceCode.ts`, `src/lib/bankConfig.ts`, etc.).
 
 **Goal:** replace the customer's manual "open Khan Bank app, type account number, type amount, type reference code" with a **single tap**: customer picks "MonPay" at checkout → taps the link → MonPay app opens with everything pre-filled → biometric confirm → done. Server-side webhook flips `paymentStatus → CONFIRMED` automatically, no admin action.

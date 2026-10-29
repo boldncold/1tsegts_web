@@ -90,17 +90,25 @@ previous production deployment → **Promote**. Firebase is untouched and takes
 over again. Orders placed on Convex in between must be re-entered by hand
 (Convex dashboard → Data → orders, newest first).
 
-## 4. After cutover
+## 4. After cutover — done 2026-10-29
 
-- **Days 0–14:** QPay may still call the **Firebase** webhook for invoices created
-  before the cutover (paid late). Check daily:
-  `firebase functions:log --only qpayWebhook --project ai-studio-applet-webapp-730e3`
-  — any `order paid` / `flagging for review` line is money to reconcile by hand
-  in the new dashboard.
-- **Day 14 — decommission Firebase:** export Firestore (console → Import/Export)
-  as a backup; delete the Cloud Functions; set Firestore rules to deny-all; remove
-  `functions/`, `firestore.rules`, `firebase.json`, `scripts/test-rules.mjs` and the
-  `firebase*` dependencies.
-- **Docs:** done in the migration PR — PROJECT.md, STACK.md, WORKFLOW.md,
-  QPAY_INTEGRATION.md and CLAUDE.md describe Convex. At decommission, drop the
-  Firebase-only lessons and the retired-backend note in PROJECT.md.
+- **Days 0–14:** checked on 2026-10-29: the Firebase `qpayWebhook` has no log
+  entries at all, so no invoice from before the cutover was paid late. (Logs of
+  the scheduled functions stop on 2026-10-14: the project's billing lapsed then,
+  and the old functions stopped running.)
+- **Firestore:** locked with deny-all rules on the named database
+  (`ai-studio-c9d0a348-…`); an anonymous read now returns 403. The data is kept
+  and still visible in the Firebase console, so no export was made. Export it
+  before ever deleting the database or the project.
+- **Cloud Functions:** not deleted. Google refuses writes to the project while its
+  billing is off ("Write access … denied: please check billing account"). All
+  seven are inert: no billing means no runs, and `qpayWebhook` answers 503. To
+  remove them for good, re-link billing for a few minutes, then:
+  `firebase functions:delete confirmOrderPayment createQpayInvoice expirePendingQpayInvoices qpayWebhook reconcileBankTransaction refundQpayPayment sweepBankTransactions --region asia-east1 --project ai-studio-applet-webapp-730e3 --force`
+- **Repo:** `functions/`, the Firestore rules and config, the rules tests, the
+  emulator scripts, the `firebase` packages and the one-off Firestore importer
+  (`convex/migrations/`, `scripts/cutover-import.mjs`) removed.
+  `legacyId` lookups stay, so a cart saved before the switch still checks out.
+- **Keep the Google Cloud project** `ai-studio-applet-webapp-730e3`: it holds the
+  Google OAuth client that `/admin` signs in with (section 0.2). Shutting it down
+  would lock admins out.

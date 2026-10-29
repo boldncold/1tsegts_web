@@ -1,9 +1,9 @@
 # QPay Integration
 
 How the QPay payment flow works and how to operate it. QPay runs on **Convex**
-(`convex/qpay.ts`, `convex/payments.ts`); the Firebase Cloud Functions it replaced
-stay in `functions/` only until they are decommissioned (see
-`docs/CONVEX_CUTOVER.md`, section 4).
+(`convex/qpay.ts`, `convex/payments.ts`). It replaced the Firebase Cloud
+Functions, which were decommissioned on 2026-10-29 (`docs/CONVEX_CUTOVER.md`,
+section 4).
 
 ---
 
