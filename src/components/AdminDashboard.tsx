@@ -958,9 +958,8 @@ export default function AdminDashboard() {
   };
 
   /**
-   * Reads the match the server computed. Matching moved to
-   * functions/src/bankMatching.ts — reconcileBankTransaction on ingest and
-   * sweepBankTransactions every 5 minutes — so there is one implementation
+   * Reads the match the server computed. Matching lives in convex/bank.ts —
+   * on save and in the 5-minute sweep — so there is one implementation
    * instead of one per open dashboard.
    *
    * matchedOrderId now means "the order this currently matches", not "the order

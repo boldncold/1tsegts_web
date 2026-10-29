@@ -13,7 +13,7 @@ export const category = v.union(
   v.literal("Drinks"),
   v.literal("Mongolian"),
   v.literal("Draft"),
-  // Still allowed by firestore.rules and possibly present on old menu docs;
+  // Possibly present on menu docs imported from Firestore;
   // the UI groups specials through `pool` instead.
   v.literal("Specials"),
 );

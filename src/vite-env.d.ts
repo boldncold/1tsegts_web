@@ -2,7 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_CONVEX_URL?: string;
-  readonly VITE_USE_EMULATORS?: string;
 }
 
 interface ImportMeta {

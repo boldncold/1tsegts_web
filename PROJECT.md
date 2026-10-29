@@ -28,7 +28,7 @@ Two different platforms — don't assume one covers the other:
 
 Order matters when a change spans both: **backend → frontend**. A frontend that calls a function production doesn't have yet breaks as soon as Vercel republishes.
 
-`functions/`, `firestore.rules` and `firebase.json` are the retired Firebase backend, kept only until it is decommissioned ([docs/CONVEX_CUTOVER.md](docs/CONVEX_CUTOVER.md), section 4). Nothing deploys them any more.
+Firebase was the backend until 2026-10-15 and was decommissioned on 2026-10-29: its code is gone from the repo, Firestore is locked (deny-all rules, data kept), and its functions are inert with the project's billing off. Don't shut down the Google Cloud project `ai-studio-applet-webapp-730e3` — the Google sign-in client for `/admin` lives there.
 
 ## Architecture
 
